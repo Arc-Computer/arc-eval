@@ -245,8 +245,6 @@ mypy agent_eval/
 
 ## Roadmap
 
-- [ ] Security domain evaluation pack (15 scenarios)
-- [ ] ML/Infrastructure domain evaluation pack (15 scenarios)
 - [ ] API endpoint support (`--endpoint`)
 - [ ] Custom evaluation packs (`--config`)
 - [ ] Cloud sharing capabilities (`--share`)
