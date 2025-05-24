@@ -89,6 +89,11 @@ console = Console()
     is_flag=True,
     help="Enable verbose logging with detailed debugging information",
 )
+@click.option(
+    "--interactive", "--tui",
+    is_flag=True,
+    help="Launch interactive TUI mode",
+)
 @click.version_option(version="0.1.0", prog_name="arc-eval")
 def main(
     domain: str,
@@ -103,6 +108,7 @@ def main(
     help_input: bool,
     timing: bool,
     verbose: bool,
+    interactive: bool,
 ) -> None:
     """
     AgentEval: Domain-specific evaluation and compliance reporting for LLMs and AI agents.
@@ -131,6 +137,25 @@ def main(
         console.print("[bold blue]AgentEval Input Format Documentation[/bold blue]")
         console.print(InputValidator.suggest_format_help())
         return
+    
+    # Handle interactive mode
+    if interactive:
+        try:
+            from agent_eval.tui.app import ARCEvalApp
+            app = ARCEvalApp()
+            app.run()
+            return
+        except ImportError:
+            console.print("[red]Error:[/red] TUI dependencies not installed. Install with:")
+            console.print("pip install arc-eval[tui]")
+            console.print("\nOr install textual manually:")
+            console.print("pip install textual>=0.80.0")
+            sys.exit(1)
+        except Exception as e:
+            console.print(f"[red]Error launching TUI:[/red] {e}")
+            if dev:
+                console.print_exception()
+            sys.exit(1)
     
     # Import validation utilities
     from agent_eval.core.validators import (
