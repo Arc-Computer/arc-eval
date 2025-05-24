@@ -5,6 +5,7 @@ The primary interface showing file selection, domain choice,
 progress monitoring, and results display.
 """
 
+from datetime import datetime
 from pathlib import Path
 from typing import List, Optional
 
@@ -197,7 +198,7 @@ class MainScreen(Screen):
         
         try:
             # Use existing exporters from core
-            timestamp = "2024-01-15_14-30"  # TODO: Use actual timestamp
+            timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
             filename = f"arc_eval_{self.current_domain}_{timestamp}.{event.format}"
             
             if event.format == "pdf":
