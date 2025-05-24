@@ -40,9 +40,12 @@ dev = [
     "flake8>=6.0.0",
     "mypy>=1.0.0",
 ]
+
 tui = [
     "textual[dev]>=0.80.0",
+    "aiofiles>=24.0.0",
 ]
+
 
 [project.urls]
 Homepage = "https://github.com/arc-computer/arc-eval"
