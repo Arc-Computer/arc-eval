@@ -157,7 +157,7 @@ def main(
             console.print("[red]Error:[/red] TUI dependencies not installed. Install with:")
             console.print("pip install arc-eval[tui]")
             console.print("\nOr install textual manually:")
-            console.print("pip install textual[dev]>=0.80.0")
+            console.print("pip install textual[dev]>=0.80.0 aiofiles>=24.0.0")
             sys.exit(1)
         except Exception as e:
             console.print(f"[red]Error launching TUI:[/red] {e}")
