@@ -135,7 +135,7 @@ DataTable {
     color: $text-muted;
 }
 
-/* Buttons */
+/* Buttons with enhanced states */
 Button {
     margin: 0 1;
 }
@@ -155,7 +155,22 @@ Button:hover {
     background: $primary-lighten-1;
 }
 
-/* Input fields */
+Button:focus {
+    border: thick $accent;
+    background: $primary-lighten-1;
+}
+
+Button:disabled {
+    background: $surface-darken-1;
+    color: $text-muted;
+    border: solid $border;
+}
+
+Button:disabled:hover {
+    background: $surface-darken-1;
+}
+
+/* Input fields with enhanced focus states */
 Input {
     background: $surface;
     border: solid $border;
@@ -163,7 +178,14 @@ Input {
 }
 
 Input:focus {
-    border: solid $accent;
+    border: thick $accent;
+    background: $surface-lighten-1;
+}
+
+Input:disabled {
+    background: $surface-darken-1;
+    color: $text-muted;
+    border: solid $border;
 }
 
 /* Select widgets */
@@ -173,7 +195,14 @@ Select {
 }
 
 Select:focus {
-    border: solid $accent;
+    border: thick $accent;
+    background: $surface-lighten-1;
+}
+
+Select:disabled {
+    background: $surface-darken-1;
+    color: $text-muted;
+    border: solid $border;
 }
 
 /* Containers */
@@ -246,44 +275,66 @@ ModalScreen {
     overflow-y: auto;
 }
 
-/* Landing screen styles - simplified and focused */
+/* Landing screen styles - compact and focused */
 #landing-main {
     layout: vertical;
     align: center middle;
     height: 100%;
-    padding: 4;
+    padding: 2 4;
 }
 
 .app-title {
     text-style: bold;
     color: $accent;
     text-align: center;
-    padding: 2;
+    padding: 1;
+}
+
+.app-subtitle {
+    color: $text-muted;
+    text-align: center;
+    padding: 0 0 2 0;
+    text-style: italic;
 }
 
 #workflow-container {
     background: $panel;
     border: solid $border;
-    padding: 3;
-    margin: 2;
-    max-width: 60;
-    min-width: 50;
+    padding: 2;
+    margin: 1;
+    max-width: 70;
+    min-width: 60;
+    min-height: 18;
 }
 
 .workflow-step {
-    padding: 1;
-    margin: 1 0;
+    padding: 0 0 1 0;
+    margin: 0;
+    min-height: 4;
+}
+
+.step-header {
+    layout: horizontal;
+    height: 1;
+    margin: 0 0 1 0;
+}
+
+.step-indicator {
+    color: $accent;
+    text-style: bold;
+    width: 10;
 }
 
 .step-label {
     text-style: bold;
     color: $text;
-    padding: 0 0 1 0;
+    width: 1fr;
 }
 
 .file-input-group {
     layout: horizontal;
     height: 3;
+    margin: 0 0 1 0;
 }
 
 .file-path-input {
@@ -295,16 +346,59 @@ ModalScreen {
     border: solid $success;
 }
 
+.file-path-input.invalid {
+    border: solid $error;
+    background: $error 10%;
+}
+
+/* Tooltip styles */
+.tooltip {
+    background: $surface;
+    border: solid $border;
+    color: $text;
+    padding: 1;
+    max-width: 40;
+    text-align: left;
+}
+
+/* Step indicators with state colors */
+.step-indicator.active {
+    color: $success;
+    text-style: bold;
+}
+
+.step-indicator.pending {
+    color: $text-muted;
+}
+
+.step-indicator.current {
+    color: $accent;
+    text-style: bold;
+}
+
+.domain-select {
+    margin: 0 0 1 0;
+}
+
 .run-button {
     width: 100%;
-    margin: 2 0 0 0;
+    margin: 1 0 0 0;
     padding: 1;
     text-style: bold;
+    min-height: 3;
 }
 
 .run-button:disabled {
     background: $surface;
     color: $text-muted;
+}
+
+/* Footer with version info */
+.app-footer {
+    padding: 0 1;
+    color: $text-muted;
+    background: transparent;
+    text-align: center;
 }
 
 /* File list styles */
