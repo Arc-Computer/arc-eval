@@ -63,8 +63,8 @@ class MainScreen(Screen):
                     # Action buttons
                     with Container(classes="action-buttons"):
                         yield Button("🎯 Run Evaluation", id="run-btn", variant="primary", disabled=True)
-                        yield Button("⏹️ Stop", id="stop-btn", variant="secondary", disabled=True)
-                        yield Button("🔄 Clear", id="clear-btn", variant="secondary")
+                        yield Button("⏹️ Stop", id="stop-btn", variant="default", disabled=True)
+                        yield Button("🔄 Clear", id="clear-btn", variant="default")
                 
                 # Right panel: Progress and results
                 with Vertical():

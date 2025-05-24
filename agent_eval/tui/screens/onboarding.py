@@ -70,9 +70,9 @@ Keyboard shortcuts:
             
             # Action buttons
             with Horizontal(classes="action-buttons"):
-                yield Button("📚 Take Tutorial", id="tutorial-btn", variant="secondary")
+                yield Button("📚 Take Tutorial", id="tutorial-btn", variant="default")
                 yield Button("🎯 Start Evaluating", id="start-btn", variant="primary")
-                yield Button("⏭️ Skip Onboarding", id="skip-btn", variant="secondary")
+                yield Button("⏭️ Skip Onboarding", id="skip-btn", variant="default")
     
     @on(Select.Changed, "#persona-select")
     def handle_persona_change(self, event: Select.Changed):

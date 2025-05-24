@@ -55,8 +55,8 @@ class ResultsTable(Container):
                     id="results-filter"
                 )
                 yield Button("📄 Export PDF", id="export-pdf", variant="primary")
-                yield Button("📊 Export CSV", id="export-csv", variant="secondary")
-                yield Button("📋 Export JSON", id="export-json", variant="secondary")
+                yield Button("📊 Export CSV", id="export-csv", variant="default")
+                yield Button("📋 Export JSON", id="export-json", variant="default")
             
             # Results table
             yield DataTable(id="results-data-table")
