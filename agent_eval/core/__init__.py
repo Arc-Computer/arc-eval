@@ -1,0 +1,1 @@
+"""Core evaluation engine and processing logic."""

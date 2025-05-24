@@ -1,0 +1,242 @@
+# GitHub Actions Workflow for ARC-Eval
+# Copy this file to .github/workflows/arc-eval.yml in your repository
+
+name: ARC-Eval Agent Compliance Check
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:  # Allow manual triggers
+
+jobs:
+  arc-eval:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        domain: [finance, security, ml]  # Test all domains
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+    
+    - name: Install ARC-Eval
+      run: |
+        pip install arc-eval
+        arc-eval --version
+    
+    - name: Prepare agent outputs
+      run: |
+        # Example: Replace this with your actual agent output collection
+        # Option 1: Use existing output files
+        if [ -f "agent_outputs_${{ matrix.domain }}.json" ]; then
+          echo "Using existing output file for ${{ matrix.domain }}"
+        else
+          # Option 2: Generate sample outputs for testing
+          echo '{"output": "Sample agent response for testing"}' > agent_outputs_${{ matrix.domain }}.json
+        fi
+        
+        # Option 3: Fetch from your agent API (uncomment and modify as needed)
+        # curl -H "Authorization: Bearer ${{ secrets.AGENT_API_TOKEN }}" \
+        #      "${{ secrets.AGENT_API_URL }}/outputs?domain=${{ matrix.domain }}" \
+        #      -o agent_outputs_${{ matrix.domain }}.json
+    
+    - name: Run ARC-Eval compliance check
+      id: arc-eval
+      run: |
+        echo "Running ARC-Eval for ${{ matrix.domain }} domain..."
+        
+        # Run evaluation with verbose output and export results
+        arc-eval \
+          --domain ${{ matrix.domain }} \
+          --input agent_outputs_${{ matrix.domain }}.json \
+          --export json \
+          --verbose \
+          --timing > arc_eval_output.log 2>&1 || echo "arc_eval_exit_code=$?" >> $GITHUB_OUTPUT
+        
+        # Show the results in the logs
+        cat arc_eval_output.log
+        
+        # Check if critical failures were found
+        if [ -f "agent_eval_${{ matrix.domain }}_$(date +%Y-%m-%d)_*.json" ]; then
+          CRITICAL_FAILURES=$(jq '[.[] | select(.severity == "critical" and .passed == false)] | length' agent_eval_${{ matrix.domain }}_*.json)
+          echo "critical_failures=$CRITICAL_FAILURES" >> $GITHUB_OUTPUT
+          echo "Found $CRITICAL_FAILURES critical compliance failures"
+        fi
+    
+    - name: Upload evaluation reports
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: arc-eval-reports-${{ matrix.domain }}
+        path: |
+          agent_eval_${{ matrix.domain }}_*.json
+          agent_eval_${{ matrix.domain }}_*.pdf
+          agent_eval_${{ matrix.domain }}_*.csv
+          arc_eval_output.log
+        retention-days: 30
+    
+    - name: Comment on PR with results
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const fs = require('fs');
+          const domain = '${{ matrix.domain }}';
+          const criticalFailures = '${{ steps.arc-eval.outputs.critical_failures }}' || '0';
+          
+          let comment = `## ARC-Eval Results for ${domain.toUpperCase()} Domain\n\n`;
+          
+          if (criticalFailures === '0') {
+            comment += `✅ **No critical compliance failures detected**\n\n`;
+          } else {
+            comment += `❌ **${criticalFailures} critical compliance failures detected**\n\n`;
+            comment += `⚠️ This PR introduces compliance violations that must be addressed before merging.\n\n`;
+          }
+          
+          comment += `📊 Full evaluation report available in workflow artifacts.\n\n`;
+          comment += `<details>\n<summary>View ARC-Eval Output</summary>\n\n\`\`\`\n`;
+          
+          try {
+            const output = fs.readFileSync('arc_eval_output.log', 'utf8');
+            comment += output.slice(0, 2000); // Limit size
+            if (output.length > 2000) comment += '\n... (truncated)';
+          } catch (e) {
+            comment += 'Could not read evaluation output';
+          }
+          
+          comment += `\n\`\`\`\n</details>`;
+          
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: comment
+          });
+    
+    - name: Fail on critical compliance violations
+      if: steps.arc-eval.outputs.critical_failures != '0'
+      run: |
+        echo "❌ Critical compliance failures detected in ${{ matrix.domain }} domain"
+        echo "🔍 Check the evaluation report for details"
+        echo "🛠️  Address the compliance issues before merging"
+        exit 1
+
+  # Summary job that depends on all domain evaluations
+  compliance-summary:
+    needs: arc-eval
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+    - name: Download all artifacts
+      uses: actions/download-artifact@v3
+    
+    - name: Generate compliance summary
+      run: |
+        echo "# 🔍 ARC-Eval Compliance Summary" > compliance_summary.md
+        echo "" >> compliance_summary.md
+        
+        total_domains=0
+        failed_domains=0
+        
+        for domain in finance security ml; do
+          total_domains=$((total_domains + 1))
+          
+          if [ -d "arc-eval-reports-$domain" ]; then
+            cd "arc-eval-reports-$domain"
+            
+            if [ -f *.json ]; then
+              critical=$(jq '[.[] | select(.severity == "critical" and .passed == false)] | length' *.json)
+              if [ "$critical" -gt 0 ]; then
+                echo "❌ **${domain^^}**: $critical critical failures" >> ../compliance_summary.md
+                failed_domains=$((failed_domains + 1))
+              else
+                echo "✅ **${domain^^}**: No critical failures" >> ../compliance_summary.md
+              fi
+            else
+              echo "⚠️ **${domain^^}**: No evaluation data" >> ../compliance_summary.md
+              failed_domains=$((failed_domains + 1))
+            fi
+            
+            cd ..
+          else
+            echo "❓ **${domain^^}**: Evaluation not completed" >> ../compliance_summary.md
+            failed_domains=$((failed_domains + 1))
+          fi
+        done
+        
+        echo "" >> compliance_summary.md
+        if [ $failed_domains -eq 0 ]; then
+          echo "🎉 **All domains passed compliance checks!**" >> compliance_summary.md
+        else
+          echo "⚠️ **$failed_domains out of $total_domains domains have compliance issues**" >> compliance_summary.md
+        fi
+        
+        cat compliance_summary.md
+    
+    - name: Create compliance status check
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const fs = require('fs');
+          const summary = fs.readFileSync('compliance_summary.md', 'utf8');
+          
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: summary
+          });
+
+# Optional: Scheduled compliance monitoring
+  scheduled-compliance-check:
+    # Uncomment to enable weekly compliance monitoring
+    # schedule:
+    #   - cron: '0 9 * * 1'  # Every Monday at 9 AM UTC
+    
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+    
+    - name: Install ARC-Eval
+      run: pip install arc-eval
+    
+    - name: Run scheduled compliance audit
+      run: |
+        # Add your production agent output collection here
+        echo "Running scheduled compliance check..."
+        
+        # Example: Fetch from production API
+        # curl -H "Authorization: Bearer ${{ secrets.PROD_API_TOKEN }}" \
+        #      "${{ secrets.PROD_API_URL }}/recent-outputs" \
+        #      -o production_outputs.json
+        
+        # For demo, use sample data
+        echo '{"output": "Production sample"}' > production_outputs.json
+        
+        for domain in finance security ml; do
+          arc-eval --domain $domain --input production_outputs.json --export pdf
+        done
+    
+    - name: Upload scheduled reports
+      uses: actions/upload-artifact@v3
+      with:
+        name: scheduled-compliance-reports
+        path: "*.pdf"
+        retention-days: 90
