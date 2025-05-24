@@ -59,7 +59,7 @@ class ResultsTable(Container):
                 yield Button("📋 Export JSON", id="export-json", variant="secondary")
             
             # Results table
-            yield DataTable(id="results-table")
+            yield DataTable(id="results-data-table")
             
             # Compliance summary
             with Container():
@@ -74,7 +74,7 @@ class ResultsTable(Container):
     
     def setup_table(self):
         """Set up the results table structure."""
-        table = self.query_one("#results-table")
+        table = self.query_one("#results-data-table")
         table.add_columns(
             "Status",
             "Severity", 
@@ -132,7 +132,7 @@ class ResultsTable(Container):
     
     def update_table(self):
         """Update the results table with current filtered results."""
-        table = self.query_one("#results-table")
+        table = self.query_one("#results-data-table")
         table.clear()
         
         if not self.filtered_results:

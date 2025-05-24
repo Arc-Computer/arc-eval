@@ -36,13 +36,20 @@ class ARCEvalApp(App):
         Binding("f5", "refresh", "Refresh"),
     ]
     
-    def __init__(self):
+    def __init__(self, initial_config: Optional[dict] = None):
         super().__init__()
         self.engine: Optional[EvaluationEngine] = None
         self.current_files: List[Path] = []
         self.current_domain: str = "finance"
         self.evaluation_state = {}
         self.session_history = []
+        
+        # Apply initial configuration from CLI if provided
+        if initial_config:
+            if 'domain' in initial_config:
+                self.current_domain = initial_config['domain']
+            if 'files' in initial_config:
+                self.current_files = [Path(f) for f in initial_config['files']]
         
         # Initialize state manager
         config_dir = Path.home() / ".arc-eval"

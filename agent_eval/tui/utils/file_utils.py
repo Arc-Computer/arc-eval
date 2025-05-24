@@ -45,10 +45,15 @@ def validate_file(file_path: Path) -> Tuple[bool, Optional[str]]:
 
 def get_framework_info(file_path: Path) -> Dict[str, str]:
     """
-    Get framework information from file.
+    Get framework information from a file.
     
     Returns:
-        Dictionary with framework name, confidence, and file info
+        Dict[str, str]: A dictionary containing the following keys:
+            - framework: The detected framework name or "Unknown" if not detected.
+            - confidence: The confidence level of the framework detection ("High" or "Low").
+            - size: The size of the file in a human-readable format (e.g., "1.2 MB").
+            - file_format: The file format (e.g., "JSON", "CSV").
+            - sample_output: A sample of the normalized output or an error message if applicable.
     """
     try:
         with open(file_path, 'r') as f:
@@ -78,7 +83,7 @@ def get_framework_info(file_path: Path) -> Dict[str, str]:
             "framework": framework or "Unknown",
             "confidence": "High" if framework else "Low",
             "size": size_str,
-            "format": file_path.suffix.upper()[1:],  # Remove the dot
+            "file_format": file_path.suffix.upper()[1:],  # Remove the dot
             "sample_output": normalized_output[:100] + "..." if normalized_output else "No content detected"
         }
         
@@ -87,7 +92,7 @@ def get_framework_info(file_path: Path) -> Dict[str, str]:
             "framework": "Error",
             "confidence": "N/A",
             "size": "Unknown",
-            "format": file_path.suffix.upper()[1:],
+            "file_format": file_path.suffix.upper()[1:],
             "sample_output": f"Error reading file: {e}"
         }
 

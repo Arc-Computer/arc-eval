@@ -6,6 +6,7 @@ and session history for the ARC-Eval TUI.
 """
 
 import json
+import logging
 from dataclasses import dataclass, asdict
 from datetime import datetime
 from pathlib import Path
@@ -59,7 +60,7 @@ class StateManager:
                 await f.write(content)
         except Exception as e:
             # Log error but don't crash app
-            print(f"Failed to save state: {e}")
+            logging.error(f"Failed to save state: {e}")
     
     def get_default_state(self) -> TUIState:
         """Get default application state."""

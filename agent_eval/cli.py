@@ -142,7 +142,15 @@ def main(
     if interactive:
         try:
             from agent_eval.tui.app import ARCEvalApp
-            app = ARCEvalApp()
+            
+            # Pass CLI arguments to TUI for initial configuration
+            initial_config = {}
+            if domain:
+                initial_config['domain'] = domain
+            if input_file:
+                initial_config['files'] = [input_file] if isinstance(input_file, str) else input_file
+            
+            app = ARCEvalApp(initial_config=initial_config)
             app.run()
             return
         except ImportError:
