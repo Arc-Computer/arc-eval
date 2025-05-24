@@ -246,20 +246,66 @@ ModalScreen {
     overflow-y: auto;
 }
 
-/* Onboarding styles */
-.onboarding-step {
-    background: $panel;
-    border: solid $accent;
-    padding: 2;
-    margin: 1;
-    text-align: center;
+/* Landing screen styles - simplified and focused */
+#landing-main {
+    layout: vertical;
+    align: center middle;
+    height: 100%;
+    padding: 4;
 }
 
-.onboarding-welcome {
+.app-title {
     text-style: bold;
     color: $accent;
     text-align: center;
     padding: 2;
+    font-size: 2;
+}
+
+#workflow-container {
+    background: $panel;
+    border: solid $border;
+    padding: 3;
+    margin: 2;
+    max-width: 60;
+    min-width: 50;
+}
+
+.workflow-step {
+    padding: 1;
+    margin: 1 0;
+}
+
+.step-label {
+    text-style: bold;
+    color: $text;
+    padding: 0 0 1 0;
+}
+
+.file-input-group {
+    layout: horizontal;
+    height: 3;
+}
+
+.file-path-input {
+    width: 4fr;
+    margin: 0 1 0 0;
+}
+
+.file-path-input.valid {
+    border: solid $success;
+}
+
+.run-button {
+    width: 100%;
+    margin: 2 0 0 0;
+    padding: 1;
+    text-style: bold;
+}
+
+.run-button:disabled {
+    background: $surface;
+    color: $text-muted;
 }
 
 /* File list styles */

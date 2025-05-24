@@ -1,181 +1,186 @@
 """
-Onboarding Screen for ARC-Eval TUI.
+Landing Screen for ARC-Eval TUI.
 
-Provides first-time user onboarding with welcome message,
-quick tutorial, and persona selection for optimal experience.
+Simplified developer-focused interface for immediate value delivery.
 """
 
 from textual import on
 from textual.containers import Container, Horizontal, Vertical
 from textual.screen import Screen
-from textual.widgets import Button, Static, Select
+from textual.widgets import Button, Static, Select, Input
+from pathlib import Path
 
 
-class OnboardingScreen(Screen):
-    """Onboarding screen for first-time users."""
+class LandingScreen(Screen):
+    """Simplified landing screen focusing on core workflow."""
     
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.selected_persona = None
+        self.selected_files = []
+        self.selected_domain = "finance"  # Smart default
+        self.file_validated = False
     
     def compose(self):
-        """Create the onboarding screen layout."""
-        with Vertical():
-            # Welcome header
-            yield Static("🚀 Welcome to ARC-Eval Interactive!", classes="onboarding-welcome")
-            yield Static("The definitive agent safety workbench for compliance evaluation", classes="onboarding-welcome")
+        """Create minimal landing screen layout."""
+        with Vertical(id="landing-main"):
+            # Simple header only
+            yield Static("ARC-Eval", classes="app-title")
             
-            # Introduction
-            with Container(classes="onboarding-step"):
-                yield Static("🛡️ What is ARC-Eval?", classes="section-title")
-                yield Static("""
-ARC-Eval helps you evaluate AI agents for safety, reliability, and compliance.
-• Domain-specific evaluations (Finance, Security, ML)
-• Real-time progress monitoring
-• Audit-ready reports (PDF, CSV, JSON)
-• Framework auto-detection (OpenAI, Anthropic, LangChain, etc.)
-                """)
+            # Core workflow - centered and minimal
+            with Container(id="workflow-container"):
+                # File selection - primary focus
+                with Container(classes="workflow-step"):
+                    yield Static("Agent Output Files", classes="step-label")
+                    with Horizontal(classes="file-input-group"):
+                        yield Input(
+                            placeholder="Select files (.json, .csv, .jsonl)...",
+                            id="file-input",
+                            classes="file-path-input"
+                        )
+                        yield Button("Browse", id="browse-btn", variant="default")
+                
+                # Domain selection - becomes active after file selection
+                with Container(classes="workflow-step"):
+                    yield Static("Evaluation Domain", classes="step-label")
+                    yield Select(
+                        [
+                            ("Finance - Compliance & risk assessment", "finance"),
+                            ("Security - Vulnerability & threat detection", "security"),
+                            ("ML - Model safety & bias analysis", "ml")
+                        ],
+                        value="finance",
+                        id="domain-select",
+                        disabled=True
+                    )
+                
+                # Run button - becomes active after domain selection
+                with Container(classes="workflow-step"):
+                    yield Button(
+                        "Run Evaluation",
+                        id="run-btn",
+                        variant="primary",
+                        disabled=True,
+                        classes="run-button"
+                    )
+    
+    async def on_mount(self):
+        """Auto-focus file input on startup."""
+        # Auto-focus file input for immediate workflow start
+        file_input = self.query_one("#file-input", Input)
+        file_input.focus()
+    
+    @on(Input.Changed, "#file-input")
+    def handle_file_input_change(self, event: Input.Changed):
+        """Handle file path input changes."""
+        if event.value.strip():
+            # Basic validation - check if files exist
+            self.validate_file_input(event.value)
+    
+    def validate_file_input(self, file_paths_str: str):
+        """Validate file input and enable next step."""
+        try:
+            # Simple comma-separated or space-separated file paths
+            paths = [p.strip() for p in file_paths_str.replace(',', ' ').split() if p.strip()]
+            valid_files = []
             
-            # Persona selection
-            with Container(classes="onboarding-step"):
-                yield Static("👥 Select Your Use Case", classes="section-title")
-                yield Static("Choose the option that best describes your role:")
-                yield Select(
-                    [
-                        ("🏦 Finance/Compliance Team - Regulatory compliance evaluation", "finance"),
-                        ("🔒 Security/Red Team - Vulnerability assessment and testing", "security"),
-                        ("🤖 ML/Research Team - Model safety and bias detection", "research"),
-                        ("🏢 General Use - Explore all capabilities", "general")
-                    ],
-                    value="general",
-                    id="persona-select"
+            for path_str in paths:
+                path = Path(path_str)
+                if path.exists() and path.suffix.lower() in ['.json', '.csv', '.jsonl']:
+                    valid_files.append(path)
+            
+            if valid_files:
+                self.selected_files = valid_files
+                self.file_validated = True
+                
+                # Enable domain selector
+                domain_select = self.query_one("#domain-select", Select)
+                domain_select.disabled = False
+                
+                # Show validation success
+                file_input = self.query_one("#file-input", Input)
+                file_input.add_class("valid")
+                
+                # Auto-enable run button if domain already selected
+                if self.selected_domain:
+                    run_btn = self.query_one("#run-btn", Button)
+                    run_btn.disabled = False
+            else:
+                self.file_validated = False
+                # Disable subsequent steps
+                domain_select = self.query_one("#domain-select", Select)
+                domain_select.disabled = True
+                run_btn = self.query_one("#run-btn", Button)
+                run_btn.disabled = True
+                
+        except Exception:
+            # Invalid input - disable subsequent steps
+            self.file_validated = False
+            domain_select = self.query_one("#domain-select", Select)
+            domain_select.disabled = True
+            run_btn = self.query_one("#run-btn", Button)
+            run_btn.disabled = True
+    
+    @on(Button.Pressed, "#browse-btn")
+    def handle_browse_button(self):
+        """Open file browser dialog."""
+        import tkinter as tk
+        from tkinter import filedialog
+        
+        def open_dialog():
+            root = tk.Tk()
+            try:
+                root.withdraw()
+                file_paths = filedialog.askopenfilenames(
+                    title="Select Agent Output Files",
+                    filetypes=[
+                        ("JSON files", "*.json"),
+                        ("CSV files", "*.csv"),
+                        ("JSONL files", "*.jsonl"),
+                        ("All supported", "*.json;*.csv;*.jsonl")
+                    ]
                 )
-            
-            # Quick start guide
-            with Container(classes="onboarding-step"):
-                yield Static("🚀 Quick Start", classes="section-title")
-                yield Static("""
-Getting started is easy:
-1. Select your agent output files (.json, .csv, .jsonl)
-2. Choose an evaluation domain (Finance, Security, ML)
-3. Run evaluation and see real-time progress
-4. Review results and export reports
-
-Keyboard shortcuts:
-• Ctrl+O - Open files
-• Ctrl+R - Run evaluation
-• Ctrl+S - Save session
-• F1 - Help
-                """)
-            
-            # Action buttons
-            with Horizontal(classes="action-buttons"):
-                yield Button("📚 Take Tutorial", id="tutorial-btn", variant="default")
-                yield Button("🎯 Start Evaluating", id="start-btn", variant="primary")
-                yield Button("⏭️ Skip Onboarding", id="skip-btn", variant="default")
+                return file_paths
+            finally:
+                root.destroy()
+        
+        file_paths = open_dialog()
+        if file_paths:
+            # Update input field with selected files
+            file_input = self.query_one("#file-input", Input)
+            file_input.value = " ".join(file_paths)
+            self.validate_file_input(file_input.value)
     
-    @on(Select.Changed, "#persona-select")
-    def handle_persona_change(self, event: Select.Changed):
-        """Handle persona selection change."""
+    @on(Select.Changed, "#domain-select")
+    def handle_domain_change(self, event: Select.Changed):
+        """Handle domain selection change."""
         if event.value:
-            self.selected_persona = event.value
+            self.selected_domain = event.value
             
-            # Update tutorial button text based on persona
-            tutorial_btn = self.query_one("#tutorial-btn", Button)
-            persona_tutorials = {
-                "finance": "📚 Finance Tutorial",
-                "security": "📚 Security Tutorial", 
-                "research": "📚 Research Tutorial",
-                "general": "📚 General Tutorial"
-            }
-            tutorial_btn.label = persona_tutorials.get(event.value, "📚 Take Tutorial")
+            # Enable run button if files are validated
+            if self.file_validated:
+                run_btn = self.query_one("#run-btn", Button)
+                run_btn.disabled = False
     
-    @on(Button.Pressed, "#start-btn")
-    def handle_start_button(self):
-        """Handle start button press."""
-        # Mark onboarding as completed
+    @on(Button.Pressed, "#run-btn")
+    def handle_run_button(self):
+        """Handle run evaluation button press."""
+        if not self.selected_files or not self.selected_domain:
+            self.app.notify("Please select files and domain first.", severity="warning")
+            return
+        
+        # Pass configuration to app
+        self.app.set_current_files(self.selected_files)
+        self.app.set_current_domain(self.selected_domain)
+        
+        # Mark first launch as completed
         if hasattr(self.app, 'app_state') and self.app.app_state:
             self.app.app_state.user_preferences["first_launch"] = False
         
-        # Navigate to main screen
+        # Navigate directly to main screen with configuration
         from .main import MainScreen
-        self.app.push_screen(MainScreen())
+        main_screen = MainScreen()
+        self.app.push_screen(main_screen)
         
-        # Show welcome message based on persona
-        persona_messages = {
-            "finance": "Welcome! Ready to evaluate financial compliance.",
-            "security": "Welcome! Ready to run security assessments.",
-            "research": "Welcome! Ready to analyze ML model safety.",
-            "general": "Welcome! Explore all ARC-Eval capabilities."
-        }
-        message = persona_messages.get(self.selected_persona, "Welcome to ARC-Eval!")
-        self.app.notify(message, severity="success")
+        # Auto-start evaluation for immediate value
+        # This will be handled by the main screen on mount
     
-    @on(Button.Pressed, "#skip-btn")
-    def handle_skip_button(self):
-        """Handle skip button press."""
-        # Mark onboarding as completed
-        if hasattr(self.app, 'app_state') and self.app.app_state:
-            self.app.app_state.user_preferences["first_launch"] = False
-        
-        # Navigate to main screen
-        from .main import MainScreen
-        self.app.push_screen(MainScreen())
-        
-        self.app.notify("Onboarding skipped. Press F1 for help anytime.", severity="information")
-    
-    @on(Button.Pressed, "#tutorial-btn")
-    def handle_tutorial_button(self):
-        """Handle tutorial button press."""
-        # For Phase 1, just show a simple tutorial message
-        # In Phase 2, this would launch persona-specific guided tours
-        
-        tutorial_content = {
-            "finance": """
-🏦 Finance Domain Tutorial:
-• Evaluates 15 financial compliance scenarios
-• Covers SOX, KYC, AML, PCI-DSS, GDPR regulations
-• Detects synthetic fraud, identity verification issues
-• Generates audit-ready compliance reports
-            """,
-            "security": """
-🔒 Security Domain Tutorial:
-• Evaluates 15 security and vulnerability scenarios
-• Covers OWASP LLM Top 10, NIST AI RMF
-• Tests for prompt injection, data leakage
-• Provides CISO-ready threat assessments
-            """,
-            "research": """
-🤖 ML Research Domain Tutorial:
-• Evaluates 15 ML safety and bias scenarios
-• Covers fairness, performance, data governance
-• Detects bias patterns and model issues
-• Exports data for research analysis
-            """,
-            "general": """
-🎯 General Tutorial:
-• Try all three domains: Finance, Security, ML
-• Upload agent output files in any supported format
-• Watch real-time evaluation progress
-• Export results in PDF, CSV, or JSON format
-            """
-        }
-        
-        content = tutorial_content.get(self.selected_persona, tutorial_content["general"])
-        
-        # Show tutorial in a modal
-        from textual.screen import ModalScreen
-        from textual.containers import Vertical
-        
-        class TutorialModal(ModalScreen):
-            def compose(self):
-                with Vertical(classes="modal-content"):
-                    yield Static("📚 Tutorial", classes="section-title")
-                    yield Static(content)
-                    yield Button("Got it!", id="close-tutorial", variant="primary")
-            
-            def on_button_pressed(self, event: Button.Pressed):
-                if event.button.id == "close-tutorial":
-                    self.dismiss()
-        
-        self.app.push_screen(TutorialModal())

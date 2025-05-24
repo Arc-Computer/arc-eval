@@ -1,6 +1,6 @@
 """TUI screens module."""
 
 from .main import MainScreen
-from .onboarding import OnboardingScreen
+from .onboarding import LandingScreen
 
-__all__ = ["MainScreen", "OnboardingScreen"]
+__all__ = ["MainScreen", "LandingScreen"]

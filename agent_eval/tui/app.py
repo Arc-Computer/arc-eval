@@ -14,7 +14,7 @@ from textual.binding import Binding
 from textual.widgets import Header, Footer
 
 from .screens.main import MainScreen
-from .screens.onboarding import OnboardingScreen
+from .screens.onboarding import LandingScreen
 from .utils.state_manager import StateManager, TUIState
 from ..core.engine import EvaluationEngine
 
@@ -79,11 +79,9 @@ class ARCEvalApp(App):
         # Track session start for metrics
         self.usage_metrics["session_start"] = datetime.now()
         
-        # Check if this is first launch for onboarding
-        if not self.app_state.recent_files and not self.app_state.session_history:
-            self.push_screen(OnboardingScreen())
-        else:
-            self.push_screen(MainScreen())
+        # Always start with landing screen for simplified experience
+        # The landing screen now replaces the old complex onboarding
+        self.push_screen(LandingScreen())
     
     def action_open_files(self):
         """Open file manager."""
