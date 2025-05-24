@@ -327,8 +327,11 @@ class ProgressMonitor(Container):
                 # ETA calculation
                 if self.stats['total_outputs'] > 0 and self.current_progress > 0:
                     remaining = self.stats['total_outputs'] - self.stats['processed_outputs']
-                    eta = remaining / speed if speed > 0 else 0
-                    self.query_one("#stat-eta").update(f"📈 ETA: {eta:.0f}s")
+                    if speed > 0:
+                        eta = remaining / speed
+                        self.query_one("#stat-eta").update(f"📈 ETA: {eta:.0f}s")
+                    else:
+                        self.query_one("#stat-eta").update(f"📈 ETA: --")
         
         # Overall score
         total_results = len(self.results)
