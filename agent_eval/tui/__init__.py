@@ -8,3 +8,4 @@ agent compliance evaluation platform, built using the Textual framework.
 from .app import ARCEvalApp
 
 __all__ = ["ARCEvalApp"]
+
