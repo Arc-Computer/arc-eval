@@ -22,7 +22,7 @@ from ..core.engine import EvaluationEngine
 class ARCEvalApp(App):
     """ARC-Eval Interactive TUI Application."""
     
-    CSS_PATH = "styles/main.tcss"
+    CSS_PATH = str(Path(__file__).parent / "styles/main.tcss")
     TITLE = "ARC-Eval Interactive: Agent Safety Workbench"
     SUB_TITLE = "Domain-specific compliance evaluation for LLMs and AI agents"
     

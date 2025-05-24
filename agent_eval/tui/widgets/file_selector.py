@@ -106,20 +106,22 @@ class FileSelector(Container):
             # Use tkinter file dialog in a separate thread to avoid blocking
             def open_dialog():
                 root = tk.Tk()
-                root.withdraw()  # Hide the root window
-                
-                file_paths = filedialog.askopenfilenames(
-                    title="Select Agent Output Files",
-                    filetypes=[
-                        ("JSON files", "*.json"),
-                        ("CSV files", "*.csv"),
-                        ("JSONL files", "*.jsonl"),
-                        ("All supported", "*.json *.csv *.jsonl"),
-                        ("All files", "*.*")
-                    ]
-                )
-                root.destroy()
-                return file_paths
+                try:
+                    root.withdraw()  # Hide the root window
+                    
+                    file_paths = filedialog.askopenfilenames(
+                        title="Select Agent Output Files",
+                        filetypes=[
+                            ("JSON files", "*.json"),
+                            ("CSV files", "*.csv"),
+                            ("JSONL files", "*.jsonl"),
+                            ("All supported", "*.json *.csv *.jsonl"),
+                            ("All files", "*.*")
+                        ]
+                    )
+                    return file_paths
+                finally:
+                    root.destroy()
             
             # Run in thread pool to avoid blocking
             import concurrent.futures
