@@ -259,7 +259,6 @@ ModalScreen {
     color: $accent;
     text-align: center;
     padding: 2;
-    font-size: 2;
 }
 
 #workflow-container {
