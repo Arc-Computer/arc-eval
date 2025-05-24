@@ -63,7 +63,7 @@ class FileSelector(Container):
                         id="file-path-input"
                     )
                     yield Button("📂 Browse", id="browse-btn", variant="primary")
-                    yield Button("🗑️ Clear", id="clear-btn", variant="secondary")
+                    yield Button("🗑️ Clear", id="clear-btn", variant="default")
             
             # Current files display
             yield Static("Current Files:", id="current-files-label")
