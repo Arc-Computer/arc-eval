@@ -5,6 +5,7 @@ The primary interface showing file selection, domain choice,
 progress monitoring, and results display.
 """
 
+import asyncio
 from datetime import datetime
 from pathlib import Path
 from typing import List, Optional
@@ -71,12 +72,35 @@ class MainScreen(Screen):
                     yield ProgressMonitor(id="progress-monitor")
                     yield ResultsTable(id="results-table")
     
-    def on_mount(self):
+    async def on_mount(self):
         """Initialize screen on mount."""
+        # Check if app has pre-configured files and domain from landing screen
+        if hasattr(self.app, 'current_files') and self.app.current_files:
+            self.current_files = self.app.current_files
+            self.has_files = True
+            
+            # Update file selector to show pre-selected files
+            file_selector = self.query_one("#file-selector", FileSelector)
+            file_selector.current_files = self.current_files
+            file_selector.update_files_display()
+        
+        if hasattr(self.app, 'current_domain') and self.app.current_domain:
+            self.current_domain = self.app.current_domain
+            
+            # Update domain selector
+            domain_select = self.query_one("#domain-select", Select)
+            domain_select.value = self.current_domain
+        
+        # Initialize engine with current domain
+        self.initialize_engine(self.current_domain)
         self.update_ui_state()
         
-        # Initialize engine with default domain
-        self.initialize_engine(self.current_domain)
+        # If we have files and domain from landing screen, auto-start evaluation
+        if self.current_files and self.engine:
+            self.notify("Auto-starting evaluation...", severity="information")
+            # Small delay to let UI update
+            await asyncio.sleep(0.1)
+            await self.handle_run_evaluation()
     
     @on(FileSelector.FilesChanged)
     def handle_files_changed(self, event: FileSelector.FilesChanged):
