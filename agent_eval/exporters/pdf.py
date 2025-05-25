@@ -138,7 +138,7 @@ class PDFExporter:
             leading=13
         ))
     
-    def export(self, results: List[EvaluationResult], filename: str, domain: str) -> None:
+    def export(self, results: List[EvaluationResult], filename: str, domain: str, format_template: str = None, summary_only: bool = False) -> None:
         """
         Export evaluation results to PDF file.
         
@@ -146,6 +146,8 @@ class PDFExporter:
             results: List of evaluation results
             filename: Output filename
             domain: Domain being evaluated
+            format_template: Template for report formatting (executive, technical, compliance, minimal)
+            summary_only: Generate executive summary only
         """
         doc = SimpleDocTemplate(
             filename,
@@ -159,13 +161,15 @@ class PDFExporter:
         story = []
         
         # Header with branding
-        self._add_header(story, domain)
+        self._add_header(story, domain, format_template)
         
         # Report metadata in professional format
+        report_type = self._get_report_type(format_template, summary_only)
         metadata_table = Table([
             ["Report Generated:", datetime.now().strftime('%B %d, %Y at %I:%M %p')],
             ["Evaluation Domain:", f"{domain.title()} Compliance Framework"],
-            ["Report Type:", "Executive Compliance Assessment"],
+            ["Report Type:", report_type],
+            ["Format Template:", format_template or "Standard"],
             ["ARC-Eval Version:", "v2.0.0"]
         ], colWidths=[2*inch, 4*inch])
         
@@ -184,18 +188,40 @@ class PDFExporter:
         story.append(Spacer(1, 30))
         
         # Executive Summary
-        self._add_executive_summary(story, results)
+        self._add_executive_summary(story, results, format_template)
         
-        # Detailed Results
-        self._add_detailed_results(story, results)
-        
-        # Recommendations
-        self._add_recommendations(story, results)
+        # Only add detailed sections if not summary-only
+        if not summary_only:
+            # Detailed Results
+            self._add_detailed_results(story, results, format_template)
+            
+            # Recommendations
+            self._add_recommendations(story, results, format_template)
+        else:
+            # Add note about summary-only mode
+            story.append(Paragraph(
+                "📋 Executive Summary Report - Detailed scenarios available in full report format.",
+                self.styles['Normal']
+            ))
+            story.append(Spacer(1, 20))
         
         # Build PDF
         doc.build(story)
     
-    def _add_header(self, story: List, domain: str) -> None:
+    def _get_report_type(self, format_template: str, summary_only: bool) -> str:
+        """Get report type based on template and summary mode."""
+        if summary_only:
+            return "Executive Summary"
+        
+        template_types = {
+            "executive": "Executive Compliance Assessment", 
+            "technical": "Technical Compliance Analysis",
+            "compliance": "Regulatory Compliance Report",
+            "minimal": "Compliance Summary"
+        }
+        return template_types.get(format_template, "Standard Compliance Assessment")
+    
+    def _add_header(self, story: List, domain: str, format_template: str = None) -> None:
         """Add professional header with ARC-Eval branding."""
         # Main title with ARC-Eval branding
         story.append(Paragraph(
@@ -225,7 +251,7 @@ class PDFExporter:
         story.append(separator_table)
         story.append(Spacer(1, 20))
     
-    def _add_executive_summary(self, story: List, results: List[EvaluationResult]) -> None:
+    def _add_executive_summary(self, story: List, results: List[EvaluationResult], format_template: str = None) -> None:
         """Add executive summary section."""
         story.append(Paragraph("Executive Summary", self.styles['SectionHeader']))
         
@@ -317,7 +343,7 @@ class PDFExporter:
         
         story.append(Spacer(1, 25))
     
-    def _add_detailed_results(self, story: List, results: List[EvaluationResult]) -> None:
+    def _add_detailed_results(self, story: List, results: List[EvaluationResult], format_template: str = None) -> None:
         """Add detailed results section."""
         story.append(Paragraph("Detailed Results", self.styles['SectionHeader']))
         
@@ -359,7 +385,7 @@ class PDFExporter:
         story.append(results_table)
         story.append(Spacer(1, 20))
     
-    def _add_recommendations(self, story: List, results: List[EvaluationResult]) -> None:
+    def _add_recommendations(self, story: List, results: List[EvaluationResult], format_template: str = None) -> None:
         """Add recommendations section."""
         failed_results = [r for r in results if not r.passed]
         

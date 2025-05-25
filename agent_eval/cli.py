@@ -104,6 +104,21 @@ console = Console()
     is_flag=True,
     help="Validate input file format without running evaluation",
 )
+@click.option(
+    "--output-dir",
+    type=click.Path(path_type=Path),
+    help="Custom directory for exported reports (default: current directory)",
+)
+@click.option(
+    "--format-template",
+    type=click.Choice(["executive", "technical", "compliance", "minimal"]),
+    help="Report formatting template for different audiences",
+)
+@click.option(
+    "--summary-only",
+    is_flag=True,
+    help="Generate executive summary only (skip detailed scenarios)",
+)
 @click.version_option(version="0.1.0", prog_name="arc-eval")
 def main(
     domain: Optional[str],
@@ -121,6 +136,9 @@ def main(
     verbose: bool,
     quick_start: bool,
     validate: bool,
+    output_dir: Optional[Path],
+    format_template: Optional[str],
+    summary_only: bool,
 ) -> None:
     """
     ARC-Eval: Enterprise-grade compliance evaluation for AI agents and LLMs.
@@ -138,6 +156,9 @@ def main(
       
       # Generate executive report
       arc-eval --domain finance --input outputs.json --export pdf --workflow
+      
+      # Generate executive summary only
+      arc-eval --domain finance --input outputs.json --export pdf --summary-only
     
     📊 ENTERPRISE WORKFLOWS:
     
@@ -150,8 +171,14 @@ def main(
       # CI/CD pipeline integration
       arc-eval --domain ml --input model_outputs.json --output json
       
-      # Input validation before evaluation
+      # Input validation before evaluation  
       arc-eval --validate --input suspicious_data.json
+      
+      # Custom report formats and output locations
+      arc-eval --domain finance --input data.json --export pdf --format-template executive --output-dir reports/
+      
+      # Performance analysis with timing metrics
+      arc-eval --domain finance --input data.json --timing --verbose
     
     🎯 DOMAIN-SPECIFIC EVALUATIONS:
     
@@ -242,7 +269,7 @@ def main(
     
     # Handle quick-start mode
     if quick_start:
-        return _handle_quick_start(domain, export, output, dev, workflow, timing, verbose)
+        return _handle_quick_start(domain, export, output, dev, workflow, timing, verbose, output_dir, format_template, summary_only)
     
     # Handle validate mode
     if validate:
@@ -459,7 +486,7 @@ def main(
             console.print(f"[cyan]Verbose:[/cyan] Evaluation completed: {passed} passed, {failed} failed in {evaluation_time:.2f}s")
         
         # Display results
-        _display_results(results, output_format=output, dev_mode=dev, workflow_mode=workflow, domain=domain)
+        _display_results(results, output_format=output, dev_mode=dev, workflow_mode=workflow, domain=domain, summary_only=summary_only, format_template=format_template)
         
         # Show timing information if requested
         if timing:
@@ -469,7 +496,7 @@ def main(
         if export:
             if verbose:
                 console.print(f"[cyan]Verbose:[/cyan] Exporting results in {export} format")
-            _export_results(results, export_format=export, domain=domain)
+            _export_results(results, export_format=export, domain=domain, output_dir=output_dir, format_template=format_template, summary_only=summary_only)
             if verbose:
                 console.print(f"[cyan]Verbose:[/cyan] Export completed successfully")
         
@@ -533,7 +560,9 @@ def _display_results(
     output_format: str, 
     dev_mode: bool, 
     workflow_mode: bool,
-    domain: str = "finance"
+    domain: str = "finance",
+    summary_only: bool = False,
+    format_template: Optional[str] = None
 ) -> None:
     """Display evaluation results in the specified format."""
     
@@ -549,10 +578,10 @@ def _display_results(
         return
     
     # Table output (default)
-    _display_table_results(results, dev_mode, workflow_mode, domain)
+    _display_table_results(results, dev_mode, workflow_mode, domain, summary_only, format_template)
 
 
-def _display_table_results(results: list[EvaluationResult], dev_mode: bool, workflow_mode: bool, domain: str = "finance") -> None:
+def _display_table_results(results: list[EvaluationResult], dev_mode: bool, workflow_mode: bool, domain: str = "finance", summary_only: bool = False, format_template: Optional[str] = None) -> None:
     """Display results in a rich table format."""
     
     # Summary statistics
@@ -688,6 +717,12 @@ def _display_table_results(results: list[EvaluationResult], dev_mode: bool, work
         console.print(framework_table)
         console.print("[blue]" + "─" * 70 + "[/blue]")
     
+    # Executive Summary only mode - skip detailed table
+    if summary_only:
+        console.print(f"\n[bold blue]📋 Executive Summary Generated[/bold blue]")
+        console.print("[dim]Use without --summary-only to see detailed scenario results[/dim]")
+        return
+    
     # Detailed results table
     if failed > 0 or dev_mode:
         console.print("\n[bold blue]📊 Detailed Evaluation Results[/bold blue]")
@@ -784,40 +819,82 @@ def _display_table_results(results: list[EvaluationResult], dev_mode: bool, work
         console.print("⚡ Immediate remediation required")
 
 
-def _export_results(results: list[EvaluationResult], export_format: str, domain: str) -> None:
+def _export_results(results: list[EvaluationResult], export_format: str, domain: str, output_dir: Optional[Path] = None, format_template: Optional[str] = None, summary_only: bool = False) -> None:
     """Export results to the specified format."""
     
-    timestamp = Path().cwd().name + "_" + "2024-01-15_14-30"  # TODO: Use actual timestamp
+    # Create output directory if specified
+    if output_dir:
+        output_dir.mkdir(parents=True, exist_ok=True)
+        export_path = output_dir
+    else:
+        export_path = Path.cwd()
+    
+    # Generate timestamp
+    from datetime import datetime
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    
+    # Add template suffix if specified
+    template_suffix = f"_{format_template}" if format_template else ""
+    summary_suffix = "_summary" if summary_only else ""
     
     if export_format == "pdf":
         exporter = PDFExporter()
-        filename = f"agent_eval_{domain}_{timestamp}.pdf"
-        exporter.export(results, filename, domain)
-        console.print(f"\n📄 Audit Report: [bold]{filename}[/bold]")
+        filename = f"arc-eval_{domain}_{timestamp}{template_suffix}{summary_suffix}.pdf"
+        filepath = export_path / filename
+        exporter.export(results, str(filepath), domain, format_template=format_template, summary_only=summary_only)
+        console.print(f"\n📄 Audit Report: [bold]{filepath}[/bold]")
     
     elif export_format == "csv":
         exporter = CSVExporter()
-        filename = f"agent_eval_{domain}_{timestamp}.csv"
-        exporter.export(results, filename, domain)
-        console.print(f"\n📊 Data Export: [bold]{filename}[/bold]")
+        filename = f"arc-eval_{domain}_{timestamp}{template_suffix}{summary_suffix}.csv"
+        filepath = export_path / filename
+        exporter.export(results, str(filepath), domain, format_template=format_template, summary_only=summary_only)
+        console.print(f"\n📊 Data Export: [bold]{filepath}[/bold]")
     
     elif export_format == "json":
-        filename = f"agent_eval_{domain}_{timestamp}.json"
-        with open(filename, 'w') as f:
-            json.dump([r.to_dict() for r in results], f, indent=2)
-        console.print(f"\n📋 JSON Export: [bold]{filename}[/bold]")
+        filename = f"arc-eval_{domain}_{timestamp}{template_suffix}{summary_suffix}.json"
+        filepath = export_path / filename
+        
+        export_data = [r.to_dict() for r in results]
+        if summary_only:
+            # For summary-only, include just key metrics
+            summary = {
+                "summary": {
+                    "total_scenarios": len(results),
+                    "passed": sum(1 for r in results if r.passed),
+                    "failed": sum(1 for r in results if not r.passed),
+                    "critical_failures": sum(1 for r in results if r.severity == "critical" and not r.passed),
+                    "compliance_frameworks": list(set().union(*[r.compliance for r in results])),
+                    "timestamp": timestamp,
+                    "format_template": format_template
+                },
+                "detailed_results": export_data
+            }
+            export_data = summary
+        
+        with open(filepath, 'w') as f:
+            json.dump(export_data, f, indent=2)
+        console.print(f"\n📋 JSON Export: [bold]{filepath}[/bold]")
 
 
 def _display_timing_metrics(evaluation_time: float, input_size: int, result_count: int) -> None:
-    """Display timing and performance metrics."""
-    console.print("\n" + "=" * 50)
-    console.print("[bold cyan]Performance Metrics[/bold cyan]")
-    console.print("=" * 50)
+    """Display enhanced timing and performance metrics."""
+    console.print("\n[bold blue]⚡ Performance Analytics[/bold blue]")
+    console.print("[blue]" + "═" * 70 + "[/blue]")
     
-    # Evaluation timing
-    console.print(f"⏱️  Evaluation Time: [bold]{evaluation_time:.2f}s[/bold]")
+    # Create performance metrics table
+    perf_table = Table(
+        show_header=False,
+        box=None,
+        expand=True,
+        padding=(0, 2)
+    )
+    perf_table.add_column("", style="bold", width=25)
+    perf_table.add_column("", style="", width=20, justify="center")
+    perf_table.add_column("", style="bold", width=25)
+    perf_table.add_column("", style="", width=20, justify="center")
     
-    # Input size metrics
+    # Format input size
     if input_size < 1024:
         size_str = f"{input_size} bytes"
     elif input_size < 1024 * 1024:
@@ -825,19 +902,84 @@ def _display_timing_metrics(evaluation_time: float, input_size: int, result_coun
     else:
         size_str = f"{input_size / (1024 * 1024):.1f} MB"
     
-    console.print(f"📊 Input Size: [bold]{size_str}[/bold]")
+    # Calculate processing speed
+    scenarios_per_sec = result_count / evaluation_time if evaluation_time > 0 else 0
     
-    # Processing speed
-    if evaluation_time > 0:
-        scenarios_per_sec = result_count / evaluation_time
-        console.print(f"🚀 Processing Speed: [bold]{scenarios_per_sec:.1f} scenarios/second[/bold]")
+    # Performance grade
+    if evaluation_time < 1.0:
+        grade = "[green]🚀 EXCELLENT[/green]"
+    elif evaluation_time < 5.0:
+        grade = "[blue]⚡ GOOD[/blue]"
+    elif evaluation_time < 15.0:
+        grade = "[yellow]⏳ MODERATE[/yellow]"
+    else:
+        grade = "[red]🐌 SLOW[/red]"
     
-    # Memory warnings for large files
-    if input_size > 10 * 1024 * 1024:  # 10MB
-        console.print("[yellow]⚠️  Large input detected (>10MB). Consider processing in smaller batches.[/yellow]")
+    # Memory efficiency
+    if input_size < 1024 * 1024:  # < 1MB
+        memory_grade = "[green]✅ EFFICIENT[/green]"
+    elif input_size < 10 * 1024 * 1024:  # < 10MB
+        memory_grade = "[blue]📊 MODERATE[/blue]"
+    else:
+        memory_grade = "[yellow]⚠️  HEAVY[/yellow]"
     
-    if evaluation_time > 30:  # 30 seconds
-        console.print("[yellow]⚠️  Long evaluation time (>30s). Consider optimizing input data.[/yellow]")
+    perf_table.add_row(
+        "⏱️  Evaluation Time:", f"[bold]{evaluation_time:.3f}s[/bold]",
+        "📊 Input Size:", f"[bold]{size_str}[/bold]"
+    )
+    perf_table.add_row(
+        "🚀 Processing Speed:", f"[bold]{scenarios_per_sec:.1f}/sec[/bold]",
+        "📋 Scenarios Processed:", f"[bold]{result_count}[/bold]"
+    )
+    perf_table.add_row(
+        "⚡ Performance Grade:", grade,
+        "💾 Memory Efficiency:", memory_grade
+    )
+    
+    # Throughput analysis
+    data_per_sec = input_size / evaluation_time if evaluation_time > 0 else 0
+    if data_per_sec < 1024:
+        throughput_str = f"{data_per_sec:.1f} B/s"
+    elif data_per_sec < 1024 * 1024:
+        throughput_str = f"{data_per_sec / 1024:.1f} KB/s"
+    else:
+        throughput_str = f"{data_per_sec / (1024 * 1024):.1f} MB/s"
+    
+    perf_table.add_row(
+        "📈 Data Throughput:", f"[bold]{throughput_str}[/bold]",
+        "🎯 Avg Time/Scenario:", f"[bold]{evaluation_time / result_count * 1000:.1f}ms[/bold]"
+    )
+    
+    console.print(perf_table)
+    console.print("[blue]" + "─" * 70 + "[/blue]")
+    
+    # Performance recommendations
+    console.print("\n[bold blue]💡 Performance Insights[/bold blue]")
+    
+    recommendations = []
+    if evaluation_time > 30:
+        recommendations.append("🐌 [yellow]Long evaluation time detected. Consider smaller input batches.[/yellow]")
+    if input_size > 10 * 1024 * 1024:
+        recommendations.append("💾 [yellow]Large input detected. Consider data preprocessing or streaming.[/yellow]")
+    if scenarios_per_sec < 1:
+        recommendations.append("⚡ [yellow]Low processing speed. Check input complexity or system resources.[/yellow]")
+    
+    if not recommendations:
+        if evaluation_time < 1.0:
+            recommendations.append("🚀 [green]Excellent performance! Your setup is optimized.[/green]")
+        else:
+            recommendations.append("✅ [green]Good performance within acceptable ranges.[/green]")
+    
+    for rec in recommendations:
+        console.print(f"  • {rec}")
+    
+    # Scaling projections
+    if scenarios_per_sec > 0:
+        console.print(f"\n[bold blue]📊 Scaling Projections[/bold blue]")
+        console.print(f"• 100 scenarios: ~{100 / scenarios_per_sec:.1f}s")
+        console.print(f"• 1,000 scenarios: ~{1000 / scenarios_per_sec:.1f}s")
+        if scenarios_per_sec >= 1:
+            console.print(f"• 10,000 scenarios: ~{10000 / scenarios_per_sec / 60:.1f} minutes")
 
 
 def _handle_quick_start(
@@ -847,7 +989,10 @@ def _handle_quick_start(
     dev: bool, 
     workflow: bool, 
     timing: bool, 
-    verbose: bool
+    verbose: bool,
+    output_dir: Optional[Path] = None,
+    format_template: Optional[str] = None,
+    summary_only: bool = False
 ) -> None:
     """Handle quick-start mode with built-in sample data."""
     console.print("\n[bold blue]🚀 ARC-Eval Quick Start Demo[/bold blue]")
@@ -957,7 +1102,7 @@ def _handle_quick_start(
         console.print(f"[dim]Demo processed {len(results)} scenarios in {evaluation_time:.2f} seconds[/dim]")
         
         # Display results using existing function
-        _display_results(results, output_format=output, dev_mode=dev, workflow_mode=workflow, domain=demo_domain)
+        _display_results(results, output_format=output, dev_mode=dev, workflow_mode=workflow, domain=demo_domain, summary_only=summary_only, format_template=format_template)
         
         # Show timing if requested
         if timing:
@@ -967,7 +1112,7 @@ def _handle_quick_start(
         # Export if requested
         if export:
             console.print(f"\n[blue]📤 Generating demo {export.upper()} export...[/blue]")
-            _export_results(results, export_format=export, domain=demo_domain)
+            _export_results(results, export_format=export, domain=demo_domain, output_dir=output_dir, format_template=format_template, summary_only=summary_only)
         
         # Show next steps
         console.print(f"\n[bold green]🎉 Quick Start Demo Complete![/bold green]")
@@ -996,7 +1141,7 @@ def _handle_validate(
     input_file: Optional[Path], 
     stdin: bool,
     dev: bool,
-    verbose: bool
+    verbose: bool  # Used for potential future verbose validation output
 ) -> None:
     """Handle validation mode to test input files without running evaluation."""
     console.print("\n[bold blue]🔍 ARC-Eval Input Validation[/bold blue]")
