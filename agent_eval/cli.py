@@ -8,8 +8,9 @@ Provides domain-specific evaluation and compliance reporting for LLMs and AI age
 import sys
 import json
 import time
+import glob
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List
 
 import click
 from rich.console import Console
@@ -25,12 +26,11 @@ from agent_eval.exporters.csv import CSVExporter
 console = Console()
 
 
-@click.command()
+@click.command(context_settings={'help_option_names': ['-h', '--help']})
 @click.option(
     "--domain",
     type=click.Choice(["finance", "security", "ml"]),
-    default="finance",
-    help="Select evaluation domain pack",
+    help="Select evaluation domain pack (required for CLI mode)",
 )
 @click.option(
     "--input",
@@ -80,6 +80,11 @@ console = Console()
     help="Show detailed input format documentation and examples",
 )
 @click.option(
+    "--list-domains",
+    is_flag=True,
+    help="List available evaluation domains and their descriptions",
+)
+@click.option(
     "--timing",
     is_flag=True,
     help="Show execution time and performance metrics",
@@ -96,7 +101,7 @@ console = Console()
 )
 @click.version_option(version="0.1.0", prog_name="arc-eval")
 def main(
-    domain: str,
+    domain: Optional[str],
     input_file: Optional[Path],
     stdin: bool,
     endpoint: Optional[str],
@@ -106,6 +111,7 @@ def main(
     workflow: bool,
     config: Optional[Path],
     help_input: bool,
+    list_domains: bool,
     timing: bool,
     verbose: bool,
     interactive: bool,
@@ -131,16 +137,60 @@ def main(
       arc-eval --domain finance --input outputs.json --workflow --export pdf
     """
     
-    # Handle help-input flag
+    # Handle help flags
     if help_input:
         from agent_eval.core.validators import InputValidator
         console.print("[bold blue]AgentEval Input Format Documentation[/bold blue]")
         console.print(InputValidator.suggest_format_help())
         return
     
+    if list_domains:
+        console.print("[bold blue]Available Evaluation Domains[/bold blue]\n")
+        
+        domains_info = {
+            "finance": {
+                "name": "Financial Services Compliance",
+                "description": "Comprehensive evaluations for financial services compliance",
+                "frameworks": ["SOX", "KYC", "AML", "PCI-DSS", "GDPR", "FFIEC", "DORA", "OFAC", "CFPB", "EU-AI-ACT"],
+                "scenarios": 15
+            },
+            "security": {
+                "name": "Cybersecurity & AI Safety",
+                "description": "Security vulnerability and threat detection evaluations",
+                "frameworks": ["OWASP", "NIST", "ISO-27001", "CIS"],
+                "scenarios": 12
+            },
+            "ml": {
+                "name": "ML Model Safety & Bias",
+                "description": "Machine learning model safety, bias, and performance analysis",
+                "frameworks": ["EU-AI-ACT", "NIST-AI-RMF", "ISO-23053"],
+                "scenarios": 10
+            }
+        }
+        
+        for domain_key, info in domains_info.items():
+            console.print(f"[bold cyan]{domain_key.upper()}[/bold cyan] - {info['name']}")
+            console.print(f"  {info['description']}")
+            console.print(f"  [dim]Scenarios:[/dim] {info['scenarios']}")
+            console.print(f"  [dim]Frameworks:[/dim] {', '.join(info['frameworks'])}")
+            console.print()
+        
+        console.print("[dim]Usage: arc-eval --domain <domain> --input <file>[/dim]")
+        return
+    
+    # Validate domain requirement for non-interactive mode
+    if not interactive and not list_domains and not help_input and domain is None:
+        console.print("[red]Error:[/red] --domain is required for CLI mode")
+        console.print("Use --list-domains to see available options")
+        console.print("Or use --interactive to launch TUI mode")
+        sys.exit(2)
+    
     # Handle interactive mode
     if interactive:
         try:
+            # Check if we can import required TUI dependencies
+            import textual
+            import aiofiles
             from agent_eval.tui.app import ARCEvalApp
             
             # Pass CLI arguments to TUI for initial configuration
@@ -148,21 +198,33 @@ def main(
             if domain:
                 initial_config['domain'] = domain
             if input_file:
-                initial_config['files'] = [input_file] if isinstance(input_file, str) else input_file
+                initial_config['files'] = [input_file]
+            
+            if verbose:
+                console.print(f"[dim]Starting TUI with textual {textual.__version__}[/dim]")
             
             app = ARCEvalApp(initial_config=initial_config)
             app.run()
             return
-        except ImportError:
-            console.print("[red]Error:[/red] TUI dependencies not installed. Install with:")
-            console.print("pip install arc-eval[tui]")
-            console.print("\nOr install textual manually:")
-            console.print("pip install textual[dev]>=0.80.0 aiofiles>=24.0.0")
+            
+        except ImportError as e:
+            console.print(f"[red]Error:[/red] TUI dependencies not available: {e}")
+            console.print("\n[bold]Installation options:[/bold]")
+            console.print("1. Reinstall with development dependencies:")
+            console.print("   pip install -e .")
+            console.print("2. Install with TUI extras:")
+            console.print("   pip install 'arc-eval[tui]'")
+            console.print("3. Install dependencies manually:")
+            console.print("   pip install 'textual[dev]>=0.80.0' 'aiofiles>=24.0.0'")
+            console.print("\n[dim]Note: TUI dependencies are included by default in arc-eval[/dim]")
             sys.exit(1)
+            
         except Exception as e:
             console.print(f"[red]Error launching TUI:[/red] {e}")
-            if dev:
+            if dev or verbose:
                 console.print_exception()
+            else:
+                console.print("[dim]Use --verbose for more details[/dim]")
             sys.exit(1)
     
     # Import validation utilities
