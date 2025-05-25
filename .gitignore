@@ -71,3 +71,6 @@ custom_scenarios/
 CLAUDE.md
 PROJECT_OVERVIEW.md
 DX.md
+
+# API keys
+.env
