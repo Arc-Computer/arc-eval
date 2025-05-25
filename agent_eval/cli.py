@@ -148,7 +148,7 @@ def _get_domain_info() -> dict:
     is_flag=True,
     help="Generate executive summary only (skip detailed scenarios)",
 )
-@click.version_option(version="0.1.0", prog_name="arc-eval")
+@click.version_option(version="0.2.0", prog_name="arc-eval")
 def main(
     domain: Optional[str],
     input_file: Optional[Path],
