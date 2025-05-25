@@ -94,11 +94,6 @@ console = Console()
     is_flag=True,
     help="Enable verbose logging with detailed debugging information",
 )
-@click.option(
-    "--interactive", "--tui",
-    is_flag=True,
-    help="Launch interactive TUI mode",
-)
 @click.version_option(version="0.1.0", prog_name="arc-eval")
 def main(
     domain: Optional[str],
@@ -114,7 +109,6 @@ def main(
     list_domains: bool,
     timing: bool,
     verbose: bool,
-    interactive: bool,
 ) -> None:
     """
     AgentEval: Domain-specific evaluation and compliance reporting for LLMs and AI agents.
@@ -178,54 +172,12 @@ def main(
         console.print("[dim]Usage: arc-eval --domain <domain> --input <file>[/dim]")
         return
     
-    # Validate domain requirement for non-interactive mode
-    if not interactive and not list_domains and not help_input and domain is None:
-        console.print("[red]Error:[/red] --domain is required for CLI mode")
+    # Validate domain requirement for CLI mode
+    if not list_domains and not help_input and domain is None:
+        console.print("[red]Error:[/red] --domain is required")
         console.print("Use --list-domains to see available options")
-        console.print("Or use --interactive to launch TUI mode")
         sys.exit(2)
     
-    # Handle interactive mode
-    if interactive:
-        try:
-            # Check if we can import required TUI dependencies
-            import textual
-            import aiofiles
-            from agent_eval.tui.app import ARCEvalApp
-            
-            # Pass CLI arguments to TUI for initial configuration
-            initial_config = {}
-            if domain:
-                initial_config['domain'] = domain
-            if input_file:
-                initial_config['files'] = [input_file]
-            
-            if verbose:
-                console.print(f"[dim]Starting TUI with textual {textual.__version__}[/dim]")
-            
-            app = ARCEvalApp(initial_config=initial_config)
-            app.run()
-            return
-            
-        except ImportError as e:
-            console.print(f"[red]Error:[/red] TUI dependencies not available: {e}")
-            console.print("\n[bold]Installation options:[/bold]")
-            console.print("1. Reinstall with development dependencies:")
-            console.print("   pip install -e .")
-            console.print("2. Install with TUI extras:")
-            console.print("   pip install 'arc-eval[tui]'")
-            console.print("3. Install dependencies manually:")
-            console.print("   pip install 'textual[dev]>=0.80.0' 'aiofiles>=24.0.0'")
-            console.print("\n[dim]Note: TUI dependencies are included by default in arc-eval[/dim]")
-            sys.exit(1)
-            
-        except Exception as e:
-            console.print(f"[red]Error launching TUI:[/red] {e}")
-            if dev or verbose:
-                console.print_exception()
-            else:
-                console.print("[dim]Use --verbose for more details[/dim]")
-            sys.exit(1)
     
     # Import validation utilities
     from agent_eval.core.validators import (

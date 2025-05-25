@@ -28,9 +28,6 @@ dependencies = [
     "rich>=13.0.0",
     "reportlab>=4.0.0",
     "tabulate>=0.9.0",
-    # TUI dependencies (also available as extras)
-    "textual>=0.80.0",
-    "aiofiles>=24.0.0",
 ]
 
 [project.optional-dependencies]
@@ -42,10 +39,6 @@ dev = [
     "mypy>=1.0.0",
 ]
 
-tui = [
-    "textual[dev]>=0.80.0",
-    "aiofiles>=24.0.0",
-]
 
 
 [project.urls]
