@@ -38,6 +38,8 @@ class EvaluationScenario:
     failure_indicators: List[str]
     remediation: str
     regulatory_reference: Optional[str] = None
+    owasp_category: Optional[str] = None
+    mitre_mapping: Optional[List[str]] = None
     
     def __post_init__(self) -> None:
         """Validate scenario data after initialization."""
