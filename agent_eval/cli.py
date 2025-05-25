@@ -5,6 +5,13 @@ AgentEval CLI - Main command-line interface.
 Provides domain-specific evaluation and compliance reporting for LLMs and AI agents.
 """
 
+# Load environment variables from .env file early
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+
 import sys
 import json
 import time
@@ -16,7 +23,8 @@ from rich.console import Console
 from rich.table import Table
 
 from agent_eval.core.engine import EvaluationEngine
-from agent_eval.core.types import EvaluationResult
+from agent_eval.core.agent_judge import AgentJudge
+from agent_eval.core.types import EvaluationResult, AgentOutput, EvaluationScenario
 from agent_eval.exporters.pdf import PDFExporter
 from agent_eval.exporters.csv import CSVExporter
 from agent_eval.exporters.json import JSONExporter
@@ -148,6 +156,17 @@ def _get_domain_info() -> dict:
     is_flag=True,
     help="Generate executive summary only (skip detailed scenarios)",
 )
+@click.option(
+    "--agent-judge",
+    is_flag=True,
+    help="Use Agent-as-a-Judge evaluation with continuous feedback (requires API key)",
+)
+@click.option(
+    "--judge-model",
+    type=click.Choice(["claude-4-sonnet", "claude-3.5-haiku", "auto"]),
+    default="auto",
+    help="Select AI model for Agent-as-a-Judge evaluation",
+)
 @click.version_option(version="0.2.0", prog_name="arc-eval")
 def main(
     domain: Optional[str],
@@ -168,6 +187,8 @@ def main(
     output_dir: Optional[Path],
     format_template: Optional[str],
     summary_only: bool,
+    agent_judge: bool,
+    judge_model: str,
 ) -> None:
     """
     ARC-Eval: Enterprise-grade compliance evaluation for AI agents and LLMs.
@@ -438,13 +459,38 @@ def main(
             console.print("• Cloud integrations in v2.3")
             sys.exit(1)
         
+        # Check for Agent Judge mode
+        if agent_judge:
+            # Validate API key is available
+            import os
+            if not os.getenv("ANTHROPIC_API_KEY"):
+                console.print("\n[red]❌ Agent-as-a-Judge Requires API Key[/red]")
+                console.print("[blue]═══════════════════════════════════════════════════════════════════════[/blue]")
+                console.print("[bold]You need to set your Anthropic API key to use Agent-as-a-Judge evaluation.[/bold]\n")
+                
+                console.print("[bold blue]🔑 Set Your API Key:[/bold blue]")
+                console.print("1. Create .env file: [yellow]echo 'ANTHROPIC_API_KEY=your_key_here' > .env[/yellow]")
+                console.print("2. Or export: [yellow]export ANTHROPIC_API_KEY=your_key_here[/yellow]")
+                console.print("3. Get API key at: [blue]https://console.anthropic.com/[/blue]")
+                
+                console.print("\n[bold blue]💡 Alternative:[/bold blue]")
+                console.print("Run without Agent Judge: [green]arc-eval --domain {} --input {}[/green]".format(domain, input_file.name if input_file else "your_file.json"))
+                sys.exit(1)
+            
+            if verbose:
+                console.print(f"[cyan]Verbose:[/cyan] Using Agent-as-a-Judge evaluation with model: {judge_model}")
+            
+            console.print(f"\n[bold blue]🤖 Agent-as-a-Judge Evaluation[/bold blue]")
+            console.print(f"[dim]Using {judge_model} model for continuous feedback evaluation[/dim]")
+        
         # Run evaluations
         start_time = time.time()
         input_size = len(json.dumps(agent_outputs)) if isinstance(agent_outputs, (list, dict)) else len(str(agent_outputs))
         
         if verbose:
             output_count = len(agent_outputs) if isinstance(agent_outputs, list) else 1
-            console.print(f"[cyan]Verbose:[/cyan] Starting evaluation of {output_count} outputs against {domain} domain scenarios")
+            eval_mode = "Agent-as-a-Judge" if agent_judge else "Standard"
+            console.print(f"[cyan]Verbose:[/cyan] Starting {eval_mode} evaluation of {output_count} outputs against {domain} domain scenarios")
             console.print(f"[cyan]Verbose:[/cyan] Input data size: {input_size} bytes")
         
         # Enhanced progress indicators for professional experience
@@ -453,31 +499,89 @@ def main(
         # Get scenario count for progress tracking
         scenario_count = len(engine.eval_pack.scenarios) if hasattr(engine.eval_pack, 'scenarios') else 15
         
-        with Progress(
-            SpinnerColumn(),
-            TextColumn("[bold blue]{task.description}"),
-            BarColumn(complete_style="green", finished_style="green"),
-            TaskProgressColumn(),
-            TimeElapsedColumn(),
-            console=console,
-            transient=False
-        ) as progress:
-            eval_task = progress.add_task(
-                f"🔍 Evaluating {scenario_count} {domain} compliance scenarios...", 
-                total=100
-            )
+        if agent_judge:
+            # Use Agent-as-a-Judge evaluation
+            agent_judge_instance = AgentJudge(domain=domain)
             
-            # Update progress during evaluation
-            for i in range(0, 101, 10):
-                progress.update(eval_task, advance=10)
-                if i == 50:
-                    progress.update(eval_task, description="🔍 Processing compliance frameworks...")
-                elif i == 80:
-                    progress.update(eval_task, description="🔍 Generating recommendations...")
-            
-            # Run the actual evaluation
-            results = engine.evaluate(agent_outputs)
-            progress.update(eval_task, description="✅ Evaluation complete", completed=100)
+            with Progress(
+                SpinnerColumn(),
+                TextColumn("[bold blue]{task.description}"),
+                BarColumn(complete_style="green", finished_style="green"),
+                TaskProgressColumn(),
+                TimeElapsedColumn(),
+                console=console,
+                transient=False
+            ) as progress:
+                eval_task = progress.add_task(
+                    f"🤖 Agent-as-a-Judge evaluating {scenario_count} {domain} scenarios...", 
+                    total=100
+                )
+                
+                # Convert agent outputs to AgentOutput objects
+                if isinstance(agent_outputs, list):
+                    agent_output_objects = [AgentOutput(raw_output=str(output), normalized_output=str(output)) for output in agent_outputs]
+                else:
+                    agent_output_objects = [AgentOutput(raw_output=str(agent_outputs), normalized_output=str(agent_outputs))]
+                
+                # Get scenarios from engine
+                scenarios = engine.eval_pack.scenarios
+                
+                # Update progress during evaluation
+                progress.update(eval_task, advance=20, description="🤖 Initializing Agent Judge...")
+                
+                # Run Agent-as-a-Judge evaluation
+                judge_results = agent_judge_instance.evaluate_batch(agent_output_objects[:len(scenarios)], scenarios)
+                progress.update(eval_task, advance=60, description="🤖 Generating continuous feedback...")
+                
+                # Generate improvement report
+                improvement_report = agent_judge_instance.generate_improvement_report(judge_results)
+                progress.update(eval_task, advance=20, description="✅ Agent-as-a-Judge evaluation complete", completed=100)
+                
+                # Convert to standard results format for compatibility
+                results = []
+                for i, judge_result in enumerate(judge_results):
+                    scenario = scenarios[i] if i < len(scenarios) else scenarios[0]
+                    result = EvaluationResult(
+                        scenario_id=judge_result.scenario_id,
+                        scenario_name=scenario.name,
+                        description=scenario.description,
+                        severity=scenario.severity,
+                        compliance=scenario.compliance,
+                        test_type=scenario.test_type,
+                        passed=(judge_result.judgment == "pass"),
+                        status="pass" if judge_result.judgment == "pass" else "fail",
+                        confidence=judge_result.confidence,
+                        failure_reason=judge_result.reasoning if judge_result.judgment != "pass" else None,
+                        remediation="; ".join(judge_result.improvement_recommendations)
+                    )
+                    results.append(result)
+        else:
+            # Use standard evaluation
+            with Progress(
+                SpinnerColumn(),
+                TextColumn("[bold blue]{task.description}"),
+                BarColumn(complete_style="green", finished_style="green"),
+                TaskProgressColumn(),
+                TimeElapsedColumn(),
+                console=console,
+                transient=False
+            ) as progress:
+                eval_task = progress.add_task(
+                    f"🔍 Evaluating {scenario_count} {domain} compliance scenarios...", 
+                    total=100
+                )
+                
+                # Update progress during evaluation
+                for i in range(0, 101, 10):
+                    progress.update(eval_task, advance=10)
+                    if i == 50:
+                        progress.update(eval_task, description="🔍 Processing compliance frameworks...")
+                    elif i == 80:
+                        progress.update(eval_task, description="🔍 Generating recommendations...")
+                
+                # Run the actual evaluation
+                results = engine.evaluate(agent_outputs)
+                progress.update(eval_task, description="✅ Evaluation complete", completed=100)
             
         # Show immediate results summary
         console.print(f"\n[green]✅ Evaluation completed successfully![/green]")
@@ -488,6 +592,10 @@ def main(
             passed = sum(1 for r in results if r.passed)
             failed = len(results) - passed
             console.print(f"[cyan]Verbose:[/cyan] Evaluation completed: {passed} passed, {failed} failed in {evaluation_time:.2f}s")
+        
+        # Display Agent Judge specific results if applicable
+        if agent_judge:
+            _display_agent_judge_results(improvement_report, domain)
         
         # Display results
         _display_results(results, output_format=output, dev_mode=dev, workflow_mode=workflow, domain=domain, summary_only=summary_only, format_template=format_template)
@@ -557,6 +665,47 @@ def main(
             console.print("• Try the demo: [green]arc-eval --quick-start[/green]")
             console.print("• Get help: [green]arc-eval --help[/green]")
         sys.exit(1)
+
+
+def _display_agent_judge_results(improvement_report: dict, domain: str) -> None:
+    """Display Agent-as-a-Judge specific results with continuous feedback."""
+    console.print(f"\n[bold blue]🤖 Agent-as-a-Judge Improvement Report[/bold blue]")
+    console.print("[blue]" + "═" * 60 + "[/blue]")
+    
+    # Summary metrics
+    summary = improvement_report.get("summary", {})
+    console.print(f"\n[bold green]📊 Evaluation Summary:[/bold green]")
+    console.print(f"• Total Scenarios: {summary.get('total_scenarios', 0)}")
+    console.print(f"• Passed: [green]{summary.get('passed', 0)}[/green]")
+    console.print(f"• Failed: [red]{summary.get('failed', 0)}[/red]")  
+    console.print(f"• Warnings: [yellow]{summary.get('warnings', 0)}[/yellow]")
+    console.print(f"• Pass Rate: [{'green' if summary.get('pass_rate', 0) > 0.8 else 'yellow'}]{summary.get('pass_rate', 0):.1%}[/]")
+    console.print(f"• Average Confidence: {summary.get('average_confidence', 0):.2f}")
+    console.print(f"• Total Cost: [dim]${summary.get('total_cost', 0):.4f}[/dim]")
+    
+    # Continuous feedback
+    feedback = improvement_report.get("continuous_feedback", {})
+    
+    if feedback.get("strengths"):
+        console.print(f"\n[bold green]💪 Strengths:[/bold green]")
+        for strength in feedback["strengths"]:
+            console.print(f"  ✅ {strength}")
+    
+    if feedback.get("improvement_recommendations"):
+        console.print(f"\n[bold blue]🎯 Top Improvement Recommendations:[/bold blue]")
+        for i, rec in enumerate(feedback["improvement_recommendations"][:3], 1):
+            console.print(f"  {i}. {rec}")
+    
+    if feedback.get("training_suggestions"):
+        console.print(f"\n[bold purple]📚 Training Suggestions:[/bold purple]")
+        for suggestion in feedback["training_suggestions"]:
+            console.print(f"  📖 {suggestion}")
+    
+    if feedback.get("compliance_gaps"):
+        console.print(f"\n[bold red]⚠️  Compliance Gaps:[/bold red]")
+        console.print(f"Failed scenarios: {', '.join(feedback['compliance_gaps'])}")
+    
+    console.print(f"\n[dim]💡 Agent-as-a-Judge provides continuous feedback to improve your agent's {domain} compliance performance.[/dim]")
 
 
 def _display_results(
