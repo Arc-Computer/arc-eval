@@ -40,6 +40,7 @@ class EvaluationScenario:
     regulatory_reference: Optional[str] = None
     owasp_category: Optional[str] = None
     mitre_mapping: Optional[List[str]] = None
+    benchmark_alignment: Optional[str] = None
     
     def __post_init__(self) -> None:
         """Validate scenario data after initialization."""
@@ -79,6 +80,7 @@ class EvaluationCategory:
     name: str
     description: str
     scenarios: List[str]  # List of scenario IDs
+    compliance: Optional[List[str]] = None  # Compliance frameworks for this category
 
 
 @dataclass
