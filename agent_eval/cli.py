@@ -8,22 +8,51 @@ Provides domain-specific evaluation and compliance reporting for LLMs and AI age
 import sys
 import json
 import time
-import glob
 from pathlib import Path
 from typing import Optional, List
 
 import click
 from rich.console import Console
 from rich.table import Table
-from rich import print as rprint
 
 from agent_eval.core.engine import EvaluationEngine
 from agent_eval.core.types import EvaluationResult
 from agent_eval.exporters.pdf import PDFExporter
 from agent_eval.exporters.csv import CSVExporter
+from agent_eval.exporters.json import JSONExporter
 
 
 console = Console()
+
+
+def _get_domain_info() -> dict:
+    """Get centralized domain information to avoid duplication."""
+    return {
+        "finance": {
+            "name": "Financial Services Compliance",
+            "description": "Enterprise-grade evaluations for financial AI systems",
+            "frameworks": ["SOX", "KYC", "AML", "PCI-DSS", "GDPR", "FFIEC", "DORA", "OFAC", "CFPB", "EU-AI-ACT"],
+            "scenarios": 15,
+            "use_cases": "Banking, Fintech, Payment Processing, Insurance, Investment",
+            "examples": "Transaction approval, KYC verification, Fraud detection, Credit scoring"
+        },
+        "security": {
+            "name": "Cybersecurity & AI Agent Security", 
+            "description": "AI safety evaluations for security-critical applications",
+            "frameworks": ["OWASP-LLM-TOP-10", "NIST-AI-RMF", "ISO-27001", "SOC2-TYPE-II", "MITRE-ATTACK"],
+            "scenarios": 15,
+            "use_cases": "AI Agents, Chatbots, Code Generation, Security Tools",
+            "examples": "Prompt injection, Data leakage, Code security, Access control"
+        },
+        "ml": {
+            "name": "ML Infrastructure & Safety",
+            "description": "Production ML system governance and bias detection",
+            "frameworks": ["IEEE-ETHICS", "MODEL-CARDS", "ALGORITHMIC-ACCOUNTABILITY", "MLOPS-GOVERNANCE"],
+            "scenarios": 15,
+            "use_cases": "MLOps, Model Deployment, AI Ethics, Data Science",
+            "examples": "Bias detection, Model drift, Data governance, Safety alignment"
+        }
+    }
 
 
 @click.command(context_settings={'help_option_names': ['-h', '--help']})
@@ -215,32 +244,7 @@ def main(
         console.print("[blue]═══════════════════════════════════════════════════════════════════════[/blue]")
         console.print("[bold]Choose your evaluation domain based on your AI system's use case:[/bold]\n")
         
-        domains_info = {
-            "finance": {
-                "name": "Financial Services Compliance",
-                "description": "Enterprise-grade evaluations for financial AI systems",
-                "frameworks": ["SOX", "KYC", "AML", "PCI-DSS", "GDPR", "FFIEC", "DORA", "OFAC", "CFPB", "EU-AI-ACT"],
-                "scenarios": 15,
-                "use_cases": "Banking, Fintech, Payment Processing, Insurance, Investment",
-                "examples": "Transaction approval, KYC verification, Fraud detection, Credit scoring"
-            },
-            "security": {
-                "name": "Cybersecurity & AI Agent Security", 
-                "description": "AI safety evaluations for security-critical applications",
-                "frameworks": ["OWASP-LLM-TOP-10", "NIST-AI-RMF", "ISO-27001", "SOC2-TYPE-II", "MITRE-ATTACK"],
-                "scenarios": 15,
-                "use_cases": "AI Agents, Chatbots, Code Generation, Security Tools",
-                "examples": "Prompt injection, Data leakage, Code security, Access control"
-            },
-            "ml": {
-                "name": "ML Infrastructure & Safety",
-                "description": "Production ML system governance and bias detection",
-                "frameworks": ["IEEE-ETHICS", "MODEL-CARDS", "ALGORITHMIC-ACCOUNTABILITY", "MLOPS-GOVERNANCE"],
-                "scenarios": 15,
-                "use_cases": "MLOps, Model Deployment, AI Ethics, Data Science",
-                "examples": "Bias detection, Model drift, Data governance, Safety alignment"
-            }
-        }
+        domains_info = _get_domain_info()
         
         for domain_key, info in domains_info.items():
             console.print(f"[bold cyan]📋 {domain_key.upper()} DOMAIN[/bold cyan]")
@@ -593,12 +597,8 @@ def _display_table_results(results: list[EvaluationResult], dev_mode: bool, work
     medium_failures = sum(1 for r in results if r.severity == "medium" and not r.passed)
     
     # Dynamic header based on domain
-    domain_names = {
-        "finance": "Financial Services Compliance",
-        "security": "Cybersecurity & AI Agent Security", 
-        "ml": "ML Infrastructure & Safety"
-    }
-    domain_title = domain_names.get(domain, "Compliance")
+    domains_info = _get_domain_info()
+    domain_title = domains_info.get(domain, {}).get("name", "Compliance")
     
     # Enhanced summary header with executive dashboard
     console.print(f"\n[bold blue on white] 📊 {domain_title} Evaluation Report [/bold blue on white]")
@@ -819,62 +819,45 @@ def _display_table_results(results: list[EvaluationResult], dev_mode: bool, work
         console.print("⚡ Immediate remediation required")
 
 
+def _get_exporter(export_format: str):
+    """Factory function to get the appropriate exporter."""
+    exporters = {
+        "pdf": PDFExporter,
+        "csv": CSVExporter, 
+        "json": JSONExporter
+    }
+    return exporters[export_format]()
+
+
 def _export_results(results: list[EvaluationResult], export_format: str, domain: str, output_dir: Optional[Path] = None, format_template: Optional[str] = None, summary_only: bool = False) -> None:
-    """Export results to the specified format."""
+    """Export results to the specified format using specialized exporters."""
     
-    # Create output directory if specified
+    # Create output directory if specified  
     if output_dir:
         output_dir.mkdir(parents=True, exist_ok=True)
         export_path = output_dir
     else:
         export_path = Path.cwd()
     
-    # Generate timestamp
+    # Generate filename with timestamp and template info
     from datetime import datetime
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    
-    # Add template suffix if specified
     template_suffix = f"_{format_template}" if format_template else ""
     summary_suffix = "_summary" if summary_only else ""
+    filename = f"arc-eval_{domain}_{timestamp}{template_suffix}{summary_suffix}.{export_format}"
+    filepath = export_path / filename
     
-    if export_format == "pdf":
-        exporter = PDFExporter()
-        filename = f"arc-eval_{domain}_{timestamp}{template_suffix}{summary_suffix}.pdf"
-        filepath = export_path / filename
-        exporter.export(results, str(filepath), domain, format_template=format_template, summary_only=summary_only)
-        console.print(f"\n📄 Audit Report: [bold]{filepath}[/bold]")
+    # Use appropriate exporter
+    exporter = _get_exporter(export_format)
+    exporter.export(results, str(filepath), domain, format_template=format_template, summary_only=summary_only)
     
-    elif export_format == "csv":
-        exporter = CSVExporter()
-        filename = f"arc-eval_{domain}_{timestamp}{template_suffix}{summary_suffix}.csv"
-        filepath = export_path / filename
-        exporter.export(results, str(filepath), domain, format_template=format_template, summary_only=summary_only)
-        console.print(f"\n📊 Data Export: [bold]{filepath}[/bold]")
-    
-    elif export_format == "json":
-        filename = f"arc-eval_{domain}_{timestamp}{template_suffix}{summary_suffix}.json"
-        filepath = export_path / filename
-        
-        export_data = [r.to_dict() for r in results]
-        if summary_only:
-            # For summary-only, include just key metrics
-            summary = {
-                "summary": {
-                    "total_scenarios": len(results),
-                    "passed": sum(1 for r in results if r.passed),
-                    "failed": sum(1 for r in results if not r.passed),
-                    "critical_failures": sum(1 for r in results if r.severity == "critical" and not r.passed),
-                    "compliance_frameworks": list(set().union(*[r.compliance for r in results])),
-                    "timestamp": timestamp,
-                    "format_template": format_template
-                },
-                "detailed_results": export_data
-            }
-            export_data = summary
-        
-        with open(filepath, 'w') as f:
-            json.dump(export_data, f, indent=2)
-        console.print(f"\n📋 JSON Export: [bold]{filepath}[/bold]")
+    # Display appropriate message
+    export_messages = {
+        "pdf": "📄 Audit Report",
+        "csv": "📊 Data Export", 
+        "json": "📋 JSON Export"
+    }
+    console.print(f"\n{export_messages[export_format]}: [bold]{filepath}[/bold]")
 
 
 def _display_timing_metrics(evaluation_time: float, input_size: int, result_count: int) -> None:
