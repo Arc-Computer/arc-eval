@@ -10,7 +10,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name="agent-eval",
-    version="0.1.0",
+    version="0.2.0",
     author="AgentEval Team",
     description="Domain-specific evaluation and compliance reporting for LLMs and AI agents",
     long_description=long_description,
