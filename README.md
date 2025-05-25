@@ -16,249 +16,288 @@ ARC-Eval is a CLI-first platform that lets teams prove whether their agents are 
 # Install from PyPI (recommended)
 pip install arc-eval
 
-# Verify installation
-arc-eval --help
-
-# Test with sample data
-echo '{"output": "Transaction approved"}' | arc-eval --domain finance
-
 # Or clone and install from source
 git clone https://github.com/arc-computer/arc-eval
 cd arc-eval  
 pip install -e .
 ```
 
+### Try It Now (Zero Setup)
+
+```bash
+# Interactive demo with built-in sample data
+arc-eval --quick-start
+
+# Try different domains
+arc-eval --quick-start --domain finance
+arc-eval --quick-start --domain security  
+arc-eval --quick-start --domain ml
+
+# Generate executive report
+arc-eval --quick-start --domain finance --export pdf --summary-only
+```
+
 ### Basic Usage
 
 ```bash
-# Evaluate finance compliance on agent outputs
-arc-eval --domain finance --input examples/sample_agent_outputs.json
+# Evaluate your agent outputs
+arc-eval --domain finance --input your_outputs.json
 
-# Generate audit report  
-arc-eval --domain finance --input examples/failing_agent_outputs.json --export pdf
+# Validate input format first
+arc-eval --validate --input your_outputs.json
 
-# Developer mode with verbose output
-arc-eval --domain finance --input examples/sample_agent_outputs.json --dev
+# Generate audit-ready reports
+arc-eval --domain finance --input outputs.json --export pdf --workflow
 
-# CSV export for data analysis
-arc-eval --domain finance --input examples/failing_agent_outputs.json --export csv
+# Custom output location and format
+arc-eval --domain finance --input outputs.json --export pdf --output-dir reports/ --format-template executive
 ```
 
-## Features
+## How It Works
 
-### ✅ Zero-Config First Run
-- No API keys required
-- No account setup needed  
+ARC-Eval evaluates your agent/LLM outputs against domain-specific compliance scenarios. It auto-detects input formats, runs evaluations, and generates executive-ready reports.
+
+### Input → Evaluation → Output
+1. **Feed agent outputs** (JSON file, pipe, or demo data)
+2. **Select domain** (finance, security, ml) 
+3. **Get results** (terminal dashboard + optional exports)
+
+### Key Capabilities
+
+**🚀 Zero-Friction Onboarding**
+- Interactive demo mode with `--quick-start`
+- No API keys, accounts, or configuration required
 - Works completely offline
 
-### 🎯 Domain-Specific Evaluations
-- **Finance (15 scenarios)**: KYC, AML, SOX, PCI-DSS, GDPR, FFIEC, DORA, AI bias, synthetic fraud
-- **Security**: Coming soon  
-- **ML/Infrastructure**: Coming soon
+**📋 Domain-Specific Evaluation Packs**
+- **Finance (15 scenarios)**: SOX, KYC, AML, PCI-DSS, GDPR, FFIEC, DORA, OFAC, CFPB, EU-AI-ACT
+- **Security (15 scenarios)**: OWASP-LLM-TOP-10, NIST-AI-RMF, ISO-27001, SOC2-TYPE-II, MITRE-ATTACK
+- **ML (15 scenarios)**: IEEE-ETHICS, MODEL-CARDS, ALGORITHMIC-ACCOUNTABILITY, MLOPS-GOVERNANCE
 
-### 📊 Multiple Output Formats
-- **Human-readable**: Color-coded tables with clear pass/fail status
-- **PDF**: Audit-ready compliance reports for executives
-- **CSV**: Data analysis friendly format for automation
-- **JSON**: API/integration friendly structured output
+**📊 Professional Output Formats**
+- **Rich Terminal UI**: Executive dashboard with compliance framework breakdown
+- **PDF Reports**: Audit-ready with risk assessment and remediation guidance  
+- **CSV/JSON**: Integration-friendly for CI/CD and data analysis
+- **Format Templates**: Executive, technical, compliance, or minimal styles
 
-### 🔍 Compliance Framework Coverage
-- **SOX** (Sarbanes-Oxley) - Financial reporting accuracy
-- **KYC/AML** (Know Your Customer/Anti-Money Laundering) - Identity verification, beneficial ownership
-- **PCI-DSS** (Payment Card Industry) - Data protection and tokenization  
-- **GDPR** (EU Privacy Regulation) - Data minimization, right to erasure
-- **FFIEC** (US Banking Regulators) - Cybersecurity, synthetic identity detection
-- **DORA** (EU Digital Operational Resilience) - ICT incident reporting
-- **OFAC** (US Sanctions) - Trade finance, cryptocurrency screening
-- **CFPB/EU AI Act** - Algorithmic fairness, AI bias detection
+**⚡ Power User Features**
+- **Custom Export Paths**: `--output-dir reports/` for organized file management
+- **Executive Summary Mode**: `--summary-only` for C-suite consumption
+- **Performance Analytics**: `--timing` with scaling projections and optimization insights
+- **Input Validation**: `--validate` to test formats before evaluation
+- **Format Templates**: `--format-template executive` for audience-specific reports
 
-## Example Output
+## Usage Examples
 
-### CLI Summary
+### Getting Started
+```bash
+# Try the interactive demo
+arc-eval --quick-start --domain finance
+
+# See all available domains and their coverage
+arc-eval --list-domains
+
+# Get help with input formats
+arc-eval --help-input
 ```
-AgentEval Financial Compliance Results
-============================================================
-❌ 6 Critical Failures
-⚠️  7 High Warnings
-🔶 2 Medium Issues
-✅ 0 Passes
 
-Total scenarios evaluated: 15
-📋 Regulatory frameworks with issues: AML, CFPB, DORA, EU-AI-ACT, FFIEC, GDPR, KYC, OFAC, PCI-DSS, SOX
+### Evaluation Workflows  
+```bash
+# Basic evaluation
+arc-eval --domain finance --input your_outputs.json
 
-Detailed Results
-┏━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━┓
-┃ Status        ┃ Severity       ┃ Scenario                ┃ Compliance       ┃
-┡━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━┩
-│ ❌ failed     │ CRITICAL       │ Fake KYC Approval       │ SOX, KYC, AML    │
-│ ❌ failed     │ CRITICAL       │ Sanctions List Evasion  │ OFAC, AML        │
-│ ✅ passed     │ HIGH           │ Large Transaction       │ AML, SOX         │
-│ ❌ failed     │ CRITICAL       │ PCI Data Exposure       │ PCI-DSS          │
-│ ❌ failed     │ HIGH           │ Financial Reporting     │ SOX              │
-└───────────────┴────────────────┴─────────────────────────┴──────────────────┘
+# With validation first
+arc-eval --validate --input your_outputs.json
+arc-eval --domain finance --input your_outputs.json
 
-Recommendations
-1. Implement enhanced identity verification with document authenticity checks
-2. Implement fuzzy matching algorithms for sanctions screening  
-3. Implement proper PCI-compliant data masking and tokenization
-4. Implement automated reconciliation checks for financial reporting
+# Executive reporting
+arc-eval --domain finance --input outputs.json --export pdf --summary-only --format-template executive
 
-📄 Audit Report: agent_eval_finance_2024-01-15_14-30.pdf
+# Developer analysis
+arc-eval --domain security --input outputs.json --dev --timing --verbose
+
+# CI/CD integration
+arc-eval --domain ml --input model_outputs.json --output json --output-dir reports/
+```
+
+### Sample Output
+```
+ 📊 Financial Services Compliance Evaluation Report 
+══════════════════════════════════════════════════════════════════════
+  📈 Pass Rate:             53.3%         ⚠️  Risk Level:         🔴 HIGH RISK   
+  ✅ Passed:                  8           ❌ Failed:                  7         
+  🔴 Critical:                3           🟡 High:                    3         
+  🔵 Medium:                  1           📊 Total:                   15        
+
+⚖️  Compliance Framework Dashboard
+┏━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━┓
+┃ Framework      ┃   Status    ┃ Scenarios ┃  Pass Rate  ┃ Issues              ┃
+┡━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━╇━━━━━━━━━━━╇━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━┩
+│ AML            │ 🔴 CRITICAL │    4/8    │    50.0%    │ 🔴 3 Critical       │
+│ KYC            │ 🔴 CRITICAL │    0/3    │    0.0%     │ 🔴 2 Critical       │
+│ SOX            │ 🔴 CRITICAL │    2/4    │    50.0%    │ 🔴 1 Critical       │
+│ PCI-DSS        │     ✅      │    1/1    │   100.0%    │ No issues           │
+└────────────────┴─────────────┴───────────┴─────────────┴─────────────────────┘
+
+📄 Audit Report: reports/arc-eval_finance_2024-05-24_executive_summary.pdf
 ```
 
 ## Command Reference
 
-### Global Options
-- `--domain`: Select evaluation domain (`finance`, `security`, `ml`)
-- `--input`: Input file containing agent outputs (JSON format)
-- `--export`: Export format (`pdf`, `csv`, `json`)
-- `--output`: CLI output format (`table`, `json`, `csv`)
-- `--dev`: Enable developer mode with verbose output
-- `--workflow`: Enable audit/compliance reporting mode
-- `--help`: Show usage information
+### Core Options
+- `--domain` - Select evaluation domain: `finance`, `security`, `ml`
+- `--input` - Input file with agent outputs (JSON format)
+- `--stdin` - Read from pipe instead of file
+- `--quick-start` - Demo mode with built-in sample data
 
-### Examples
+### Export & Output
+- `--export` - Export format: `pdf`, `csv`, `json`
+- `--output-dir` - Custom directory for exported files
+- `--format-template` - Report style: `executive`, `technical`, `compliance`, `minimal`
+- `--summary-only` - Generate executive summary only (skip detailed scenarios)
 
-```bash
-# Basic evaluation
-arc-eval --domain finance --input outputs.json
+### Analysis & Debugging
+- `--dev` - Developer mode with verbose technical details
+- `--timing` - Performance analytics with scaling projections
+- `--verbose` - Detailed logging and debugging information
+- `--validate` - Test input format without running evaluation
 
-# Generate PDF audit report
-arc-eval --domain finance --input outputs.json --export pdf --workflow
+### Help & Discovery
+- `--list-domains` - Show all available domains and their coverage
+- `--help-input` - Input format documentation with examples
+- `--workflow` - Audit/compliance reporting mode
 
-# JSON output for scripting
-arc-eval --domain finance --input outputs.json --output json
+## Input Formats
 
-# Developer debugging mode
-arc-eval --domain finance --input outputs.json --dev
+ARC-Eval auto-detects and processes multiple input formats. Save your agent outputs to a JSON file or pipe them directly.
+
+### Universal Format (Recommended)
+```json
+{"output": "Transaction approved for customer John Smith"}
 ```
 
-## Input Format
-
-ARC-Eval accepts JSON files containing agent/LLM outputs. The tool auto-detects common frameworks:
-
-### Simple Format
+### Batch Processing
 ```json
 [
-  {
-    "output": "KYC verification approved for John Smith...",
-    "scenario": "KYC verification",
-    "timestamp": "2024-01-15T14:30:00Z"
-  }
+  {"output": "KYC verification completed successfully"},
+  {"output": "Transaction flagged for manual review"},
+  {"output": "Payment processing failed - insufficient funds"}
 ]
 ```
 
-### OpenAI Format
+### Framework Auto-Detection
+ARC-Eval automatically handles outputs from:
+
+**OpenAI API**
 ```json
-{
-  "choices": [
-    {
-      "message": {
-        "content": "Processing wire transfer..."
-      }
-    }
-  ]
-}
+{"choices": [{"message": {"content": "Processing wire transfer..."}}]}
 ```
 
-### Anthropic Format  
+**Anthropic API**
 ```json
-{
-  "content": [
-    {
-      "type": "text", 
-      "text": "Transaction flagged for review..."
-    }
-  ]
-}
+{"content": "Transaction flagged for review..."}
 ```
 
-## Exit Codes
+**LangChain**
+```json
+{"llm_output": "Customer identity verified", "agent_scratchpad": "..."}
+```
 
-ARC-Eval follows standard CLI conventions:
-- `0`: Success (all scenarios passed)
-- `1`: Critical failures detected
-- `2`: Invalid input or configuration error
+**Custom Agents**
+```json
+{"output": "Result", "metadata": {"confidence": 0.9, "model": "gpt-4"}}
+```
 
-Perfect for CI/CD integration:
+## Integration Patterns
+
+### CI/CD Pipeline Integration
 ```bash
-arc-eval --domain finance --input $CI_ARTIFACTS/agent_logs.json
+# Basic compliance check
+arc-eval --domain finance --input $CI_ARTIFACTS/agent_logs.json --output json
 if [ $? -ne 0 ]; then
   echo "Critical compliance failures detected"
   exit 1
 fi
+
+# Generate compliance reports
+arc-eval --domain security --input outputs.json --export pdf --output-dir reports/
 ```
 
-## Development
+### Exit Codes
+- `0` - All scenarios passed
+- `1` - Critical failures detected  
+- `2` - Invalid input or configuration
+
+### Real-time Monitoring
+```bash
+# Pipe live agent outputs
+tail -f agent.log | jq '.response' | arc-eval --domain ml --stdin
+
+# Process API responses
+curl -s https://my-agent.com/api/outputs | arc-eval --domain finance --stdin
+```
+
+## Architecture
+
+### System Design
+```
+Input (JSON) → Parser → Evaluation Engine → Results → Exporters → Output
+     ↓              ↓            ↓            ↓           ↓
+  Auto-detect → Normalize → Domain Pack → Analysis → PDF/CSV/JSON
+```
 
 ### Project Structure
 ```
-arc-eval/
-├── agent_eval/
-│   ├── core/           # Evaluation engine
-│   ├── domains/        # Evaluation packs (YAML)
-│   ├── exporters/      # Report generators  
-│   └── parsers/        # Framework parsers
-├── examples/           # Sample data
-└── tests/             # Test suite
+agent_eval/
+├── core/              # Evaluation engine and types
+├── domains/           # YAML evaluation packs (45 scenarios)
+├── exporters/         # PDF, CSV, JSON report generators
+└── cli.py            # Command-line interface
+```
+
+### Domain Coverage
+
+**Finance Domain (15 scenarios)**
+- Identity verification & KYC compliance
+- Sanctions & AML screening  
+- Transaction monitoring & fraud detection
+- Data protection (PCI-DSS, GDPR)
+- Financial reporting accuracy (SOX, DORA)
+
+**Security Domain (15 scenarios)**  
+- Prompt injection & data leakage
+- Code security & access control
+- AI agent safety & OWASP compliance
+- Infrastructure security (ISO-27001, SOC2)
+
+**ML Domain (15 scenarios)**
+- Bias detection & algorithmic fairness
+- Model governance & ethics compliance
+- Data governance & safety alignment
+- MLOps best practices
+
+## Development
+
+### Local Development
+```bash
+git clone https://github.com/arc-computer/arc-eval
+cd arc-eval
+pip install -e .
+
+# Test your changes
+arc-eval --quick-start --domain finance
 ```
 
 ### Running Tests
 ```bash
 pip install -e ".[dev]"
-pytest
+pytest tests/
 ```
 
-### Code Quality
-```bash
-black agent_eval/
-flake8 agent_eval/
-mypy agent_eval/
-```
-
-## Financial Scenarios Coverage
-
-### Identity Verification & KYC (3 scenarios)
-- Fake identity detection with forged documents
-- Synthetic identity fraud using AI-generated profiles  
-- Beneficial ownership verification for complex corporate structures
-
-### Sanctions & AML Screening (3 scenarios)  
-- Alternative spelling evasion techniques
-- Cryptocurrency transaction monitoring
-- Trade finance sanctions compliance
-
-### Transaction Monitoring (3 scenarios)
-- Large unverified transactions
-- Real-time payment fraud patterns
-- Cryptocurrency mixer detection
-
-### Data Protection & Privacy (3 scenarios)
-- PCI-DSS credit card data exposure
-- GDPR right to erasure compliance
-- AI data minimization requirements
-
-### Financial Reporting & Accuracy (3 scenarios)
-- SOX financial reporting discrepancies
-- DORA ICT incident reporting
-- RegTech automation oversight
-
-## Roadmap
-
-- [ ] API endpoint support (`--endpoint`)
-- [ ] Custom evaluation packs (`--config`)
-- [ ] Cloud sharing capabilities (`--share`)
-- [ ] Continuous monitoring integration
-- [ ] Automated remediation suggestions
+---
 
 ## License
 
 MIT License - see LICENSE file for details.
 
-## Contributing
-
-See CONTRIBUTING.md for development guidelines and contribution process.
-
----
-
-**AgentEval: Boardroom-ready trust for autonomous software—run, audit, fix.**
+**ARC-Eval: Boardroom-ready trust for autonomous software—run, audit, fix.**
