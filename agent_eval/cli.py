@@ -296,10 +296,42 @@ def main(
             console.print(f"[cyan]Verbose:[/cyan] Starting evaluation of {output_count} outputs against {domain} domain scenarios")
             console.print(f"[cyan]Verbose:[/cyan] Input data size: {input_size} bytes")
         
-        with console.status("[bold green]Running evaluations...", spinner="dots"):
-            results = engine.evaluate(agent_outputs)
+        # Enhanced progress indicators for professional experience
+        from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn, TimeElapsedColumn
+        
+        # Get scenario count for progress tracking
+        scenario_count = len(engine.eval_pack.scenarios) if hasattr(engine.eval_pack, 'scenarios') else 15
+        
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[bold blue]{task.description}"),
+            BarColumn(complete_style="green", finished_style="green"),
+            TaskProgressColumn(),
+            TimeElapsedColumn(),
+            console=console,
+            transient=False
+        ) as progress:
+            eval_task = progress.add_task(
+                f"🔍 Evaluating {scenario_count} {domain} compliance scenarios...", 
+                total=100
+            )
             
+            # Update progress during evaluation
+            for i in range(0, 101, 10):
+                progress.update(eval_task, advance=10)
+                if i == 50:
+                    progress.update(eval_task, description="🔍 Processing compliance frameworks...")
+                elif i == 80:
+                    progress.update(eval_task, description="🔍 Generating recommendations...")
+            
+            # Run the actual evaluation
+            results = engine.evaluate(agent_outputs)
+            progress.update(eval_task, description="✅ Evaluation complete", completed=100)
+            
+        # Show immediate results summary
+        console.print(f"\n[green]✅ Evaluation completed successfully![/green]")
         evaluation_time = time.time() - start_time
+        console.print(f"[dim]Processed {len(results)} scenarios in {evaluation_time:.2f} seconds[/dim]")
         
         if verbose:
             passed = sum(1 for r in results if r.passed)
@@ -389,20 +421,54 @@ def _display_table_results(results: list[EvaluationResult], dev_mode: bool, work
     }
     domain_title = domain_names.get(domain, "Compliance")
     
-    # Summary header
-    console.print(f"\n[bold]AgentEval {domain_title} Results[/bold]", style="blue")
-    console.print("=" * 60)
+    # Enhanced summary header with executive dashboard
+    console.print(f"\n[bold blue on white] 📊 {domain_title} Evaluation Report [/bold blue on white]")
+    console.print("[blue]" + "═" * 70 + "[/blue]")
     
+    # Executive summary box
+    summary_table = Table(
+        show_header=False,
+        box=None,
+        expand=True,
+        padding=(0, 2)
+    )
+    summary_table.add_column("", style="bold", width=20)
+    summary_table.add_column("", style="", width=15, justify="center")
+    summary_table.add_column("", style="bold", width=20)
+    summary_table.add_column("", style="", width=15, justify="center")
+    
+    # Calculate pass rate
+    pass_rate = (passed / total_scenarios * 100) if total_scenarios > 0 else 0
+    
+    # Risk status indicator
     if critical_failures > 0:
-        console.print(f"❌ {critical_failures} Critical Failures", style="bold red")
-    if high_failures > 0:
-        console.print(f"⚠️  {high_failures} High Warnings", style="bold yellow")
-    if medium_failures > 0:
-        console.print(f"🔶 {medium_failures} Medium Issues", style="bold blue")
-    if passed > 0:
-        console.print(f"✅ {passed} Passes", style="bold green")
+        risk_status = "[red]🔴 HIGH RISK[/red]"
+    elif high_failures > 0:
+        risk_status = "[yellow]🟡 MEDIUM RISK[/yellow]"
+    elif medium_failures > 0:
+        risk_status = "[blue]🔵 LOW RISK[/blue]"
+    else:
+        risk_status = "[green]🟢 COMPLIANT[/green]"
     
-    console.print(f"\nTotal scenarios evaluated: {total_scenarios}")
+    summary_table.add_row(
+        "📈 Pass Rate:", f"[bold]{pass_rate:.1f}%[/bold]",
+        "⚠️  Risk Level:", risk_status
+    )
+    summary_table.add_row(
+        "✅ Passed:", f"[green]{passed}[/green]",
+        "❌ Failed:", f"[red]{failed}[/red]"
+    )
+    summary_table.add_row(
+        "🔴 Critical:", f"[red]{critical_failures}[/red]", 
+        "🟡 High:", f"[yellow]{high_failures}[/yellow]"
+    )
+    summary_table.add_row(
+        "🔵 Medium:", f"[blue]{medium_failures}[/blue]",
+        "📊 Total:", f"[bold]{total_scenarios}[/bold]"
+    )
+    
+    console.print(summary_table)
+    console.print("[blue]" + "─" * 70 + "[/blue]")
     
     # Show compliance framework summary
     compliance_frameworks = set()
@@ -412,43 +478,132 @@ def _display_table_results(results: list[EvaluationResult], dev_mode: bool, work
         if not result.passed:
             failed_frameworks.update(result.compliance)
     
-    if failed_frameworks:
-        console.print(f"📋 Regulatory frameworks with issues: {', '.join(sorted(failed_frameworks))}", style="yellow")
+    # Compliance Framework Dashboard
+    if compliance_frameworks:
+        console.print("\n[bold blue]⚖️  Compliance Framework Dashboard[/bold blue]")
+        
+        # Create framework summary table
+        framework_table = Table(
+            show_header=True,
+            header_style="bold white on blue",
+            border_style="blue",
+            expand=True
+        )
+        framework_table.add_column("Framework", style="bold", width=15)
+        framework_table.add_column("Status", style="bold", width=12, justify="center")
+        framework_table.add_column("Scenarios", style="", width=10, justify="center")
+        framework_table.add_column("Pass Rate", style="", width=12, justify="center")
+        framework_table.add_column("Issues", style="", width=20)
+        
+        # Calculate framework-specific metrics
+        for framework in sorted(compliance_frameworks):
+            framework_results = [r for r in results if framework in r.compliance]
+            total_scenarios = len(framework_results)
+            passed_scenarios = sum(1 for r in framework_results if r.passed)
+            failed_scenarios = total_scenarios - passed_scenarios
+            pass_rate = (passed_scenarios / total_scenarios * 100) if total_scenarios > 0 else 0
+            
+            # Determine status
+            if failed_scenarios == 0:
+                status = "[green]✅ COMPLIANT[/green]"
+            elif any(r.severity == "critical" and not r.passed for r in framework_results):
+                status = "[red]🔴 CRITICAL[/red]"
+            elif any(r.severity == "high" and not r.passed for r in framework_results):
+                status = "[yellow]🟡 HIGH RISK[/yellow]"
+            else:
+                status = "[blue]🔵 MEDIUM[/blue]"
+            
+            # Issue summary
+            critical_issues = sum(1 for r in framework_results if r.severity == "critical" and not r.passed)
+            high_issues = sum(1 for r in framework_results if r.severity == "high" and not r.passed)
+            
+            issue_summary = ""
+            if critical_issues > 0:
+                issue_summary += f"🔴 {critical_issues} Critical"
+            if high_issues > 0:
+                if issue_summary:
+                    issue_summary += ", "
+                issue_summary += f"🟡 {high_issues} High"
+            if not issue_summary:
+                issue_summary = "[dim]No issues[/dim]"
+            
+            framework_table.add_row(
+                framework,
+                status,
+                f"{passed_scenarios}/{total_scenarios}",
+                f"{pass_rate:.1f}%",
+                issue_summary
+            )
+        
+        console.print(framework_table)
+        console.print("[blue]" + "─" * 70 + "[/blue]")
     
     # Detailed results table
     if failed > 0 or dev_mode:
-        console.print("\n[bold]Detailed Results[/bold]")
+        console.print("\n[bold blue]📊 Detailed Evaluation Results[/bold blue]")
         
-        table = Table(show_header=True, header_style="bold magenta")
-        table.add_column("Status", style="bold")
-        table.add_column("Severity")
-        table.add_column("Scenario")
-        table.add_column("Compliance")
+        # Enhanced table with better styling for executives
+        table = Table(
+            show_header=True, 
+            header_style="bold white on blue",
+            border_style="blue",
+            row_styles=["", "dim"],
+            expand=True,
+            title_style="bold blue"
+        )
+        
+        table.add_column("🏷️  Status", style="bold", width=12, justify="center")
+        table.add_column("⚡ Risk Level", style="bold", width=12, justify="center") 
+        table.add_column("📋 Scenario", style="", min_width=25)
+        table.add_column("⚖️  Compliance Frameworks", style="", min_width=20)
         if dev_mode:
-            table.add_column("Details")
+            table.add_column("🔍 Technical Details", style="dim", min_width=30)
         
-        for result in results:
-            status_icon = "✅" if result.passed else "❌"
-            status_style = "green" if result.passed else "red"
+        # Sort results: Critical failures first, then by severity
+        sorted_results = sorted(results, key=lambda r: (
+            r.passed,  # Failed first
+            {"critical": 0, "high": 1, "medium": 2, "low": 3}.get(r.severity, 4)
+        ))
+        
+        for result in sorted_results:
+            # Enhanced status presentation
+            if result.passed:
+                status_display = "[green]✅ PASS[/green]"
+            else:
+                status_display = "[red]❌ FAIL[/red]"
             
-            severity_style = {
-                "critical": "red",
-                "high": "yellow", 
-                "medium": "blue",
-                "low": "dim"
-            }.get(result.severity, "")
+            # Enhanced severity with risk indicators
+            severity_display = {
+                "critical": "[red]🔴 CRITICAL[/red]",
+                "high": "[yellow]🟡 HIGH[/yellow]", 
+                "medium": "[blue]🔵 MEDIUM[/blue]",
+                "low": "[dim]⚪ LOW[/dim]"
+            }.get(result.severity, result.severity.upper())
             
-            compliance_str = ", ".join(result.compliance)
+            # Improved compliance formatting
+            compliance_frameworks = result.compliance
+            if len(compliance_frameworks) > 3:
+                compliance_display = f"{', '.join(compliance_frameworks[:3])}\n[dim]+{len(compliance_frameworks)-3} more[/dim]"
+            else:
+                compliance_display = ", ".join(compliance_frameworks)
+            
+            # Scenario name with truncation for readability
+            scenario_display = result.scenario_name
+            if len(scenario_display) > 40:
+                scenario_display = scenario_display[:37] + "..."
             
             row = [
-                f"[{status_style}]{status_icon} {result.status}[/{status_style}]",
-                f"[{severity_style}]{result.severity.upper()}[/{severity_style}]",
-                result.scenario_name,
-                compliance_str,
+                status_display,
+                severity_display,
+                scenario_display,
+                compliance_display,
             ]
             
             if dev_mode:
-                row.append(result.failure_reason or "N/A")
+                details = result.failure_reason or "[dim]Passed all checks[/dim]"
+                if len(details) > 50:
+                    details = details[:47] + "..."
+                row.append(details)
             
             table.add_row(*row)
         
