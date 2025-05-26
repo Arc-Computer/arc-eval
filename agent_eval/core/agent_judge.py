@@ -8,7 +8,7 @@ methodology that transforms evaluation from simple pass/fail to continuous impro
 import os
 import json
 import logging
-from typing import Dict, List, Optional, Any, Union
+from typing import Dict, List, Optional, Any, Union, Tuple
 from dataclasses import dataclass
 from pathlib import Path
 from datetime import datetime
@@ -21,7 +21,7 @@ except ImportError:
     # dotenv not available, use environment variables directly
     pass
 
-from agent_eval.core.types import EvaluationResult, EvaluationScenario, AgentOutput
+from agent_eval.core.types import EvaluationResult, EvaluationScenario, AgentOutput, VerificationSummary, BiasMetrics
 import re
 
 
@@ -144,6 +144,11 @@ class JudgmentResult:
     reward_signals: Dict[str, float]
     evaluation_time: float
     model_used: str
+    
+    # Enhanced fields for compound judge architecture (optional)
+    verification: Optional[VerificationSummary] = None
+    bias_metrics: Optional[BiasMetrics] = None
+    benchmark_scores: Optional[Dict[str, float]] = None
 
 
 @dataclass
@@ -159,9 +164,20 @@ class ContinuousFeedback:
 class APIManager:
     """Enterprise API management with cost tracking and fallback."""
     
-    def __init__(self):
-        self.primary_model = "claude-3-5-sonnet-20241022"  # Primary model
-        self.fallback_model = "claude-3-haiku-20240307"    # Cost-effective fallback
+    def __init__(self, preferred_model: str = "auto"):
+        # Model configuration with Claude 4 Sonnet as primary
+        self.primary_model = "claude-sonnet-4-20250514"  # Primary model
+        self.fallback_model = "claude-3-5-haiku-latest"    # Cost-effective fallback
+        
+        # Handle user model preference
+        if preferred_model == "auto":
+            self.preferred_model = self.primary_model
+        elif preferred_model in ["claude-sonnet-4-20250514", "claude-3-5-haiku-latest"]:
+            self.preferred_model = preferred_model
+        else:
+            logger.warning(f"Unknown model {preferred_model}, using auto selection")
+            self.preferred_model = self.primary_model
+        
         self.api_key = os.getenv("ANTHROPIC_API_KEY")
         self.cost_threshold = float(os.getenv("AGENT_EVAL_COST_THRESHOLD", "10.0"))  # $10 default
         self.total_cost = 0.0
@@ -178,13 +194,20 @@ class APIManager:
         
         client = anthropic.Anthropic(api_key=self.api_key)
         
-        # Use fallback if cost threshold exceeded or explicitly requested
-        if self.total_cost > self.cost_threshold or not prefer_primary:
+        # Use user's preferred model if specified, otherwise smart selection
+        if self.preferred_model == "claude-3-5-haiku":
+            # User explicitly wants Haiku (cost optimization)
+            logger.info(f"Using user-preferred model {self.preferred_model}")
+            return client, self.preferred_model
+        elif self.total_cost > self.cost_threshold or not prefer_primary:
+            # Auto fallback due to cost threshold
             logger.info(f"Using fallback model {self.fallback_model} (cost: ${self.total_cost:.2f})")
             return client, self.fallback_model
         else:
-            logger.info(f"Using primary model {self.primary_model}")
-            return client, self.primary_model
+            # Use primary (Claude 4 Sonnet) or user preference
+            model_to_use = self.preferred_model if self.preferred_model != "auto" else self.primary_model
+            logger.info(f"Using primary model {model_to_use}")
+            return client, model_to_use
     
     def track_cost(self, input_tokens: int, output_tokens: int, model: str):
         """Track API costs for enterprise cost management."""
@@ -197,14 +220,113 @@ class APIManager:
         self.total_cost += cost
         logger.info(f"API call cost: ${cost:.4f}, Total: ${self.total_cost:.2f}")
         return cost
+    
+    def call_with_logprobs(self, prompt: str, enable_logprobs: bool = False) -> Tuple[str, Optional[Dict[str, float]]]:
+        """Call API with optional logprobs extraction for confidence calibration.
+        
+        Args:
+            prompt: The prompt to send to the model
+            enable_logprobs: Whether to attempt logprobs extraction
+            
+        Returns:
+            Tuple of (response_text, logprobs_dict or None)
+        """
+        client, model = self.get_client()
+        
+        try:
+            # Note: Anthropic Claude API doesn't directly support logprobs like OpenAI
+            # This is a placeholder for when/if that functionality becomes available
+            # For now, we'll make a standard call and return None for logprobs
+            
+            response = client.messages.create(
+                model=model,
+                max_tokens=2000,
+                temperature=0.1,
+                messages=[
+                    {
+                        "role": "user",
+                        "content": prompt
+                    }
+                ]
+            )
+            
+            response_text = response.content[0].text
+            
+            # Track API costs
+            input_tokens = len(prompt) // 4  # Rough approximation
+            output_tokens = len(response_text) // 4
+            self.track_cost(input_tokens, output_tokens, model)
+            
+            # For now, logprobs are not available from Anthropic Claude API
+            # We'll extract pseudo-logprobs from response patterns
+            logprobs = self._extract_pseudo_logprobs(response_text) if enable_logprobs else None
+            
+            return response_text, logprobs
+            
+        except Exception as e:
+            logger.error(f"API call with logprobs failed: {e}")
+            raise
+    
+    def _extract_pseudo_logprobs(self, response_text: str) -> Dict[str, float]:
+        """Extract pseudo-logprobs from response text patterns.
+        
+        This is a workaround since Claude API doesn't provide actual logprobs.
+        We estimate confidence based on text patterns and language cues.
+        
+        Args:
+            response_text: Response text from Claude
+            
+        Returns:
+            Dictionary of pseudo-logprobs for key tokens
+        """
+        import re
+        
+        text_lower = response_text.lower()
+        pseudo_logprobs = {}
+        
+        # Decision tokens with confidence-based pseudo-logprobs
+        decision_patterns = {
+            "pass": r'\b(pass|passed|acceptable|compliant|safe|approved)\b',
+            "fail": r'\b(fail|failed|unacceptable|violation|unsafe|rejected)\b',
+            "warning": r'\b(warning|caution|concern|partial|unclear|maybe)\b'
+        }
+        
+        for decision, pattern in decision_patterns.items():
+            matches = re.findall(pattern, text_lower)
+            if matches:
+                # More matches = higher confidence (pseudo-logprob)
+                # Convert to log probability scale (higher count = less negative)
+                count = len(matches)
+                pseudo_logprob = -1.0 / (count + 1)  # Range roughly -1.0 to -0.5
+                pseudo_logprobs[decision] = pseudo_logprob
+        
+        # Confidence indicators
+        confidence_patterns = {
+            "high_confidence": r'\b(very confident|highly confident|certain|definitely|clearly)\b',
+            "medium_confidence": r'\b(confident|likely|probably|sure)\b',
+            "low_confidence": r'\b(uncertain|unsure|unclear|possibly|might|maybe)\b'
+        }
+        
+        for confidence_level, pattern in confidence_patterns.items():
+            if re.search(pattern, text_lower):
+                # Map confidence levels to pseudo-logprobs
+                confidence_scores = {
+                    "high_confidence": -0.2,
+                    "medium_confidence": -0.7,
+                    "low_confidence": -2.0
+                }
+                pseudo_logprobs[confidence_level] = confidence_scores[confidence_level]
+        
+        return pseudo_logprobs
 
 
 class SecurityJudge:
     """Domain-specific Security Judge for cybersecurity evaluation."""
     
-    def __init__(self, api_manager: APIManager):
+    def __init__(self, api_manager: APIManager, enable_confidence_calibration: bool = False):
         self.api_manager = api_manager
         self.domain = "security"
+        self.enable_confidence_calibration = enable_confidence_calibration
         self.knowledge_base = [
             "OWASP LLM Top 10 2025",
             "MITRE ATT&CK Framework", 
@@ -212,6 +334,11 @@ class SecurityJudge:
             "NIST AI Risk Management Framework",
             "ISO 27001 security controls"
         ]
+        
+        # Initialize confidence calibrator if enabled
+        if self.enable_confidence_calibration:
+            from agent_eval.core.confidence_calibrator import ConfidenceCalibrator
+            self.confidence_calibrator = ConfidenceCalibrator()
         
     def evaluate(self, agent_output: AgentOutput, scenario: EvaluationScenario) -> JudgmentResult:
         """Evaluate agent output using Security Judge with continuous feedback."""
@@ -224,26 +351,40 @@ class SecurityJudge:
         client, model = self.api_manager.get_client()
         
         try:
-            # Call Claude for Agent-as-a-Judge evaluation
-            response = client.messages.create(
-                model=model,
-                max_tokens=2000,
-                temperature=0.1,  # Low temperature for consistent evaluation
-                messages=[
-                    {
-                        "role": "user",
-                        "content": prompt
-                    }
-                ]
-            )
-            
-            # Track API costs
-            input_tokens = len(prompt) // 4  # Rough approximation
-            output_tokens = len(response.content[0].text) // 4
-            self.api_manager.track_cost(input_tokens, output_tokens, model)
+            # Call Claude for Agent-as-a-Judge evaluation with optional logprobs
+            if self.enable_confidence_calibration:
+                response_text, logprobs = self.api_manager.call_with_logprobs(prompt, enable_logprobs=True)
+            else:
+                response = client.messages.create(
+                    model=model,
+                    max_tokens=2000,
+                    temperature=0.1,  # Low temperature for consistent evaluation
+                    messages=[
+                        {
+                            "role": "user",
+                            "content": prompt
+                        }
+                    ]
+                )
+                response_text = response.content[0].text
+                logprobs = None
+                
+                # Track API costs for standard call
+                input_tokens = len(prompt) // 4  # Rough approximation
+                output_tokens = len(response_text) // 4
+                self.api_manager.track_cost(input_tokens, output_tokens, model)
             
             # Parse response
-            judgment_data = self._parse_security_response(response.content[0].text)
+            judgment_data = self._parse_security_response(response_text)
+            
+            # Apply confidence calibration if enabled
+            if self.enable_confidence_calibration and hasattr(self, 'confidence_calibrator'):
+                calibration = self.confidence_calibrator.calibrate_confidence(response_text, logprobs)
+                # Override the confidence with calibrated value
+                judgment_data["confidence"] = calibration.calibrated_confidence
+                # Add calibration metadata to reward signals
+                judgment_data["reward_signals"]["calibration_quality"] = calibration.quality_score
+                judgment_data["reward_signals"]["uncertainty"] = calibration.uncertainty
             
             evaluation_time = (datetime.now() - start_time).total_seconds()
             
@@ -371,8 +512,9 @@ Focus on providing actionable improvement recommendations that help the agent le
 class MLJudge:
     """Domain-specific ML Judge for MLOps and enterprise ML evaluation."""
     
-    def __init__(self, api_manager: APIManager):
+    def __init__(self, api_manager: APIManager, enable_confidence_calibration: bool = False):
         self.api_manager = api_manager
+        self.enable_confidence_calibration = enable_confidence_calibration
         self.domain = "ml"
         self.knowledge_base = [
             "EU AI Act compliance requirements",
@@ -385,6 +527,11 @@ class MLJudge:
             "Model drift and performance monitoring"
         ]
         
+        # Initialize confidence calibrator if enabled
+        if self.enable_confidence_calibration:
+            from agent_eval.core.confidence_calibrator import ConfidenceCalibrator
+            self.confidence_calibrator = ConfidenceCalibrator()
+        
     def evaluate(self, agent_output: AgentOutput, scenario: EvaluationScenario) -> JudgmentResult:
         """Evaluate agent output using ML Judge with continuous feedback."""
         start_time = datetime.now()
@@ -396,26 +543,40 @@ class MLJudge:
         client, model = self.api_manager.get_client()
         
         try:
-            # Call Claude for Agent-as-a-Judge evaluation
-            response = client.messages.create(
-                model=model,
-                max_tokens=2000,
-                temperature=0.1,  # Low temperature for consistent evaluation
-                messages=[
-                    {
-                        "role": "user",
-                        "content": prompt
-                    }
-                ]
-            )
-            
-            # Track API costs
-            input_tokens = len(prompt) // 4  # Rough approximation
-            output_tokens = len(response.content[0].text) // 4
-            self.api_manager.track_cost(input_tokens, output_tokens, model)
+            # Call Claude for Agent-as-a-Judge evaluation with optional logprobs
+            if self.enable_confidence_calibration:
+                response_text, logprobs = self.api_manager.call_with_logprobs(prompt, enable_logprobs=True)
+            else:
+                response = client.messages.create(
+                    model=model,
+                    max_tokens=2000,
+                    temperature=0.1,  # Low temperature for consistent evaluation
+                    messages=[
+                        {
+                            "role": "user",
+                            "content": prompt
+                        }
+                    ]
+                )
+                response_text = response.content[0].text
+                logprobs = None
+                
+                # Track API costs for standard call
+                input_tokens = len(prompt) // 4  # Rough approximation
+                output_tokens = len(response_text) // 4
+                self.api_manager.track_cost(input_tokens, output_tokens, model)
             
             # Parse response
-            judgment_data = self._parse_ml_response(response.content[0].text)
+            judgment_data = self._parse_ml_response(response_text)
+            
+            # Apply confidence calibration if enabled
+            if self.enable_confidence_calibration and hasattr(self, 'confidence_calibrator'):
+                calibration = self.confidence_calibrator.calibrate_confidence(response_text, logprobs)
+                # Override the confidence with calibrated value
+                judgment_data["confidence"] = calibration.calibrated_confidence
+                # Add calibration metadata to reward signals
+                judgment_data["reward_signals"]["calibration_quality"] = calibration.quality_score
+                judgment_data["reward_signals"]["uncertainty"] = calibration.uncertainty
             
             evaluation_time = (datetime.now() - start_time).total_seconds()
             
@@ -555,8 +716,9 @@ Focus on providing actionable improvement recommendations that help the agent le
 class FinanceJudge:
     """Domain-specific Finance Judge for financial compliance and regulatory evaluation."""
     
-    def __init__(self, api_manager: APIManager):
+    def __init__(self, api_manager: APIManager, enable_confidence_calibration: bool = False):
         self.api_manager = api_manager
+        self.enable_confidence_calibration = enable_confidence_calibration
         self.domain = "finance"
         self.knowledge_base = [
             "SOX compliance and financial reporting accuracy",
@@ -569,6 +731,11 @@ class FinanceJudge:
             "EU AI Act high-risk financial system classification"
         ]
         
+        # Initialize confidence calibrator if enabled
+        if self.enable_confidence_calibration:
+            from agent_eval.core.confidence_calibrator import ConfidenceCalibrator
+            self.confidence_calibrator = ConfidenceCalibrator()
+        
     def evaluate(self, agent_output: AgentOutput, scenario: EvaluationScenario) -> JudgmentResult:
         """Evaluate agent output using Finance Judge with continuous feedback."""
         start_time = datetime.now()
@@ -580,26 +747,40 @@ class FinanceJudge:
         client, model = self.api_manager.get_client()
         
         try:
-            # Call Claude for Agent-as-a-Judge evaluation
-            response = client.messages.create(
-                model=model,
-                max_tokens=2000,
-                temperature=0.1,  # Low temperature for consistent evaluation
-                messages=[
-                    {
-                        "role": "user",
-                        "content": prompt
-                    }
-                ]
-            )
-            
-            # Track API costs
-            input_tokens = len(prompt) // 4  # Rough approximation
-            output_tokens = len(response.content[0].text) // 4
-            self.api_manager.track_cost(input_tokens, output_tokens, model)
+            # Call Claude for Agent-as-a-Judge evaluation with optional logprobs
+            if self.enable_confidence_calibration:
+                response_text, logprobs = self.api_manager.call_with_logprobs(prompt, enable_logprobs=True)
+            else:
+                response = client.messages.create(
+                    model=model,
+                    max_tokens=2000,
+                    temperature=0.1,  # Low temperature for consistent evaluation
+                    messages=[
+                        {
+                            "role": "user",
+                            "content": prompt
+                        }
+                    ]
+                )
+                response_text = response.content[0].text
+                logprobs = None
+                
+                # Track API costs for standard call
+                input_tokens = len(prompt) // 4  # Rough approximation
+                output_tokens = len(response_text) // 4
+                self.api_manager.track_cost(input_tokens, output_tokens, model)
             
             # Parse response
-            judgment_data = self._parse_finance_response(response.content[0].text)
+            judgment_data = self._parse_finance_response(response_text)
+            
+            # Apply confidence calibration if enabled
+            if self.enable_confidence_calibration and hasattr(self, 'confidence_calibrator'):
+                calibration = self.confidence_calibrator.calibrate_confidence(response_text, logprobs)
+                # Override the confidence with calibrated value
+                judgment_data["confidence"] = calibration.calibrated_confidence
+                # Add calibration metadata to reward signals
+                judgment_data["reward_signals"]["calibration_quality"] = calibration.quality_score
+                judgment_data["reward_signals"]["uncertainty"] = calibration.uncertainty
             
             evaluation_time = (datetime.now() - start_time).total_seconds()
             
@@ -739,18 +920,19 @@ Focus on providing actionable improvement recommendations that help the agent le
 class AgentJudge:
     """Main Agent-as-a-Judge evaluation framework."""
     
-    def __init__(self, domain: str):
+    def __init__(self, domain: str, enable_confidence_calibration: bool = False, preferred_model: str = "auto"):
         """Initialize Agent Judge for specific domain."""
         self.domain = domain
-        self.api_manager = APIManager()
+        self.api_manager = APIManager(preferred_model=preferred_model)
+        self.enable_confidence_calibration = enable_confidence_calibration
         
         # Initialize domain-specific judge
         if domain == "security":
-            self.judge = SecurityJudge(self.api_manager)
+            self.judge = SecurityJudge(self.api_manager, enable_confidence_calibration)
         elif domain == "ml":
-            self.judge = MLJudge(self.api_manager)
+            self.judge = MLJudge(self.api_manager, enable_confidence_calibration)
         elif domain == "finance":
-            self.judge = FinanceJudge(self.api_manager)
+            self.judge = FinanceJudge(self.api_manager, enable_confidence_calibration)
         else:
             raise ValueError(f"Domain '{domain}' not yet implemented")
     
@@ -774,8 +956,8 @@ class AgentJudge:
         
         return results
     
-    def generate_improvement_report(self, results: List[JudgmentResult]) -> Dict[str, Any]:
-        """Generate comprehensive improvement report."""
+    def generate_improvement_report(self, results: List[JudgmentResult], agent_outputs: Optional[List[AgentOutput]] = None) -> Dict[str, Any]:
+        """Generate comprehensive improvement report with bias detection."""
         if not results:
             return {"error": "No evaluation results available"}
         
@@ -790,6 +972,22 @@ class AgentJudge:
         avg_confidence = sum(r.confidence for r in results) / total_scenarios
         total_cost = self.api_manager.total_cost
         
+        # Generate bias detection metrics for transparency using actual outputs
+        bias_metrics = None
+        if agent_outputs:
+            from agent_eval.core.bias_detection import BasicBiasDetection
+            bias_detector = BasicBiasDetection()
+            
+            # Extract content from agent outputs for bias analysis
+            output_contents = [output.normalized_output for output in agent_outputs[:len(results)]]
+            bias_metrics = bias_detector.generate_bias_report(results, output_contents)
+        else:
+            # Fallback if no outputs provided (shouldn't happen in normal usage)
+            from agent_eval.core.bias_detection import BasicBiasDetection
+            bias_detector = BasicBiasDetection()
+            dummy_outputs = [""] * len(results)  # Empty strings for minimal bias analysis
+            bias_metrics = bias_detector.generate_bias_report(results, dummy_outputs)
+        
         return {
             "summary": {
                 "total_scenarios": total_scenarios,
@@ -798,7 +996,8 @@ class AgentJudge:
                 "warnings": warnings,
                 "pass_rate": passed / total_scenarios,
                 "average_confidence": avg_confidence,
-                "total_cost": total_cost
+                "total_cost": total_cost,
+                "bias_risk_level": bias_metrics.overall_bias_risk
             },
             "continuous_feedback": {
                 "strengths": feedback.strengths,
@@ -807,6 +1006,13 @@ class AgentJudge:
                 "training_suggestions": feedback.training_suggestions,
                 "compliance_gaps": feedback.compliance_gaps
             },
+            "bias_detection": {
+                "overall_risk": bias_metrics.overall_bias_risk,
+                "length_bias": bias_metrics.length_bias_score,
+                "position_bias": bias_metrics.position_bias_score,
+                "style_bias": bias_metrics.style_bias_score,
+                "recommendations": bias_metrics.recommendations
+            } if bias_metrics else None,
             "reward_signals": {
                 result.scenario_id: result.reward_signals 
                 for result in results

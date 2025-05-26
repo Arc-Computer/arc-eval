@@ -62,8 +62,17 @@ Agent Output → Domain Judge → Compliance Assessment + Improvement Recommenda
 # Agent-as-a-Judge evaluation (recommended)
 arc-eval --domain finance --input outputs.json --agent-judge
 
-# Quick demo with sample data
-arc-eval --quick-start --domain security --agent-judge
+# Academic benchmark evaluation
+arc-eval --benchmark mmlu --subset anatomy --limit 20 --agent-judge
+
+# Enhanced reliability with verification
+arc-eval --domain security --input outputs.json --agent-judge --verify
+
+# Confidence calibration for uncertainty quantification
+arc-eval --domain ml --input outputs.json --agent-judge --confidence-calibration
+
+# A/B test judge configurations
+arc-eval --compare-judges config/templates.yaml --domain finance --input outputs.json
 
 # Generate compliance reports
 arc-eval --domain ml --input outputs.json --agent-judge --export pdf
@@ -90,6 +99,12 @@ ARC-Eval auto-detects formats from OpenAI, Anthropic, LangChain, and custom agen
 --input file.json               # Your agent outputs
 --agent-judge                   # Enable Agent-as-a-Judge evaluation
 --export pdf                    # Generate compliance reports
+
+# Advanced evaluation
+--benchmark mmlu|humeval|gsm8k  # Academic benchmark evaluation
+--verify                        # Secondary judge validation (reliability)
+--confidence-calibration        # Enhanced uncertainty quantification
+--compare-judges config.yaml    # A/B test judge configurations
 
 # Useful options  
 --quick-start                   # Try with sample data

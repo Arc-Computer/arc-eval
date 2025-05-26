@@ -1,0 +1,102 @@
+# Judge Comparison Configuration Templates
+# Use these templates to A/B test different judge configurations
+
+# Default comparison: Standard vs Enhanced
+default_comparison:
+  judges:
+    - name: "security_standard"
+      domain: "security"
+      enable_confidence_calibration: false
+      enable_verification: false
+      description: "Standard security judge (baseline)"
+    
+    - name: "enhanced_security"
+      domain: "security"
+      enable_confidence_calibration: true
+      enable_verification: false
+      description: "Security judge with confidence calibration"
+
+# Comprehensive comparison across domains
+multi_domain_comparison:
+  judges:
+    - name: "security_standard"
+      domain: "security"
+      enable_confidence_calibration: false
+      description: "Security domain baseline"
+    
+    - name: "security_enhanced"
+      domain: "security"
+      enable_confidence_calibration: true
+      description: "Security with confidence calibration"
+    
+    - name: "finance_standard"
+      domain: "finance"
+      enable_confidence_calibration: false
+      description: "Finance domain baseline"
+    
+    - name: "finance_enhanced"
+      domain: "finance"
+      enable_confidence_calibration: true
+      description: "Finance with confidence calibration"
+    
+    - name: "ml_standard"
+      domain: "ml"
+      enable_confidence_calibration: false
+      description: "ML domain baseline"
+    
+    - name: "ml_enhanced"
+      domain: "ml"
+      enable_confidence_calibration: true
+      description: "ML with confidence calibration"
+
+# Confidence calibration focused comparison
+confidence_calibration_test:
+  judges:
+    - name: "baseline"
+      domain: "security"
+      enable_confidence_calibration: false
+      description: "Standard confidence scoring"
+    
+    - name: "calibrated"
+      domain: "security"
+      enable_confidence_calibration: true
+      description: "Logprobs-based confidence calibration"
+
+# Performance optimization comparison
+performance_comparison:
+  judges:
+    - name: "basic"
+      domain: "security"
+      enable_confidence_calibration: false
+      description: "Basic evaluation only"
+    
+    - name: "enhanced"
+      domain: "security"
+      enable_confidence_calibration: true
+      description: "Enhanced with confidence calibration"
+
+# Finance-specific regulatory comparison
+finance_regulatory_comparison:
+  judges:
+    - name: "finance_basic"
+      domain: "finance"
+      enable_confidence_calibration: false
+      description: "Basic financial compliance evaluation"
+    
+    - name: "finance_calibrated"
+      domain: "finance"
+      enable_confidence_calibration: true
+      description: "Enhanced financial evaluation with confidence calibration"
+
+# ML governance comparison
+ml_governance_comparison:
+  judges:
+    - name: "ml_basic"
+      domain: "ml"
+      enable_confidence_calibration: false
+      description: "Standard ML governance evaluation"
+    
+    - name: "ml_calibrated"
+      domain: "ml"
+      enable_confidence_calibration: true
+      description: "Enhanced ML evaluation with uncertainty quantification"
