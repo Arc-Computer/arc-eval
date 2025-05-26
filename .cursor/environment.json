@@ -1,0 +1,6 @@
+{
+  "snapshot": "snapshot-20250526-145abf2b-a622-4155-b6f1-45d5ee255ee7",
+  "install": "python3 -m venv venv && source venv/bin/activate && pip install --upgrade pip setuptools wheel && pip install -e .",
+  "start": "source venv/bin/activate",
+  "terminals": []
+}
