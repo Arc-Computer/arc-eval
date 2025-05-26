@@ -40,25 +40,49 @@ def _get_domain_info() -> dict:
             "name": "Financial Services Compliance",
             "description": "Enterprise-grade evaluations for financial AI systems",
             "frameworks": ["SOX", "KYC", "AML", "PCI-DSS", "GDPR", "FFIEC", "DORA", "OFAC", "CFPB", "EU-AI-ACT"],
-            "scenarios": 15,
+            "scenarios": 110,
             "use_cases": "Banking, Fintech, Payment Processing, Insurance, Investment",
-            "examples": "Transaction approval, KYC verification, Fraud detection, Credit scoring"
+            "examples": "Transaction approval, KYC verification, Fraud detection, Credit scoring",
+            "categories": [
+                "SOX & Financial Reporting Compliance",
+                "KYC & AML Compliance Framework", 
+                "PCI-DSS & Data Protection",
+                "Fraud Detection & Risk Management",
+                "Investment & Trading Compliance",
+                "Insurance & Actuarial Analysis",
+                "Digital Banking & API Security"
+            ]
         },
         "security": {
             "name": "Cybersecurity & AI Agent Security", 
             "description": "AI safety evaluations for security-critical applications",
             "frameworks": ["OWASP-LLM-TOP-10", "NIST-AI-RMF", "ISO-27001", "SOC2-TYPE-II", "MITRE-ATTACK"],
-            "scenarios": 15,
+            "scenarios": 120,
             "use_cases": "AI Agents, Chatbots, Code Generation, Security Tools",
-            "examples": "Prompt injection, Data leakage, Code security, Access control"
+            "examples": "Prompt injection, Data leakage, Code security, Access control",
+            "categories": [
+                "OWASP LLM Top 10 (Prompt Injection, Data Leakage, etc.)",
+                "Purple Llama CyberSecEval Benchmarks",
+                "Agent-Specific Security Testing",
+                "Multi-Step Attack Chain Detection",
+                "Automated Patch Generation Assessment"
+            ]
         },
         "ml": {
             "name": "ML Infrastructure & Safety",
             "description": "Production ML system governance and bias detection",
-            "frameworks": ["IEEE-ETHICS", "MODEL-CARDS", "ALGORITHMIC-ACCOUNTABILITY", "MLOPS-GOVERNANCE"],
-            "scenarios": 15,
+            "frameworks": ["EU-AI-ACT", "ISO-23053", "NIST-AI-RMF", "IEEE-ETHICS", "MODEL-CARDS", "ALGORITHMIC-ACCOUNTABILITY"],
+            "scenarios": 107,
             "use_cases": "MLOps, Model Deployment, AI Ethics, Data Science",
-            "examples": "Bias detection, Model drift, Data governance, Safety alignment"
+            "examples": "Bias detection, Model drift, Data governance, Safety alignment",
+            "categories": [
+                "Model Performance & Accuracy",
+                "Bias & Fairness Detection",
+                "Data Quality & Governance", 
+                "Operational Reliability",
+                "Safety & Alignment",
+                "Enterprise MLOps Governance"
+            ]
         }
     }
 
@@ -275,6 +299,12 @@ def main(
             console.print(f"[yellow]🎯 Use Cases:[/yellow] {info['use_cases']}")
             console.print(f"[yellow]🔍 Example Scenarios:[/yellow] {info['examples']}")
             console.print(f"[yellow]📊 Total Scenarios:[/yellow] {info['scenarios']}")
+            
+            # Show evaluation categories
+            console.print(f"[yellow]📂 Evaluation Categories:[/yellow]")
+            for category in info['categories']:
+                console.print(f"   • {category}")
+            
             console.print(f"[yellow]⚖️  Compliance Frameworks:[/yellow]")
             
             # Format frameworks in columns

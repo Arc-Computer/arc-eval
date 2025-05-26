@@ -1,12 +1,17 @@
-# ARC-Eval: Agent-as-a-Judge Enterprise Platform
+# ARC-Eval: Agent-as-a-Judge Evaluation Platform
 
 [![PyPI version](https://badge.fury.io/py/arc-eval.svg)](https://badge.fury.io/py/arc-eval)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 
-**The first Agent-as-a-Judge platform for enterprise agent evaluation**
+<div align="center">
+  <img src="public/agent-as-judge-demo.png" alt="ARC-Eval Agent-as-a-Judge Demo" style="border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);" width="800">
+  <p><em>Agent-as-a-Judge evaluation with domain-specific compliance assessment and improvement recommendations</em></p>
+</div>
 
-Transform your agent compliance from static audits to continuous improvement. Get AI-powered feedback, CISO-ready reports, and actionable recommendations across 345 enterprise scenarios.
+**Domain-specific agent evaluation using the Agent-as-a-Judge framework from [MetaAuto AI](https://github.com/metauto-ai/agent-as-a-judge) ([arXiv:2410.10934v2](https://arxiv.org/abs/2410.10934v2))**
+
+Evaluate agent performance across 345 scenarios in Finance, Security, and ML domains. Generate compliance reports and continuous improvement feedback using specialized domain judges.
 
 ## Quick Start
 
@@ -14,48 +19,52 @@ Transform your agent compliance from static audits to continuous improvement. Ge
 # Install
 pip install arc-eval
 
-# Try it instantly (no setup required)
+# Set up Agent-as-a-Judge (recommended)
+export ANTHROPIC_API_KEY="your-key-here"
+# Or add to .env file: ANTHROPIC_API_KEY=your-key-here
+
+# Try with sample data
 arc-eval --quick-start --domain finance --agent-judge
 
 # Evaluate your agent outputs  
 arc-eval --domain finance --input your_outputs.json --agent-judge
 
-# Generate executive reports
+# Generate compliance reports
 arc-eval --domain security --input outputs.json --agent-judge --export pdf
 ```
 
-**Need an API key?** Set `ANTHROPIC_API_KEY` for Agent-as-a-Judge features, or use traditional evaluation without AI feedback.
+**Note**: Agent-as-a-Judge requires `ANTHROPIC_API_KEY`. Traditional evaluation (without judge feedback) works without API keys.
 
-## Why Agent-as-a-Judge?
+## Agent-as-a-Judge Framework
 
-Traditional compliance tools give you pass/fail results. **Agent-as-a-Judge gives you a path to improvement.**
+Based on the [MetaAuto AI research](https://github.com/metauto-ai/agent-as-a-judge), Agent-as-a-Judge provides contextual evaluation using domain-specific judge models that understand compliance requirements and failure modes.
 
-### 🎯 Value Delivered
-- **Continuous Feedback**: AI judges provide actionable recommendations, not just scores
-- **Enterprise Scale**: 345 scenarios across Finance (110), Security (120), ML (107) domains  
-- **CISO-Ready**: Executive reports with compliance framework mapping
-- **Cost Optimized**: Smart model selection and fallbacks for production use
+### Key Features
+- **Domain-Specific Judges**: FinanceJudge, SecurityJudge, MLJudge with specialized knowledge
+- **345 Evaluation Scenarios**: Finance (110), Security (120), ML (107) covering real-world compliance
+- **Continuous Feedback**: Actionable improvement recommendations with training signal generation
+- **Multi-Model Support**: Claude Sonnet, Haiku with automatic cost optimization
 
-### ⚡ How It Works
+### Evaluation Pipeline
 ```
-Your Agent Output → AI Judge → Compliance Score + Improvement Plan + Training Signals → Self-Improvement Loop
+Agent Output → Domain Judge → Compliance Assessment + Improvement Recommendations + Training Signals
 ```
 
-**Domains**: Finance (SOX, KYC, AML) • Security (OWASP, MITRE) • ML (MLOps, EU AI Act)
+**Compliance Frameworks**: Finance (SOX, KYC, AML) • Security (OWASP, MITRE) • ML (MLOps, EU AI Act)
 
-## Common Use Cases
+## Usage Examples
 
 ```bash
-# 🚀 Demo & Discovery
-arc-eval --quick-start --domain finance --agent-judge
+# Agent-as-a-Judge evaluation (recommended)
+arc-eval --domain finance --input outputs.json --agent-judge
 
-# 📊 Evaluate Your Agents  
-arc-eval --domain security --input outputs.json --agent-judge
+# Quick demo with sample data
+arc-eval --quick-start --domain security --agent-judge
 
-# 🏢 Executive Reporting
-arc-eval --domain ml --input outputs.json --agent-judge --export pdf --summary-only
+# Generate compliance reports
+arc-eval --domain ml --input outputs.json --agent-judge --export pdf
 
-# ⚙️ CI/CD Integration
+# CI/CD integration with cost optimization
 arc-eval --domain finance --input logs.json --agent-judge --judge-model claude-3-5-haiku
 ```
 
@@ -75,48 +84,54 @@ ARC-Eval auto-detects formats from OpenAI, Anthropic, LangChain, and custom agen
 # Essential flags
 --domain finance|security|ml    # Choose evaluation domain
 --input file.json               # Your agent outputs
---agent-judge                   # Enable AI feedback
---export pdf                    # Generate reports
+--agent-judge                   # Enable Agent-as-a-Judge evaluation
+--export pdf                    # Generate compliance reports
 
 # Useful options  
 --quick-start                   # Try with sample data
---judge-model auto|sonnet|haiku # Cost optimization
---summary-only                  # Executive reports only
---list-domains                  # See all scenarios
+--judge-model auto|sonnet|haiku # Model selection for cost optimization
+--summary-only                  # Executive summary only
+--list-domains                  # See all evaluation scenarios
 ```
 
 > **Full Reference**: Run `arc-eval --help` or see [`examples/`](examples/) for complete documentation.
 
-## Enterprise Integration
+## Production Integration
 
 ### CI/CD Pipeline
 ```bash
-# Basic compliance gate
+# Automated compliance gate
 arc-eval --domain finance --input $CI_ARTIFACTS/logs.json --agent-judge
 if [ $? -ne 0 ]; then exit 1; fi
 ```
 
-### Enterprise Features
-- **345 Enterprise Scenarios**: Finance (110) • Security (120) • ML (107)
-- **AI Judge Framework**: SecurityJudge, FinanceJudge, MLJudge with continuous feedback
-- **Self-Improvement Engine**: Automatic training data generation and retraining triggers from evaluation feedback
-- **CISO-Ready Reports**: Executive dashboards with compliance framework mapping
-- **Cost Optimization**: Smart model selection (Claude Sonnet ↔ Haiku)
-- **Production Templates**: GitHub Actions, input formats, enterprise onboarding
+### Research & Production Features
+- **345 Evaluation Scenarios**: Finance (110) • Security (120) • ML (107)
+- **Domain-Specific Judges**: SecurityJudge, FinanceJudge, MLJudge with specialized knowledge
+- **Self-Improvement Engine**: Training data generation and retraining triggers from evaluation feedback
+- **Compliance Reports**: Automated report generation with regulatory framework mapping
+- **Model Optimization**: Adaptive model selection (Claude Sonnet ↔ Haiku)
+- **Integration Templates**: GitHub Actions, input formats, production deployment guides
 
 > **Complete Integration Guide**: See [`examples/ci-templates/`](examples/ci-templates/) for production-ready CI/CD workflows.
 
 ---
 
-## What's Next?
+## Getting Started
 
-1. **Try the Demo**: `arc-eval --quick-start --domain finance --agent-judge`
-2. **Explore Examples**: [`examples/`](examples/) for workflows and CI/CD templates  
-3. **Enterprise Setup**: [`examples/ci-templates/`](examples/ci-templates/) for production deployment
-4. **Get Support**: Run `arc-eval --help` or visit our [documentation](examples/)
+1. **Set API Key**: `export ANTHROPIC_API_KEY="your-key-here"` or add to `.env` file
+2. **Try Demo**: `arc-eval --quick-start --domain finance --agent-judge`
+3. **Evaluate Agents**: `arc-eval --domain security --input outputs.json --agent-judge`
+4. **See Examples**: [`examples/`](examples/) for workflows and integration guides
+
+## Research & References
+
+- **Agent-as-a-Judge Framework**: [MetaAuto AI](https://github.com/metauto-ai/agent-as-a-judge)
+- **Research Paper**: [arXiv:2410.10934v2](https://arxiv.org/abs/2410.10934v2)
+- **Domain Evaluation**: 345 scenarios across Finance, Security, and ML compliance
 
 ---
 
-**ARC-Eval**: Transform agent compliance from static audits to continuous improvement with AI-powered feedback.
+**ARC-Eval**: Domain-specific agent evaluation using the Agent-as-a-Judge framework for continuous improvement.
 
 MIT License • [Documentation](examples/) • [GitHub](https://github.com/arc-computer/arc-eval)
