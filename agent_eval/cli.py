@@ -519,9 +519,9 @@ def main(
                 
                 # Convert agent outputs to AgentOutput objects
                 if isinstance(agent_outputs, list):
-                    agent_output_objects = [AgentOutput(raw_output=str(output), normalized_output=str(output)) for output in agent_outputs]
+                    agent_output_objects = [AgentOutput.from_raw(output) for output in agent_outputs]
                 else:
-                    agent_output_objects = [AgentOutput(raw_output=str(agent_outputs), normalized_output=str(agent_outputs))]
+                    agent_output_objects = [AgentOutput.from_raw(agent_outputs)]
                 
                 # Get scenarios from engine
                 scenarios = engine.eval_pack.scenarios
