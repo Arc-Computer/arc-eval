@@ -62,9 +62,11 @@ class JudgeComparison:
     def add_judge_config(self, config: JudgeConfig) -> None:
         """Add a judge configuration to compare."""
         try:
+            # Use Claude 4 Sonnet as primary for all judge comparisons
             judge = AgentJudge(
                 domain=config.domain,
-                enable_confidence_calibration=config.enable_confidence_calibration
+                enable_confidence_calibration=config.enable_confidence_calibration,
+                preferred_model="claude-4-sonnet"  # Ensure consistent model for fair comparison
             )
             self.judges[config.name] = judge
             logger.info(f"Added judge config: {config.name}")
