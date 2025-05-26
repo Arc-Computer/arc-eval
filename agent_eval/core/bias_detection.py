@@ -6,6 +6,7 @@ from typing import List, Dict, Any, Optional
 from dataclasses import dataclass
 
 from agent_eval.core.agent_judge import JudgmentResult
+from agent_eval.core.types import BiasMetrics
 import logging
 
 logger = logging.getLogger(__name__)
@@ -20,16 +21,6 @@ class BiasScore:
     severity: str  # "low", "medium", "high"
     
 
-@dataclass
-class BiasMetrics:
-    """Comprehensive bias metrics for transparency."""
-    length_bias_score: float
-    position_bias_score: float
-    style_bias_score: float
-    overall_bias_risk: str  # "low", "medium", "high"
-    bias_summary: Dict[str, BiasScore]
-    recommendations: List[str]
-    total_evaluations: int
 
 
 class BasicBiasDetection:
@@ -226,9 +217,7 @@ class BasicBiasDetection:
                 position_bias_score=0.0,
                 style_bias_score=0.0,
                 overall_bias_risk="low",
-                bias_summary={},
-                recommendations=["No judgments available for bias analysis"],
-                total_evaluations=0
+                recommendations=["No judgments available for bias analysis"]
             )
         
         # Detect different types of bias
@@ -261,9 +250,7 @@ class BasicBiasDetection:
             position_bias_score=position_bias.score,
             style_bias_score=style_bias.score,
             overall_bias_risk=overall_risk,
-            bias_summary=bias_summary,
-            recommendations=recommendations,
-            total_evaluations=len(judgments)
+            recommendations=recommendations
         )
         
         # Store in history for trend analysis

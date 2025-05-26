@@ -120,7 +120,8 @@ class JudgeComparison:
         return self._generate_comparison_report(
             all_results, 
             judge_configs,
-            time.time() - start_time
+            time.time() - start_time,
+            agent_outputs
         )
     
     def _evaluate_with_judge(
@@ -316,16 +317,25 @@ class JudgeComparison:
         self,
         all_results: Dict[str, List[JudgmentResult]],
         judge_configs: List[JudgeConfig],
-        execution_time: float
+        execution_time: float,
+        agent_outputs: Optional[List[AgentOutput]] = None
     ) -> ComparisonReport:
         """Generate comprehensive comparison report."""
         
         # Calculate agreements
         judge_agreements = self.measure_agreement(all_results)
         
-        # Get agent outputs for bias analysis (simplified - would need actual outputs)
-        dummy_outputs = [AgentOutput(content="", metadata={}) for _ in range(10)]
-        bias_analysis = self.analyze_bias_patterns(all_results, dummy_outputs)
+        # Perform bias analysis using real agent outputs if available
+        if agent_outputs:
+            bias_analysis = self.analyze_bias_patterns(all_results, agent_outputs)
+        else:
+            # Fallback to empty analysis if no outputs provided
+            bias_analysis = {judge_name: BiasAnalysis(
+                length_bias_correlation=0.0,
+                position_bias_detected=False,
+                style_preference=None,
+                consistency_score=0.0
+            ) for judge_name in all_results.keys()}
         
         # Calculate performance metrics
         performance_metrics = self._calculate_performance_metrics(all_results, judge_agreements)
