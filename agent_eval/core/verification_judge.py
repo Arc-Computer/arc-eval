@@ -186,11 +186,22 @@ Provide an independent assessment focused on evaluation quality, not just agreei
     
     def _parse_verification_response(self, response_text: str) -> Dict[str, Any]:
         """Parse Claude's verification response into structured data."""
-        return _parse_json_response(
+        parsed_data = _parse_json_response(
             response_text,
             default_reward_signals={},  # Verification doesn't use reward signals
             default_improvements=["Review verification methodology"]
         )
+        
+        # Convert to verification-specific format if needed
+        if "verified" not in parsed_data:
+            # Handle fallback case where general parsing was used
+            verified = parsed_data.get("judgment", "warning") == "pass"
+            parsed_data["verified"] = verified
+        
+        if "issues" not in parsed_data:
+            parsed_data["issues"] = parsed_data.get("improvements", ["Verification parsing issue"])
+            
+        return parsed_data
     
     def _calculate_agreement(self, primary_result: JudgmentResult, verification_data: Dict[str, Any]) -> float:
         """Calculate agreement score between primary and verification judgments.

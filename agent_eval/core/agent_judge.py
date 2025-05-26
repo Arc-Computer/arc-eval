@@ -166,13 +166,13 @@ class APIManager:
     
     def __init__(self, preferred_model: str = "auto"):
         # Model configuration with Claude 4 Sonnet as primary
-        self.primary_model = "claude-4-sonnet"  # Primary model
-        self.fallback_model = "claude-3-5-haiku"    # Cost-effective fallback
+        self.primary_model = "claude-sonnet-4-20250514"  # Primary model
+        self.fallback_model = "claude-3-5-haiku-latest"    # Cost-effective fallback
         
         # Handle user model preference
         if preferred_model == "auto":
             self.preferred_model = self.primary_model
-        elif preferred_model in ["claude-4-sonnet", "claude-3-5-haiku"]:
+        elif preferred_model in ["claude-sonnet-4-20250514", "claude-3-5-haiku-latest"]:
             self.preferred_model = preferred_model
         else:
             logger.warning(f"Unknown model {preferred_model}, using auto selection")
@@ -979,7 +979,7 @@ class AgentJudge:
             bias_detector = BasicBiasDetection()
             
             # Extract content from agent outputs for bias analysis
-            output_contents = [output.content for output in agent_outputs[:len(results)]]
+            output_contents = [output.normalized_output for output in agent_outputs[:len(results)]]
             bias_metrics = bias_detector.generate_bias_report(results, output_contents)
         else:
             # Fallback if no outputs provided (shouldn't happen in normal usage)
@@ -1011,8 +1011,7 @@ class AgentJudge:
                 "length_bias": bias_metrics.length_bias_score,
                 "position_bias": bias_metrics.position_bias_score,
                 "style_bias": bias_metrics.style_bias_score,
-                "recommendations": bias_metrics.recommendations,
-                "total_evaluations": bias_metrics.total_evaluations
+                "recommendations": bias_metrics.recommendations
             } if bias_metrics else None,
             "reward_signals": {
                 result.scenario_id: result.reward_signals 
