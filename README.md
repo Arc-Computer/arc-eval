@@ -100,7 +100,7 @@ ARC-Eval auto-detects formats from OpenAI, Anthropic, LangChain, and custom agen
 --agent-judge                   # Enable Agent-as-a-Judge evaluation
 --export pdf                    # Generate compliance reports
 
-# Advanced evaluation (Week 0 features)
+# Advanced evaluation
 --benchmark mmlu|humeval|gsm8k  # Academic benchmark evaluation
 --verify                        # Secondary judge validation (reliability)
 --confidence-calibration        # Enhanced uncertainty quantification

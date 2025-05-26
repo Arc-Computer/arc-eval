@@ -63,7 +63,7 @@ arc-eval --benchmark humeval --limit 5 --agent-judge
 arc-eval --benchmark gsm8k --limit 8 --agent-judge
 ```
 
-### 4. Advanced Judge Features (Week 0)
+### 4. Advanced Judge Features
 ```bash
 # Enhanced reliability with verification layer
 arc-eval --domain finance --input examples/agent-outputs/enhanced_finance_traces.json --agent-judge --verify
@@ -78,12 +78,12 @@ arc-eval --compare-judges config/judge_comparison_templates.yaml --domain financ
 arc-eval --domain ml --input examples/agent-outputs/enhanced_ml_traces.json --agent-judge --verify --confidence-calibration
 ```
 
-### 5. Enterprise Evaluation with AI Feedback
+### 5. Enterprise Evaluation with Judge Feedback
 ```bash
 # Cost-optimized evaluation with Haiku model
 arc-eval --domain security --input examples/agent-outputs/enhanced_security_traces.json --agent-judge --judge-model claude-3-5-haiku
 
-# Generate CISO-ready PDF report with AI insights
+# Generate CISO-ready PDF report with judge insights
 arc-eval --domain ml --input examples/agent-outputs/enhanced_ml_traces.json --agent-judge --export pdf
 ```
 
@@ -101,7 +101,7 @@ arc-eval --domain ml --input examples/agent-outputs/complete_ml_outputs.json
 
 ### 7. Agent-as-a-Judge with Piped Input
 ```bash
-# Real-time evaluation with AI feedback
+# Real-time evaluation with judge feedback
 echo '{"output": "Transaction approved without KYC verification"}' | arc-eval --domain finance --stdin --agent-judge
 
 # Continuous monitoring with Agent-as-a-Judge
@@ -143,18 +143,12 @@ Our agent outputs include enterprise-grade tracing with step-by-step execution d
 
 ### Development Testing with Agent-as-a-Judge
 ```bash
-# Test your agent outputs with AI-powered feedback
+# Test your agent outputs with judge feedback
 arc-eval --domain finance --input your_outputs.json --agent-judge --dev --verbose
-
-# Academic benchmark validation
-arc-eval --benchmark mmlu --subset computer_science --limit 15 --agent-judge --dev
-
-# Enhanced reliability testing with verification
-arc-eval --domain security --input your_outputs.json --agent-judge --verify --dev
 
 # Compare traditional vs Agent-as-a-Judge evaluation
 arc-eval --domain security --input examples/agent-outputs/complete_security_outputs.json  # Traditional
-arc-eval --domain security --input examples/agent-outputs/enhanced_security_traces.json --agent-judge  # AI-powered
+arc-eval --domain security --input examples/agent-outputs/enhanced_security_traces.json --agent-judge  # Judge-based
 ```
 
 ### Enterprise CI/CD Integration
@@ -222,7 +216,7 @@ arc-eval --domain finance --input your_file.json --dev
 
 ## 📚 Enterprise Next Steps
 
-1. **Agent-as-a-Judge Evaluation**: Experience AI-powered continuous feedback across all domains
+1. **Agent-as-a-Judge Evaluation**: Experience continuous feedback across all domains
 2. **Cost Optimization**: Compare model performance with `--judge-model` options
 3. **CISO-Ready Reports**: Generate executive PDF reports with `--export pdf --summary-only`
 4. **Enterprise CI/CD**: Deploy production-ready GitHub Actions templates
@@ -236,7 +230,7 @@ export ANTHROPIC_API_KEY="your-key-here"
 # 2. Generate enhanced traces for comprehensive evaluation
 python scripts/generate_enhanced_traces.py
 
-# 3. Test all domains with AI feedback and enhanced tracing
+# 3. Test all domains with judge feedback and enhanced tracing
 arc-eval --domain finance --input examples/agent-outputs/enhanced_finance_traces.json --agent-judge
 arc-eval --domain security --input examples/agent-outputs/enhanced_security_traces.json --agent-judge  
 arc-eval --domain ml --input examples/agent-outputs/enhanced_ml_traces.json --agent-judge
