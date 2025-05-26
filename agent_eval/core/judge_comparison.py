@@ -66,7 +66,7 @@ class JudgeComparison:
             judge = AgentJudge(
                 domain=config.domain,
                 enable_confidence_calibration=config.enable_confidence_calibration,
-                preferred_model="claude-4-sonnet"  # Ensure consistent model for fair comparison
+                preferred_model="claude-sonnet-4-20250514"  # Ensure consistent model for fair comparison
             )
             self.judges[config.name] = judge
             logger.info(f"Added judge config: {config.name}")
@@ -192,7 +192,7 @@ class JudgeComparison:
                 continue
             
             # Length bias analysis
-            output_lengths = [len(output.content) for output in agent_outputs]
+            output_lengths = [len(output.normalized_output) for output in agent_outputs]
             confidences = [r.confidence for r in judge_results]
             
             length_bias_correlation = 0.0

@@ -1973,6 +1973,9 @@ def _handle_judge_comparison(compare_judges_config: Path, agent_outputs: List[Ag
         # Use first few scenarios for comparison
         scenarios = engine.eval_pack.scenarios[:min(5, len(agent_outputs))]
         
+        # Convert raw agent outputs to AgentOutput objects
+        agent_output_objects = [AgentOutput.from_raw(output) for output in agent_outputs]
+        
         # Run comparison
         comparison = JudgeComparison()
         
@@ -1981,7 +1984,7 @@ def _handle_judge_comparison(compare_judges_config: Path, agent_outputs: List[Ag
             report = comparison.compare_judges(
                 judge_configs=judge_configs,
                 scenarios=scenarios,
-                agent_outputs=agent_outputs[:len(scenarios)],
+                agent_outputs=agent_output_objects[:len(scenarios)],
                 max_workers=2
             )
         
