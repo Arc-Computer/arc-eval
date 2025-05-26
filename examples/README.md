@@ -1,26 +1,19 @@
-# ARC-Eval Examples
+# ARC-Eval Examples: Enterprise Agent Evaluation
 
-This directory contains example files and templates to help you get started with ARC-Eval.
+This directory contains enterprise-ready examples and templates for Agent-as-a-Judge evaluation with ARC-Eval's 345 evaluation scenarios.
 
 ## 📁 Directory Structure
 
 ### `agent-outputs/`
-Sample agent output files in various formats for testing ARC-Eval:
+Enterprise-grade agent output examples with comprehensive tracing:
 
-- **`sample_agent_outputs.json`** - Basic compliant agent outputs
-- **`compliant_agent_outputs.json`** - Examples that pass all evaluations
-- **`security_test_outputs.json`** - Security domain test data
-- **`ml_test_outputs.json`** - ML domain test data
-
-### `domain-specific/`
-Domain-specific test files with known compliance issues:
-
-- **`failing_agent_outputs.json`** - Finance domain failures
-- **`security_failing_outputs.json`** - Security domain violations
-- **`ml_failing_outputs.json`** - ML domain compliance issues
-- **`comprehensive_failing_outputs.json`** - Multi-domain failures
-- **`framework_examples.json`** - Multi-framework format examples
-- **`ml_framework_test.json`** - ML-specific framework tests
+- **`complete_finance_outputs.json`** - All 110 finance scenarios with realistic outputs
+- **`complete_security_outputs.json`** - All 120 security scenarios with realistic outputs  
+- **`complete_ml_outputs.json`** - All 107 ML scenarios with realistic outputs
+- **`enhanced_finance_traces.json`** - Finance scenarios with tool calls, reasoning, and performance metrics
+- **`enhanced_security_traces.json`** - Security scenarios with threat analysis and audit trails
+- **`enhanced_ml_traces.json`** - ML scenarios with bias detection and governance workflows
+- **`sample_enhanced_trace.json`** - Example of enterprise-grade tracing format
 
 ### `ci-templates/`
 Pre-built CI/CD integration templates:
@@ -28,109 +21,141 @@ Pre-built CI/CD integration templates:
 - **`github-actions.yml`** - Complete GitHub Actions workflow
 - **`README.md`** - Detailed integration guide
 
-## 🚀 Quick Start
+## 🚀 Quick Start with Agent-as-a-Judge
 
-### 1. Test with Sample Data
+### 1. Full Coverage Demo - All 337 Scenarios
 ```bash
-# Basic evaluation
-arc-eval --domain finance --input examples/agent-outputs/sample_agent_outputs.json
+# Set up API key for Agent-as-a-Judge
+export ANTHROPIC_API_KEY="your-key-here"
 
-# Test with failing outputs
-arc-eval --domain finance --input examples/domain-specific/failing_agent_outputs.json
+# Run comprehensive demo script - all domains
+python scripts/demo_agent_judge_full.py
 
-# Generate PDF report
-arc-eval --domain security --input examples/domain-specific/security_failing_outputs.json --export pdf
+# Or run individual domains with complete coverage:
+arc-eval --domain finance --input examples/agent-outputs/complete_finance_outputs.json --agent-judge
+arc-eval --domain security --input examples/agent-outputs/complete_security_outputs.json --agent-judge  
+arc-eval --domain ml --input examples/agent-outputs/complete_ml_outputs.json --agent-judge
 ```
 
-### 2. Test Different Domains
+### 2. Enterprise Tracing with Tool Calls & Performance Metrics
 ```bash
-# Finance compliance
-arc-eval --domain finance --input examples/agent-outputs/sample_agent_outputs.json
+# Generate enhanced traces with tool use and reasoning
+python scripts/generate_enhanced_traces.py
 
-# Security evaluation
-arc-eval --domain security --input examples/agent-outputs/security_test_outputs.json
+# Run Agent-as-a-Judge with enterprise-grade tracing:
+arc-eval --domain finance --input examples/agent-outputs/enhanced_finance_traces.json --agent-judge
+arc-eval --domain security --input examples/agent-outputs/enhanced_security_traces.json --agent-judge
+arc-eval --domain ml --input examples/agent-outputs/enhanced_ml_traces.json --agent-judge
 
-# ML infrastructure
-arc-eval --domain ml --input examples/agent-outputs/ml_test_outputs.json
+# View sample enhanced trace format
+cat examples/agent-outputs/sample_enhanced_trace.json
 ```
 
-### 3. Test with Piped Input
+### 3. Enterprise Evaluation with AI Feedback
 ```bash
-# Simple test
-echo '{"output": "Transaction approved"}' | arc-eval --domain finance
+# Cost-optimized evaluation with Haiku model
+arc-eval --domain security --input examples/agent-outputs/enhanced_security_traces.json --agent-judge --judge-model claude-3-5-haiku
 
-# From file
-cat examples/agent-outputs/sample_agent_outputs.json | arc-eval --domain finance --stdin
+# Generate CISO-ready PDF report with AI insights
+arc-eval --domain ml --input examples/agent-outputs/enhanced_ml_traces.json --agent-judge --export pdf
+```
+
+### 4. Traditional Evaluation (without Agent-as-a-Judge)
+```bash
+# Finance compliance (110 scenarios)
+arc-eval --domain finance --input examples/agent-outputs/complete_finance_outputs.json
+
+# Security evaluation (120 scenarios)  
+arc-eval --domain security --input examples/agent-outputs/complete_security_outputs.json
+
+# ML infrastructure (107 scenarios)
+arc-eval --domain ml --input examples/agent-outputs/complete_ml_outputs.json
+```
+
+### 5. Agent-as-a-Judge with Piped Input
+```bash
+# Real-time evaluation with AI feedback
+echo '{"output": "Transaction approved without KYC verification"}' | arc-eval --domain finance --stdin --agent-judge
+
+# Continuous monitoring with Agent-as-a-Judge
+cat examples/agent-outputs/enhanced_finance_traces.json | arc-eval --domain finance --stdin --agent-judge --judge-model auto
 ```
 
 ## 📊 Understanding the Examples
 
-### Compliant Outputs
-Files in `agent-outputs/` show properly formatted agent responses that generally pass evaluations:
+### Enhanced Trace Structure
+Our agent outputs include enterprise-grade tracing with step-by-step execution details:
 
 ```json
 {
-  "output": "I cannot process this transaction without proper KYC verification",
-  "confidence": 0.95,
-  "timestamp": "2024-01-15T14:30:00Z"
+  "output": "Transaction blocked due to sanctions screening match",
+  "scenario": "OFAC Sanctions Screening",
+  "framework": "langchain",
+  "trace": {
+    "steps": [
+      {"step": 1, "action": "reasoning", "content": "Analyzing transaction...", "duration_ms": 234},
+      {"step": 2, "action": "tool_call", "tool": "sanctions_check_api", "input": {...}, "output": {...}}
+    ],
+    "total_duration_ms": 3756,
+    "success": true
+  },
+  "performance_metrics": {
+    "total_latency_ms": 3756,
+    "token_usage": {"total_tokens": 1696},
+    "cost_usd": 0.0425
+  }
 }
 ```
 
-### Failing Outputs
-Files in `domain-specific/` contain responses that trigger compliance violations:
+### Complete vs Enhanced Traces
+- **`complete_*_outputs.json`** - Basic agent responses for traditional evaluation
+- **`enhanced_*_traces.json`** - Rich tracing with tool calls, reasoning, and performance metrics
+- **`sample_enhanced_trace.json`** - Perfect examples showing the enhanced format
 
-```json
-{
-  "output": "Transaction approved for John Smith without verification",
-  "risk_score": "low"
-}
+## 🔧 Enterprise Integration Workflows
+
+### Development Testing with Agent-as-a-Judge
+```bash
+# Test your agent outputs with AI-powered feedback
+arc-eval --domain finance --input your_outputs.json --agent-judge --dev --verbose
+
+# Compare traditional vs Agent-as-a-Judge evaluation
+arc-eval --domain security --input examples/agent-outputs/complete_security_outputs.json  # Traditional
+arc-eval --domain security --input examples/agent-outputs/enhanced_security_traces.json --agent-judge  # AI-powered
 ```
 
-### Framework Examples
-The `framework_examples.json` file demonstrates how ARC-Eval handles different agent frameworks:
-
-- **OpenAI format**: `choices[0].message.content`
-- **Anthropic format**: `content[0].text`
-- **LangChain format**: `llm_output`
-- **LangGraph format**: `messages[-1].content`
-- **AutoGen format**: `messages[-1].content`
-- And more...
-
-## 🔧 Using Examples in Your Workflow
-
-### Development Testing
+### Enterprise CI/CD Integration
 ```bash
-# Test your agent outputs against examples
-arc-eval --domain finance --input your_outputs.json --dev --verbose
-```
-
-### CI/CD Integration
-```bash
-# Copy GitHub Actions template
+# Copy production-ready GitHub Actions template
 cp examples/ci-templates/github-actions.yml .github/workflows/arc-eval.yml
+
+# Agent-as-a-Judge in CI/CD with cost optimization
+arc-eval --domain finance --input $CI_ARTIFACTS/logs.json --agent-judge --judge-model claude-3-5-haiku
 ```
 
-### Custom Scenarios
-Use the domain-specific examples as templates for creating your own test cases:
+## 📈 Enterprise Performance Testing
 
-1. Copy a similar example file
-2. Modify the agent outputs to match your use case
-3. Run evaluations to verify expected results
-
-## 📈 Performance Testing
-
-### Large Input Testing
+### Agent-as-a-Judge Performance Testing
 ```bash
-# Test with multiple outputs
-arc-eval --domain finance --input examples/domain-specific/comprehensive_failing_outputs.json --timing
+# Test Agent-as-a-Judge with enhanced traces and timing metrics
+arc-eval --domain finance --input examples/agent-outputs/enhanced_finance_traces.json --agent-judge --timing
+
+# Cost analysis with different models
+arc-eval --domain security --input examples/agent-outputs/enhanced_security_traces.json --agent-judge --judge-model claude-3-5-sonnet --timing
+arc-eval --domain security --input examples/agent-outputs/enhanced_security_traces.json --agent-judge --judge-model claude-3-5-haiku --timing
 ```
 
-### Batch Processing
+### Enterprise Batch Processing
 ```bash
-# Process multiple domains
+# Process all domains with Agent-as-a-Judge
 for domain in finance security ml; do
-  arc-eval --domain $domain --input examples/agent-outputs/sample_agent_outputs.json
+  arc-eval --domain $domain --input examples/agent-outputs/enhanced_${domain}_traces.json --agent-judge --judge-model auto
 done
+
+# Multi-domain enterprise evaluation with enhanced tracing
+arc-eval --domain finance --input examples/agent-outputs/enhanced_finance_traces.json --agent-judge --export pdf --output-dir reports/
+arc-eval --domain security --input examples/agent-outputs/enhanced_security_traces.json --agent-judge --export pdf --output-dir reports/
+arc-eval --domain ml --input examples/agent-outputs/enhanced_ml_traces.json --agent-judge --export pdf --output-dir reports/
 ```
 
 ## 🛠️ Troubleshooting
@@ -162,11 +187,32 @@ arc-eval --domain finance --input your_file.json --dev
 - **Verbose debugging**: `arc-eval --domain finance --input file.json --verbose`
 - **Performance metrics**: `arc-eval --domain finance --input file.json --timing`
 
-## 📚 Next Steps
+## 📚 Enterprise Next Steps
 
-1. **Try different domains**: Test all three domains (finance, security, ml)
-2. **Generate reports**: Use `--export pdf` for audit-ready reports
-3. **Integrate CI/CD**: Set up automated compliance checking
-4. **Custom scenarios**: Create domain-specific test cases for your use case
+1. **Agent-as-a-Judge Evaluation**: Experience AI-powered continuous feedback across all domains
+2. **Cost Optimization**: Compare model performance with `--judge-model` options
+3. **CISO-Ready Reports**: Generate executive PDF reports with `--export pdf --summary-only`
+4. **Enterprise CI/CD**: Deploy production-ready GitHub Actions templates
+5. **Custom Agent Training**: Use reward signals and improvement recommendations for agent enhancement
 
-For more information, see the main [README.md](../README.md) or run `arc-eval --help`.
+### Quick Enterprise Onboarding
+```bash
+# 1. Set up Agent-as-a-Judge
+export ANTHROPIC_API_KEY="your-key-here"
+
+# 2. Generate enhanced traces for comprehensive evaluation
+python scripts/generate_enhanced_traces.py
+
+# 3. Test all domains with AI feedback and enhanced tracing
+arc-eval --domain finance --input examples/agent-outputs/enhanced_finance_traces.json --agent-judge
+arc-eval --domain security --input examples/agent-outputs/enhanced_security_traces.json --agent-judge  
+arc-eval --domain ml --input examples/agent-outputs/enhanced_ml_traces.json --agent-judge
+
+# 4. Generate executive reports with enhanced insights
+arc-eval --domain finance --input examples/agent-outputs/enhanced_finance_traces.json --agent-judge --export pdf --summary-only
+
+# 5. Deploy CI/CD integration
+cp examples/ci-templates/github-actions.yml .github/workflows/arc-eval.yml
+```
+
+For detailed information, see the main [README.md](../README.md) or explore our **345 enterprise evaluation scenarios** across security, finance, and ML domains.

@@ -38,6 +38,9 @@ class EvaluationScenario:
     failure_indicators: List[str]
     remediation: str
     regulatory_reference: Optional[str] = None
+    owasp_category: Optional[str] = None
+    mitre_mapping: Optional[List[str]] = None
+    benchmark_alignment: Optional[str] = None
     
     def __post_init__(self) -> None:
         """Validate scenario data after initialization."""
@@ -77,6 +80,7 @@ class EvaluationCategory:
     name: str
     description: str
     scenarios: List[str]  # List of scenario IDs
+    compliance: Optional[List[str]] = None  # Compliance frameworks for this category
 
 
 @dataclass
@@ -120,6 +124,9 @@ class AgentOutput:
     normalized_output: str
     framework: Optional[str] = None
     metadata: Optional[Dict[str, Any]] = None
+    scenario: Optional[str] = None
+    trace: Optional[Dict[str, Any]] = None
+    performance_metrics: Optional[Dict[str, Any]] = None
     
     @classmethod
     def from_raw(cls, raw_data: Union[str, Dict[str, Any], List[Any]]) -> "AgentOutput":
@@ -137,11 +144,24 @@ class AgentOutput:
         try:
             framework, normalized_output = detect_and_extract(raw_data)
             
+            # Extract enhanced trace fields if present
+            scenario = None
+            trace = None
+            performance_metrics = None
+            
+            if isinstance(raw_data, dict):
+                scenario = raw_data.get("scenario")
+                trace = raw_data.get("trace") 
+                performance_metrics = raw_data.get("performance_metrics")
+            
             return cls(
                 raw_output=str(raw_data),
                 normalized_output=normalized_output.strip(),
                 framework=framework,
-                metadata=raw_data if isinstance(raw_data, dict) else None
+                metadata=raw_data if isinstance(raw_data, dict) else None,
+                scenario=scenario,
+                trace=trace,
+                performance_metrics=performance_metrics
             )
         except Exception as e:
             # Fallback to simple string conversion
@@ -149,7 +169,10 @@ class AgentOutput:
                 raw_output=str(raw_data),
                 normalized_output=str(raw_data).strip(),
                 framework=None,
-                metadata=raw_data if isinstance(raw_data, dict) else None
+                metadata=raw_data if isinstance(raw_data, dict) else None,
+                scenario=None,
+                trace=None,
+                performance_metrics=None
             )
 
 
