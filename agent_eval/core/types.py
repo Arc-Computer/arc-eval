@@ -194,3 +194,32 @@ class EvaluationSummary:
         if self.total_scenarios == 0:
             return 0.0
         return (self.passed / self.total_scenarios) * 100
+
+
+# Enhanced types for compound judge architecture
+
+@dataclass
+class VerificationSummary:
+    """Simple verification summary for backward compatibility."""
+    verified: bool
+    confidence_delta: float
+    issues_found: List[str]  # Max 3 for readability
+
+
+@dataclass
+class BiasScore:
+    """Score for a specific bias type."""
+    bias_type: str
+    score: float  # 0.0 = no bias, 1.0 = high bias
+    confidence: float
+    evidence: List[str]
+
+
+@dataclass
+class BiasMetrics:
+    """Comprehensive bias detection metrics."""
+    length_bias_score: float
+    position_bias_score: float
+    style_bias_score: float
+    overall_bias_risk: str  # "low", "medium", "high"
+    recommendations: List[str]

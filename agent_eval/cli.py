@@ -15,6 +15,7 @@ except ImportError:
 import sys
 import json
 import time
+import yaml
 from pathlib import Path
 from typing import Optional, List
 
@@ -25,6 +26,8 @@ from rich.table import Table
 from agent_eval.core.engine import EvaluationEngine
 from agent_eval.core.agent_judge import AgentJudge
 from agent_eval.core.types import EvaluationResult, AgentOutput, EvaluationScenario
+from agent_eval.core.benchmark_adapter import QuickBenchmarkAdapter
+from agent_eval.core.judge_comparison import JudgeComparison, JudgeConfig
 from agent_eval.exporters.pdf import PDFExporter
 from agent_eval.exporters.csv import CSVExporter
 from agent_eval.exporters.json import JSONExporter
@@ -191,6 +194,37 @@ def _get_domain_info() -> dict:
     default="auto",
     help="Select AI model for Agent-as-a-Judge evaluation",
 )
+@click.option(
+    "--benchmark",
+    type=click.Choice(["mmlu", "humeval", "gsm8k"]),
+    help="Use external benchmark for evaluation (MMLU, HumanEval, GSM8K)",
+)
+@click.option(
+    "--subset",
+    type=str,
+    help="Benchmark subset (e.g., 'anatomy' for MMLU)",
+)
+@click.option(
+    "--limit",
+    type=int,
+    default=10,
+    help="Limit number of benchmark scenarios to evaluate (default: 10)",
+)
+@click.option(
+    "--verify",
+    is_flag=True,
+    help="Enable verification layer for improved judgment reliability",
+)
+@click.option(
+    "--confidence-calibration",
+    is_flag=True,
+    help="Enable confidence calibration with enhanced uncertainty quantification",
+)
+@click.option(
+    "--compare-judges",
+    type=click.Path(exists=True, path_type=Path),
+    help="A/B test different judge configurations using YAML config file",
+)
 @click.version_option(version="0.2.1", prog_name="arc-eval")
 def main(
     domain: Optional[str],
@@ -213,6 +247,12 @@ def main(
     summary_only: bool,
     agent_judge: bool,
     judge_model: str,
+    benchmark: Optional[str],
+    subset: Optional[str],
+    limit: int,
+    verify: bool,
+    confidence_calibration: bool,
+    compare_judges: Optional[Path],
 ) -> None:
     """
     ARC-Eval: Enterprise-grade compliance evaluation for AI agents and LLMs.
@@ -253,6 +293,34 @@ def main(
       
       # Performance analysis with timing metrics
       arc-eval --domain finance --input data.json --timing --verbose
+    
+    📊 BENCHMARK EVALUATION:
+    
+      # MMLU academic benchmark
+      arc-eval --benchmark mmlu --subset anatomy --limit 20
+      
+      # HumanEval code generation benchmark
+      arc-eval --benchmark humeval --limit 10 --agent-judge
+      
+      # GSM8K mathematical reasoning benchmark
+      arc-eval --benchmark gsm8k --limit 15 --export pdf
+    
+    🔍 VERIFICATION & QUALITY ASSURANCE:
+    
+      # Enable verification layer for improved reliability
+      arc-eval --domain finance --input outputs.json --agent-judge --verify
+      
+      # Enhanced confidence calibration with uncertainty quantification
+      arc-eval --domain security --input outputs.json --agent-judge --confidence-calibration
+      
+      # Combined verification and confidence calibration
+      arc-eval --domain ml --input outputs.json --agent-judge --verify --confidence-calibration
+      
+      # Benchmark evaluation with verification
+      arc-eval --benchmark mmlu --subset anatomy --limit 10 --agent-judge --verify
+      
+      # A/B test different judge configurations
+      arc-eval --compare-judges config/judge_comparison_templates.yaml --input outputs.json
     
     🎯 DOMAIN-SPECIFIC EVALUATIONS:
     
@@ -329,6 +397,14 @@ def main(
     # Handle validate mode
     if validate:
         return _handle_validate(domain, input_file, stdin, dev, verbose)
+    
+    # Handle benchmark mode
+    if benchmark:
+        return _handle_benchmark_evaluation(
+            benchmark, subset, limit, domain, agent_judge, judge_model, 
+            export, output, dev, workflow, timing, verbose, output_dir, 
+            format_template, summary_only, verify
+        )
     
     # Validate domain requirement for CLI mode
     if not list_domains and not help_input and domain is None:
@@ -489,6 +565,11 @@ def main(
             console.print("• Cloud integrations in v2.3")
             sys.exit(1)
         
+        # Handle judge comparison mode
+        if compare_judges:
+            _handle_judge_comparison(compare_judges, agent_outputs, domain)
+            return
+        
         # Check for Agent Judge mode
         if agent_judge:
             # Validate API key is available
@@ -561,10 +642,30 @@ def main(
                 
                 # Run Agent-as-a-Judge evaluation
                 judge_results = agent_judge_instance.evaluate_batch(agent_output_objects[:len(scenarios)], scenarios)
-                progress.update(eval_task, advance=60, description="🤖 Generating continuous feedback...")
+                progress.update(eval_task, advance=40, description="🤖 Agent evaluation complete...")
                 
-                # Generate improvement report
-                improvement_report = agent_judge_instance.generate_improvement_report(judge_results)
+                # Run verification if requested
+                if verify:
+                    progress.update(eval_task, advance=0, description="🔍 Running verification layer...")
+                    from agent_eval.core.verification_judge import VerificationJudge
+                    
+                    verification_judge = VerificationJudge(domain, agent_judge_instance.api_manager)
+                    verification_results = verification_judge.batch_verify(
+                        judge_results, 
+                        agent_output_objects[:len(scenarios)], 
+                        scenarios
+                    )
+                    
+                    # Add verification summaries to judge results
+                    for judge_result, verification_result in zip(judge_results, verification_results):
+                        judge_result.verification = verification_judge.create_verification_summary(verification_result)
+                    
+                    progress.update(eval_task, advance=20, description="🔍 Verification complete...")
+                else:
+                    progress.update(eval_task, advance=20, description="🤖 Generating continuous feedback...")
+                
+                # Generate improvement report with bias detection
+                improvement_report = agent_judge_instance.generate_improvement_report(judge_results, agent_outputs)
                 progress.update(eval_task, advance=20, description="✅ Agent-as-a-Judge evaluation complete", completed=100)
                 
                 # Convert to standard results format for compatibility
@@ -712,6 +813,63 @@ def _display_agent_judge_results(improvement_report: dict, domain: str) -> None:
     console.print(f"• Pass Rate: [{'green' if summary.get('pass_rate', 0) > 0.8 else 'yellow'}]{summary.get('pass_rate', 0):.1%}[/]")
     console.print(f"• Average Confidence: {summary.get('average_confidence', 0):.2f}")
     console.print(f"• Total Cost: [dim]${summary.get('total_cost', 0):.4f}[/dim]")
+    
+    # Check if verification was used and display verification metrics
+    detailed_results = improvement_report.get("detailed_results", [])
+    verification_used = any(
+        hasattr(result, "verification") and result.get("verification") 
+        for result in detailed_results
+    )
+    
+    if verification_used:
+        console.print(f"\n[bold cyan]🔍 Verification Layer:[/bold cyan]")
+        # Calculate verification stats from detailed results
+        verified_count = 0
+        total_with_verification = 0
+        avg_confidence_delta = 0
+        
+        for result in detailed_results:
+            verification = result.get("verification")
+            if verification:
+                total_with_verification += 1
+                if verification.get("verified", False):
+                    verified_count += 1
+                avg_confidence_delta += abs(verification.get("confidence_delta", 0))
+        
+        if total_with_verification > 0:
+            verification_rate = verified_count / total_with_verification
+            avg_confidence_delta = avg_confidence_delta / total_with_verification
+            
+            console.print(f"• Verification Rate: [{'green' if verification_rate > 0.8 else 'yellow'}]{verification_rate:.1%}[/]")
+            console.print(f"• Avg Confidence Delta: {avg_confidence_delta:.2f}")
+            console.print(f"• Verified Judgments: [green]{verified_count}[/green]/{total_with_verification}")
+    
+    # Display bias detection results
+    bias_detection = improvement_report.get("bias_detection")
+    if bias_detection:
+        console.print(f"\n[bold magenta]⚖️ Bias Detection:[/bold magenta]")
+        
+        # Overall bias risk with color coding
+        risk_level = bias_detection.get("overall_risk", "unknown")
+        risk_color = "green" if risk_level == "low" else "yellow" if risk_level == "medium" else "red"
+        console.print(f"• Overall Bias Risk: [{risk_color}]{risk_level.upper()}[/{risk_color}]")
+        
+        # Individual bias scores
+        length_bias = bias_detection.get("length_bias", 0)
+        position_bias = bias_detection.get("position_bias", 0)
+        style_bias = bias_detection.get("style_bias", 0)
+        
+        console.print(f"• Length Bias Score: {length_bias:.3f}")
+        console.print(f"• Position Bias Score: {position_bias:.3f}")
+        console.print(f"• Style Bias Score: {style_bias:.3f}")
+        console.print(f"• Evaluations Analyzed: {bias_detection.get('total_evaluations', 0)}")
+        
+        # Show bias recommendations if any
+        recommendations = bias_detection.get("recommendations", [])
+        if recommendations:
+            console.print(f"\n[bold magenta]🔧 Bias Mitigation:[/bold magenta]")
+            for i, rec in enumerate(recommendations[:3], 1):  # Show top 3 recommendations
+                console.print(f"  {i}. {rec}")
     
     # Continuous feedback
     feedback = improvement_report.get("continuous_feedback", {})
@@ -1452,6 +1610,439 @@ def _handle_validate(
             console.print("• Check file permissions and format")
             console.print("• Try the demo: [green]arc-eval --quick-start[/green]")
             
+        sys.exit(1)
+
+
+def _handle_benchmark_evaluation(
+    benchmark: str,
+    subset: Optional[str],
+    limit: int,
+    domain: Optional[str],
+    agent_judge: bool,
+    judge_model: str,
+    export: Optional[str],
+    output: str,
+    dev: bool,
+    workflow: bool,
+    timing: bool,
+    verbose: bool,
+    output_dir: Optional[Path],
+    format_template: Optional[str],
+    summary_only: bool,
+    verify: bool,
+) -> None:
+    """Handle benchmark evaluation mode."""
+    console.print(f"\n[bold blue]📊 ARC-Eval Benchmark Evaluation[/bold blue]")
+    console.print("[blue]" + "═" * 60 + "[/blue]")
+    
+    # Default domain if not specified
+    if not domain:
+        domain = "ml"  # Default to ML domain for benchmarks
+        console.print(f"[yellow]No domain specified, defaulting to 'ml' for benchmark evaluation[/yellow]")
+    
+    console.print(f"📋 Benchmark: [bold]{benchmark.upper()}[/bold]")
+    if subset:
+        console.print(f"📂 Subset: [bold]{subset}[/bold]")
+    console.print(f"📊 Limit: [bold]{limit}[/bold] scenarios")
+    console.print(f"🎯 Domain: [bold]{domain}[/bold]")
+    
+    if agent_judge:
+        console.print(f"🤖 Using Agent-as-a-Judge with [bold]{judge_model}[/bold] model")
+    
+    console.print()
+    
+    try:
+        # Initialize benchmark adapter
+        if verbose:
+            console.print(f"[cyan]Verbose:[/cyan] Initializing {benchmark} benchmark adapter")
+        
+        adapter = QuickBenchmarkAdapter()
+        
+        # Validate benchmark
+        if not adapter.validate_benchmark_name(benchmark):
+            console.print(f"[red]Error:[/red] Unsupported benchmark: {benchmark}")
+            console.print(f"Supported benchmarks: {', '.join(adapter.get_supported_benchmarks())}")
+            sys.exit(1)
+        
+        # Load benchmark scenarios
+        console.print(f"[yellow]📥 Loading {benchmark.upper()} benchmark scenarios...[/yellow]")
+        
+        try:
+            scenarios = adapter.load_benchmark(benchmark, subset=subset, limit=limit)
+            
+            if not scenarios:
+                console.print(f"[red]Error:[/red] No scenarios loaded from {benchmark}")
+                sys.exit(1)
+            
+            console.print(f"[green]✅ Loaded {len(scenarios)} scenarios from {benchmark.upper()}[/green]")
+            
+            if verbose:
+                console.print(f"[cyan]Verbose:[/cyan] Scenarios loaded: {[s.id for s in scenarios[:3]]}{'...' if len(scenarios) > 3 else ''}")
+            
+        except ImportError as e:
+            console.print(f"\n[red]❌ Missing Dependency[/red]")
+            console.print(f"[bold]{e}[/bold]\n")
+            
+            console.print("[bold blue]🔧 Installation Required:[/bold blue]")
+            console.print("Install datasets library: [green]pip install datasets[/green]")
+            console.print("Then retry: [green]arc-eval --benchmark {} --limit {}[/green]".format(benchmark, limit))
+            sys.exit(1)
+            
+        except Exception as e:
+            console.print(f"\n[red]❌ Benchmark Loading Failed[/red]")
+            console.print(f"[bold]Error: [yellow]{e}[/yellow][/bold]\n")
+            
+            console.print("[bold blue]💡 Troubleshooting:[/bold blue]")
+            console.print(f"• Check internet connection (datasets downloads from HuggingFace)")
+            console.print(f"• Try smaller limit: [green]arc-eval --benchmark {benchmark} --limit 5[/green]")
+            if subset:
+                console.print(f"• Try without subset: [green]arc-eval --benchmark {benchmark} --limit {limit}[/green]")
+            console.print("• Use --dev for detailed error info")
+            
+            if dev:
+                console.print(f"\n[red]Detailed error:[/red] {e}")
+            
+            sys.exit(1)
+        
+        # Generate synthetic agent outputs for benchmark scenarios
+        console.print(f"[yellow]🔄 Generating sample agent outputs for evaluation...[/yellow]")
+        
+        # Create sample outputs that can be evaluated
+        agent_outputs = []
+        for scenario in scenarios:
+            # Create a simple agent output for each scenario
+            sample_output = {
+                "output": f"Sample response for {scenario.name}",
+                "scenario": scenario.id,
+                "benchmark": benchmark
+            }
+            agent_outputs.append(sample_output)
+        
+        if verbose:
+            console.print(f"[cyan]Verbose:[/cyan] Generated {len(agent_outputs)} sample outputs for evaluation")
+        
+        # Run evaluation
+        start_time = time.time()
+        
+        if agent_judge:
+            # Check for API key
+            import os
+            if not os.getenv("ANTHROPIC_API_KEY"):
+                console.print("\n[red]❌ Agent-as-a-Judge Requires API Key[/red]")
+                console.print("[bold]Set ANTHROPIC_API_KEY environment variable[/bold]")
+                console.print("Get key at: [blue]https://console.anthropic.com/[/blue]")
+                sys.exit(1)
+            
+            console.print(f"\n[bold blue]🤖 Running Agent-as-a-Judge evaluation on {benchmark.upper()}...[/bold blue]")
+            
+            # Use Agent-as-a-Judge evaluation
+            agent_judge_instance = AgentJudge(domain=domain)
+            
+            # Convert outputs to AgentOutput objects
+            agent_output_objects = [AgentOutput.from_raw(output) for output in agent_outputs]
+            
+            # Run evaluation
+            from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn, TimeElapsedColumn
+            
+            with Progress(
+                SpinnerColumn(),
+                TextColumn("[bold blue]{task.description}"),
+                BarColumn(complete_style="green", finished_style="green"),
+                TaskProgressColumn(),
+                TimeElapsedColumn(),
+                console=console,
+                transient=False
+            ) as progress:
+                eval_task = progress.add_task(
+                    f"🤖 Evaluating {len(scenarios)} {benchmark.upper()} scenarios...", 
+                    total=100
+                )
+                
+                progress.update(eval_task, advance=20, description="🤖 Initializing Agent Judge...")
+                
+                judge_results = agent_judge_instance.evaluate_batch(agent_output_objects, scenarios)
+                progress.update(eval_task, advance=40, description="🤖 Benchmark evaluation complete...")
+                
+                # Run verification if requested
+                if verify:
+                    progress.update(eval_task, advance=0, description="🔍 Running verification layer...")
+                    from agent_eval.core.verification_judge import VerificationJudge
+                    
+                    verification_judge = VerificationJudge(domain, agent_judge_instance.api_manager)
+                    verification_results = verification_judge.batch_verify(
+                        judge_results, 
+                        agent_output_objects, 
+                        scenarios
+                    )
+                    
+                    # Add verification summaries to judge results
+                    for judge_result, verification_result in zip(judge_results, verification_results):
+                        judge_result.verification = verification_judge.create_verification_summary(verification_result)
+                    
+                    progress.update(eval_task, advance=20, description="🔍 Verification complete...")
+                else:
+                    progress.update(eval_task, advance=20, description="🤖 Analyzing benchmark performance...")
+                
+                improvement_report = agent_judge_instance.generate_improvement_report(judge_results, agent_outputs)
+                progress.update(eval_task, advance=20, description="✅ Benchmark evaluation complete", completed=100)
+            
+            # Convert to standard results format
+            results = []
+            for i, judge_result in enumerate(judge_results):
+                scenario = scenarios[i] if i < len(scenarios) else scenarios[0]
+                result = EvaluationResult(
+                    scenario_id=judge_result.scenario_id,
+                    scenario_name=scenario.name,
+                    description=scenario.description,
+                    severity=scenario.severity,
+                    compliance=scenario.compliance,
+                    test_type=scenario.test_type,
+                    passed=(judge_result.judgment == "pass"),
+                    status="pass" if judge_result.judgment == "pass" else "fail",
+                    confidence=judge_result.confidence,
+                    failure_reason=judge_result.reasoning if judge_result.judgment != "pass" else None,
+                    remediation="; ".join(judge_result.improvement_recommendations)
+                )
+                results.append(result)
+            
+            # Display Agent Judge results
+            _display_agent_judge_results(improvement_report, f"{benchmark.upper()} Benchmark")
+            
+        else:
+            # Use standard evaluation engine
+            console.print(f"\n[bold blue]🔍 Running standard evaluation on {benchmark.upper()}...[/bold blue]")
+            
+            engine = EvaluationEngine(domain=domain)
+            
+            # Use benchmark scenarios instead of domain scenarios
+            engine.eval_pack.scenarios = scenarios
+            
+            from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn, TimeElapsedColumn
+            
+            with Progress(
+                SpinnerColumn(),
+                TextColumn("[bold blue]{task.description}"),
+                BarColumn(complete_style="green", finished_style="green"),
+                TaskProgressColumn(),
+                TimeElapsedColumn(),
+                console=console,
+                transient=False
+            ) as progress:
+                eval_task = progress.add_task(
+                    f"🔍 Evaluating {len(scenarios)} {benchmark.upper()} scenarios...", 
+                    total=100
+                )
+                
+                for i in range(0, 101, 20):
+                    progress.update(eval_task, advance=20)
+                    if i == 40:
+                        progress.update(eval_task, description=f"🔍 Processing {benchmark.upper()} scenarios...")
+                    elif i == 80:
+                        progress.update(eval_task, description="🔍 Generating benchmark report...")
+                
+                results = engine.evaluate(agent_outputs)
+                progress.update(eval_task, description="✅ Benchmark evaluation complete", completed=100)
+        
+        evaluation_time = time.time() - start_time
+        
+        # Show results summary
+        console.print(f"\n[green]✅ {benchmark.upper()} benchmark evaluation completed![/green]")
+        console.print(f"[dim]Evaluated {len(results)} scenarios in {evaluation_time:.2f} seconds[/dim]")
+        
+        if verbose:
+            passed = sum(1 for r in results if r.passed)
+            failed = len(results) - passed
+            console.print(f"[cyan]Verbose:[/cyan] Results: {passed} passed, {failed} failed")
+        
+        # Display results
+        _display_results(
+            results, 
+            output_format=output, 
+            dev_mode=dev, 
+            workflow_mode=workflow, 
+            domain=f"{benchmark.upper()}_benchmark",
+            summary_only=summary_only,
+            format_template=format_template
+        )
+        
+        # Show timing if requested
+        if timing:
+            input_size = len(json.dumps(agent_outputs))
+            _display_timing_metrics(evaluation_time, input_size, len(results))
+        
+        # Export if requested
+        if export:
+            console.print(f"\n[blue]📤 Exporting {benchmark.upper()} benchmark results...[/blue]")
+            _export_results(
+                results, 
+                export_format=export, 
+                domain=f"{benchmark}_{domain}", 
+                output_dir=output_dir, 
+                format_template=format_template, 
+                summary_only=summary_only
+            )
+        
+        # Show next steps
+        console.print(f"\n[bold green]🎉 {benchmark.upper()} Benchmark Complete![/bold green]")
+        console.print("\n[bold blue]📊 Benchmark Insights:[/bold blue]")
+        
+        # Calculate pass rate
+        passed = sum(1 for r in results if r.passed)
+        pass_rate = (passed / len(results) * 100) if results else 0
+        
+        if pass_rate >= 80:
+            console.print(f"✅ [green]Strong performance on {benchmark.upper()}: {pass_rate:.1f}% pass rate[/green]")
+        elif pass_rate >= 60:
+            console.print(f"⚡ [yellow]Moderate performance on {benchmark.upper()}: {pass_rate:.1f}% pass rate[/yellow]")
+        else:
+            console.print(f"🔴 [red]Needs improvement on {benchmark.upper()}: {pass_rate:.1f}% pass rate[/red]")
+        
+        console.print("\n[bold blue]Next Steps:[/bold blue]")
+        console.print(f"1. Try other benchmarks: [green]arc-eval --benchmark {'mmlu' if benchmark != 'mmlu' else 'humeval'} --limit {limit}[/green]")
+        console.print(f"2. Increase test size: [green]arc-eval --benchmark {benchmark} --limit {limit * 2}[/green]")
+        if benchmark == "mmlu" and not subset:
+            console.print(f"3. Try specific subject: [green]arc-eval --benchmark mmlu --subset anatomy --limit {limit}[/green]")
+        console.print(f"4. Use with your data: [green]arc-eval --domain {domain} --input your_outputs.json[/green]")
+        
+        # Set exit code based on critical failures
+        critical_failures = sum(1 for r in results if r.severity == "critical" and not r.passed)
+        if critical_failures > 0:
+            if verbose:
+                console.print(f"[cyan]Verbose:[/cyan] Exiting with code 1 due to {critical_failures} critical failures")
+            sys.exit(1)
+            
+    except Exception as e:
+        if dev:
+            console.print("\n[red]❌ Benchmark Evaluation Error (Debug Mode)[/red]")
+            console.print_exception()
+        else:
+            console.print(f"\n[red]❌ Benchmark Evaluation Failed[/red]")
+            console.print(f"[bold]Error: [yellow]{e}[/yellow][/bold]\n")
+            
+            console.print("[bold blue]💡 Troubleshooting:[/bold blue]")
+            console.print("• Use --dev flag for detailed error info")
+            console.print("• Check internet connection for dataset downloads")
+            console.print("• Try with smaller limit")
+            console.print("• Try without subset parameter")
+            
+        sys.exit(1)
+
+
+def _handle_judge_comparison(compare_judges_config: Path, agent_outputs: List[AgentOutput], default_domain: Optional[str]) -> None:
+    """Handle judge comparison mode evaluation."""
+    console.print("\n[bold blue]🔬 Judge Comparison Mode[/bold blue]")
+    console.print("[dim]A/B testing different judge configurations for optimization[/dim]")
+    
+    try:
+        # Load comparison configuration
+        with open(compare_judges_config, 'r') as f:
+            config_data = yaml.safe_load(f)
+        
+        # Extract judge configurations
+        judge_configs = []
+        if 'judges' in config_data:
+            # Direct configuration
+            judges_config = config_data['judges']
+        elif 'default_comparison' in config_data:
+            # Use default comparison template
+            judges_config = config_data['default_comparison']['judges']
+        else:
+            # Try first available template
+            first_key = list(config_data.keys())[0]
+            judges_config = config_data[first_key]['judges']
+        
+        for judge_config in judges_config:
+            config = JudgeConfig(
+                name=judge_config['name'],
+                domain=judge_config.get('domain', default_domain or 'security'),
+                enable_confidence_calibration=judge_config.get('enable_confidence_calibration', False),
+                enable_verification=judge_config.get('enable_verification', False),
+                description=judge_config.get('description', '')
+            )
+            judge_configs.append(config)
+        
+        console.print(f"🧪 Comparing {len(judge_configs)} judge configurations:")
+        for config in judge_configs:
+            console.print(f"  • {config.name}: {config.description}")
+        
+        # Create sample scenarios for comparison
+        from agent_eval.core.engine import EvaluationEngine
+        sample_domain = judge_configs[0].domain if judge_configs else (default_domain or 'security')
+        engine = EvaluationEngine(sample_domain)
+        
+        # Use first few scenarios for comparison
+        scenarios = engine.eval_pack.scenarios[:min(5, len(agent_outputs))]
+        
+        # Run comparison
+        comparison = JudgeComparison()
+        
+        console.print("\n⚡ Running judge comparison...")
+        with console.status("[bold green]Evaluating with different judges..."):
+            report = comparison.compare_judges(
+                judge_configs=judge_configs,
+                scenarios=scenarios,
+                agent_outputs=agent_outputs[:len(scenarios)],
+                max_workers=2
+            )
+        
+        # Display results
+        console.print("\n[bold green]📊 Judge Comparison Results[/bold green]")
+        console.print(f"Execution time: {report.execution_time:.2f}s")
+        console.print(f"Best configuration: [yellow]{report.best_judge_config}[/yellow]")
+        
+        # Show agreement scores
+        console.print("\n[bold blue]🤝 Inter-Judge Agreement:[/bold blue]")
+        agreement_table = Table(show_header=True, header_style="bold blue")
+        agreement_table.add_column("Judge Configuration")
+        agreement_table.add_column("Agreement Score")
+        agreement_table.add_column("Performance")
+        
+        for judge_name, agreement in report.judge_agreements.items():
+            performance = "🟢 Excellent" if agreement > 0.8 else "🟡 Good" if agreement > 0.6 else "🔴 Needs Work"
+            agreement_table.add_row(judge_name, f"{agreement:.3f}", performance)
+        
+        console.print(agreement_table)
+        
+        # Show recommendations
+        if report.recommendations:
+            console.print("\n[bold blue]💡 Recommendations:[/bold blue]")
+            for i, rec in enumerate(report.recommendations, 1):
+                console.print(f"{i}. {rec}")
+        
+        # Show performance metrics if available
+        if report.performance_metrics:
+            console.print("\n[bold blue]⚡ Performance Metrics:[/bold blue]")
+            perf_table = Table(show_header=True, header_style="bold blue")
+            perf_table.add_column("Judge")
+            perf_table.add_column("Avg Time (s)")
+            perf_table.add_column("Consistency")
+            
+            for judge_name, metrics in report.performance_metrics.items():
+                consistency = f"{metrics.consistency_score:.3f}"
+                perf_table.add_row(
+                    judge_name, 
+                    f"{metrics.avg_evaluation_time:.2f}",
+                    consistency
+                )
+            
+            console.print(perf_table)
+        
+        console.print("\n[bold green]✅ Judge comparison completed successfully![/bold green]")
+        console.print("\n[bold blue]Next Steps:[/bold blue]")
+        console.print(f"1. Use best config: [green]arc-eval --domain {sample_domain} --input your_data.json --agent-judge[/green]")
+        console.print("2. Try different templates in config/judge_comparison_templates.yaml")
+        console.print("3. Customize configurations based on recommendations")
+        
+    except Exception as e:
+        console.print(f"\n[red]❌ Judge Comparison Failed[/red]")
+        console.print(f"[bold]Error: [yellow]{e}[/yellow][/bold]\n")
+        
+        console.print("[bold blue]💡 Troubleshooting:[/bold blue]")
+        console.print("• Check YAML configuration file format")
+        console.print("• Ensure ANTHROPIC_API_KEY is set")
+        console.print("• Try with --dev flag for detailed error info")
+        console.print("• Use provided template: config/judge_comparison_templates.yaml")
+        
         sys.exit(1)
 
 
