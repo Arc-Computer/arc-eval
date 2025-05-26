@@ -100,10 +100,15 @@ class MMLUAdapter:
                 choice_labels = ["A", "B", "C", "D"]
                 choice_text = "\n".join([f"{choice_labels[j]}: {choice}" for j, choice in enumerate(choices[:4])])
             
-            # Determine correct choice letter
+            # Determine correct choice letter - handle both int indices and string answers
             correct_choice = "A"
             if isinstance(correct_answer, int) and 0 <= correct_answer < len(choices):
                 correct_choice = ["A", "B", "C", "D"][correct_answer]
+            elif isinstance(correct_answer, str) and correct_answer.upper() in ["A", "B", "C", "D"]:
+                correct_choice = correct_answer.upper()
+            else:
+                # Log unexpected answer format but continue with default
+                logger.warning(f"Unexpected answer format: {correct_answer}, using 'A' as default")
             
             scenario = EvaluationScenario(
                 id=f"mmlu_{subset}_{i}",

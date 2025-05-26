@@ -4,7 +4,7 @@
 # Default comparison: Standard vs Enhanced
 default_comparison:
   judges:
-    - name: "standard_security"
+    - name: "security_standard"
       domain: "security"
       enable_confidence_calibration: false
       enable_verification: false

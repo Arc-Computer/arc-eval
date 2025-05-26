@@ -9,7 +9,7 @@ from typing import Dict, List, Optional, Any
 from dataclasses import dataclass
 from datetime import datetime
 
-from agent_eval.core.types import AgentOutput, EvaluationScenario
+from agent_eval.core.types import AgentOutput, EvaluationScenario, VerificationSummary
 from agent_eval.core.agent_judge import JudgmentResult, APIManager, _parse_json_response
 
 
@@ -29,13 +29,6 @@ class VerificationResult:
     verification_time: float
     model_used: str
 
-
-@dataclass
-class VerificationSummary:
-    """Simple verification summary for backward compatibility."""
-    verified: bool
-    confidence_delta: float
-    issues_found: List[str]  # Max 3 for readability
 
 
 class VerificationJudge:
