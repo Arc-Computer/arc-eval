@@ -190,9 +190,9 @@ def _get_domain_info() -> dict:
 )
 @click.option(
     "--judge-model",
-    type=click.Choice(["claude-4-sonnet", "claude-3-5-haiku", "auto"]),
+    type=click.Choice(["claude-sonnet-4-20250514", "claude-3-5-haiku-latest", "auto"]),
     default="auto",
-    help="Select AI model: claude-4-sonnet (primary), claude-3-5-haiku (cost-optimized), auto (smart selection)",
+    help="Select AI model: claude-sonnet-4-20250514 (primary), claude-3-5-haiku-latest (cost-optimized), auto (smart selection)",
 )
 @click.option(
     "--benchmark",
@@ -665,7 +665,7 @@ def main(
                     progress.update(eval_task, advance=20, description="🤖 Generating continuous feedback...")
                 
                 # Generate improvement report with bias detection
-                improvement_report = agent_judge_instance.generate_improvement_report(judge_results, agent_outputs)
+                improvement_report = agent_judge_instance.generate_improvement_report(judge_results, agent_output_objects[:len(judge_results)])
                 progress.update(eval_task, advance=20, description="✅ Agent-as-a-Judge evaluation complete", completed=100)
                 
                 # Convert to standard results format for compatibility
@@ -1783,7 +1783,7 @@ def _handle_benchmark_evaluation(
                 else:
                     progress.update(eval_task, advance=20, description="🤖 Analyzing benchmark performance...")
                 
-                improvement_report = agent_judge_instance.generate_improvement_report(judge_results, agent_outputs)
+                improvement_report = agent_judge_instance.generate_improvement_report(judge_results, agent_output_objects[:len(judge_results)])
                 progress.update(eval_task, advance=20, description="✅ Benchmark evaluation complete", completed=100)
             
             # Convert to standard results format
