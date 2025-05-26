@@ -1,4 +1,4 @@
-# ARC-Eval: Agent-as-a-Judge Evaluation Platform
+# ARC-Eval: Domain-Specific Agent Evaluation
 
 [![PyPI version](https://badge.fury.io/py/arc-eval.svg)](https://badge.fury.io/py/arc-eval)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -9,9 +9,13 @@
   <p><em>Agent-as-a-Judge evaluation with domain-specific compliance assessment and improvement recommendations</em></p>
 </div>
 
-**Domain-specific agent evaluation using the Agent-as-a-Judge framework from [MetaAuto AI](https://github.com/metauto-ai/agent-as-a-judge) ([arXiv:2410.10934v2](https://arxiv.org/abs/2410.10934v2))**
+**ARC-Eval is a domain-specific agent evaluation tool that runs over 345 targeted scenarios across security, finance, and ML infrastructure, using a single specialist LLM per domain as a judge to assess outputs for compliance, reliability, and failure modes.**
 
-Evaluate agent performance across 345 scenarios in Finance, Security, and ML domains. Generate compliance reports and continuous improvement feedback using specialized domain judges.
+As AI agents are deployed in critical production systems, teams lack rigorous, domain-aligned, and explainable evaluation frameworks to surface compliance gaps, security risks, and operational errors—especially at the depth demanded by regulated industries and research.
+
+Instead of relying on generic LLM-as-a-judge scoring or crowd-sourced prompts, ARC-Eval offers deep, enterprise-mapped scenario packs with outputs reviewed by a dedicated domain expert agent (SecurityJudge, FinanceJudge, MLJudge). This enables actionable, fine-grained feedback and concrete remediation, not just pass/fail scores.
+
+**Built on the Agent-as-a-Judge framework from [MetaAuto AI](https://github.com/metauto-ai/agent-as-a-judge) ([arXiv:2410.10934v2](https://arxiv.org/abs/2410.10934v2))**
 
 ## Quick Start
 
@@ -105,7 +109,9 @@ arc-eval --domain finance --input $CI_ARTIFACTS/logs.json --agent-judge
 if [ $? -ne 0 ]; then exit 1; fi
 ```
 
-### Research & Production Features
+### Continuous Improvement Pipeline
+ARC-Eval builds toward turning evaluation outcomes into agent retraining and RL environments, enabling agents to improve iteratively based on real-world, regulatory-grade benchmarks:
+
 - **345 Evaluation Scenarios**: Finance (110) • Security (120) • ML (107)
 - **Domain-Specific Judges**: SecurityJudge, FinanceJudge, MLJudge with specialized knowledge
 - **Self-Improvement Engine**: Training data generation and retraining triggers from evaluation feedback
