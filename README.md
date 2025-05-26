@@ -38,7 +38,7 @@ Traditional compliance tools give you pass/fail results. **Agent-as-a-Judge give
 
 ### ⚡ How It Works
 ```
-Your Agent Output → AI Judge → Compliance Score + Improvement Plan + Training Signals
+Your Agent Output → AI Judge → Compliance Score + Improvement Plan + Training Signals → Self-Improvement Loop
 ```
 
 **Domains**: Finance (SOX, KYC, AML) • Security (OWASP, MITRE) • ML (MLOps, EU AI Act)
@@ -99,6 +99,7 @@ if [ $? -ne 0 ]; then exit 1; fi
 ### Enterprise Features
 - **345 Enterprise Scenarios**: Finance (110) • Security (120) • ML (107)
 - **AI Judge Framework**: SecurityJudge, FinanceJudge, MLJudge with continuous feedback
+- **Self-Improvement Engine**: Automatic training data generation and retraining triggers from evaluation feedback
 - **CISO-Ready Reports**: Executive dashboards with compliance framework mapping
 - **Cost Optimization**: Smart model selection (Claude Sonnet ↔ Haiku)
 - **Production Templates**: GitHub Actions, input formats, enterprise onboarding
