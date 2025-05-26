@@ -190,9 +190,9 @@ def _get_domain_info() -> dict:
 )
 @click.option(
     "--judge-model",
-    type=click.Choice(["claude-4-sonnet", "claude-3.5-haiku", "auto"]),
+    type=click.Choice(["claude-4-sonnet", "claude-3-5-haiku", "auto"]),
     default="auto",
-    help="Select AI model for Agent-as-a-Judge evaluation",
+    help="Select AI model: claude-4-sonnet (primary), claude-3-5-haiku (cost-optimized), auto (smart selection)",
 )
 @click.option(
     "--benchmark",
@@ -611,8 +611,8 @@ def main(
         scenario_count = len(engine.eval_pack.scenarios) if hasattr(engine.eval_pack, 'scenarios') else 15
         
         if agent_judge:
-            # Use Agent-as-a-Judge evaluation
-            agent_judge_instance = AgentJudge(domain=domain)
+            # Use Agent-as-a-Judge evaluation with model preference
+            agent_judge_instance = AgentJudge(domain=domain, preferred_model=judge_model)
             
             with Progress(
                 SpinnerColumn(),

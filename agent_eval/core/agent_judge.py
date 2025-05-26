@@ -164,9 +164,20 @@ class ContinuousFeedback:
 class APIManager:
     """Enterprise API management with cost tracking and fallback."""
     
-    def __init__(self):
-        self.primary_model = "claude-3-5-sonnet-20241022"  # Primary model
-        self.fallback_model = "claude-3-haiku-20240307"    # Cost-effective fallback
+    def __init__(self, preferred_model: str = "auto"):
+        # Model configuration with Claude 4 Sonnet as primary
+        self.primary_model = "claude-4-sonnet"  # Primary model
+        self.fallback_model = "claude-3-5-haiku"    # Cost-effective fallback
+        
+        # Handle user model preference
+        if preferred_model == "auto":
+            self.preferred_model = self.primary_model
+        elif preferred_model in ["claude-4-sonnet", "claude-3-5-haiku"]:
+            self.preferred_model = preferred_model
+        else:
+            logger.warning(f"Unknown model {preferred_model}, using auto selection")
+            self.preferred_model = self.primary_model
+        
         self.api_key = os.getenv("ANTHROPIC_API_KEY")
         self.cost_threshold = float(os.getenv("AGENT_EVAL_COST_THRESHOLD", "10.0"))  # $10 default
         self.total_cost = 0.0
@@ -183,13 +194,20 @@ class APIManager:
         
         client = anthropic.Anthropic(api_key=self.api_key)
         
-        # Use fallback if cost threshold exceeded or explicitly requested
-        if self.total_cost > self.cost_threshold or not prefer_primary:
+        # Use user's preferred model if specified, otherwise smart selection
+        if self.preferred_model == "claude-3-5-haiku":
+            # User explicitly wants Haiku (cost optimization)
+            logger.info(f"Using user-preferred model {self.preferred_model}")
+            return client, self.preferred_model
+        elif self.total_cost > self.cost_threshold or not prefer_primary:
+            # Auto fallback due to cost threshold
             logger.info(f"Using fallback model {self.fallback_model} (cost: ${self.total_cost:.2f})")
             return client, self.fallback_model
         else:
-            logger.info(f"Using primary model {self.primary_model}")
-            return client, self.primary_model
+            # Use primary (Claude 4 Sonnet) or user preference
+            model_to_use = self.preferred_model if self.preferred_model != "auto" else self.primary_model
+            logger.info(f"Using primary model {model_to_use}")
+            return client, model_to_use
     
     def track_cost(self, input_tokens: int, output_tokens: int, model: str):
         """Track API costs for enterprise cost management."""
@@ -902,10 +920,10 @@ Focus on providing actionable improvement recommendations that help the agent le
 class AgentJudge:
     """Main Agent-as-a-Judge evaluation framework."""
     
-    def __init__(self, domain: str, enable_confidence_calibration: bool = False):
+    def __init__(self, domain: str, enable_confidence_calibration: bool = False, preferred_model: str = "auto"):
         """Initialize Agent Judge for specific domain."""
         self.domain = domain
-        self.api_manager = APIManager()
+        self.api_manager = APIManager(preferred_model=preferred_model)
         self.enable_confidence_calibration = enable_confidence_calibration
         
         # Initialize domain-specific judge
