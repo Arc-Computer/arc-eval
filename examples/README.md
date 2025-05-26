@@ -51,7 +51,34 @@ arc-eval --domain ml --input examples/agent-outputs/enhanced_ml_traces.json --ag
 cat examples/agent-outputs/sample_enhanced_trace.json
 ```
 
-### 3. Enterprise Evaluation with AI Feedback
+### 3. Academic Benchmark Evaluation
+```bash
+# MMLU academic knowledge testing
+arc-eval --benchmark mmlu --subset anatomy --limit 10 --agent-judge
+
+# HumanEval code generation benchmark
+arc-eval --benchmark humeval --limit 5 --agent-judge
+
+# GSM8K mathematical reasoning
+arc-eval --benchmark gsm8k --limit 8 --agent-judge
+```
+
+### 4. Advanced Judge Features (Week 0)
+```bash
+# Enhanced reliability with verification layer
+arc-eval --domain finance --input examples/agent-outputs/enhanced_finance_traces.json --agent-judge --verify
+
+# Confidence calibration for uncertainty quantification
+arc-eval --domain security --input examples/agent-outputs/enhanced_security_traces.json --agent-judge --confidence-calibration
+
+# A/B test different judge configurations
+arc-eval --compare-judges config/judge_comparison_templates.yaml --domain finance --input examples/agent-outputs/enhanced_finance_traces.json
+
+# Combined advanced features
+arc-eval --domain ml --input examples/agent-outputs/enhanced_ml_traces.json --agent-judge --verify --confidence-calibration
+```
+
+### 5. Enterprise Evaluation with AI Feedback
 ```bash
 # Cost-optimized evaluation with Haiku model
 arc-eval --domain security --input examples/agent-outputs/enhanced_security_traces.json --agent-judge --judge-model claude-3-5-haiku
@@ -60,7 +87,7 @@ arc-eval --domain security --input examples/agent-outputs/enhanced_security_trac
 arc-eval --domain ml --input examples/agent-outputs/enhanced_ml_traces.json --agent-judge --export pdf
 ```
 
-### 4. Traditional Evaluation (without Agent-as-a-Judge)
+### 6. Traditional Evaluation (without Agent-as-a-Judge)
 ```bash
 # Finance compliance (110 scenarios)
 arc-eval --domain finance --input examples/agent-outputs/complete_finance_outputs.json
@@ -72,7 +99,7 @@ arc-eval --domain security --input examples/agent-outputs/complete_security_outp
 arc-eval --domain ml --input examples/agent-outputs/complete_ml_outputs.json
 ```
 
-### 5. Agent-as-a-Judge with Piped Input
+### 7. Agent-as-a-Judge with Piped Input
 ```bash
 # Real-time evaluation with AI feedback
 echo '{"output": "Transaction approved without KYC verification"}' | arc-eval --domain finance --stdin --agent-judge
@@ -118,6 +145,12 @@ Our agent outputs include enterprise-grade tracing with step-by-step execution d
 ```bash
 # Test your agent outputs with AI-powered feedback
 arc-eval --domain finance --input your_outputs.json --agent-judge --dev --verbose
+
+# Academic benchmark validation
+arc-eval --benchmark mmlu --subset computer_science --limit 15 --agent-judge --dev
+
+# Enhanced reliability testing with verification
+arc-eval --domain security --input your_outputs.json --agent-judge --verify --dev
 
 # Compare traditional vs Agent-as-a-Judge evaluation
 arc-eval --domain security --input examples/agent-outputs/complete_security_outputs.json  # Traditional
