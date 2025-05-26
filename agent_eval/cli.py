@@ -36,6 +36,11 @@ from agent_eval.exporters.json import JSONExporter
 console = Console()
 
 
+def failed_scenarios_exist(results: List[EvaluationResult]) -> bool:
+    """Check if any scenarios failed."""
+    return any(not r.passed for r in results)
+
+
 def _get_domain_info() -> dict:
     """Get centralized domain information to avoid duplication."""
     return {
@@ -1314,26 +1319,49 @@ def _handle_quick_start(
     format_template: Optional[str] = None,
     summary_only: bool = False
 ) -> None:
-    """Handle quick-start mode with built-in sample data."""
-    console.print("\n[bold blue]🚀 ARC-Eval Quick Start Demo[/bold blue]")
-    console.print("[blue]" + "═" * 50 + "[/blue]")
+    """Handle enhanced quick-start mode with interactive features."""
     
-    # Default to finance domain if not specified
-    demo_domain = domain or "finance"
+    # Import our new interactive modules
+    from agent_eval.core.interactive_menu import InteractiveMenu
+    from agent_eval.core.streaming_evaluator import StreamingEvaluator
+    from agent_eval.core.next_steps_guide import NextStepsGuide
     
-    # Sample data for each domain
+    # Step 1: Interactive domain selection (if not specified)
+    if not domain:
+        menu = InteractiveMenu()
+        demo_domain = menu.domain_selection_menu()
+        
+        # Step 2: Get user context for personalization
+        user_context = menu.get_user_context(demo_domain)
+    else:
+        demo_domain = domain
+        # Create minimal user context for specified domain
+        user_context = {
+            "domain": demo_domain,
+            "role": "user", 
+            "experience": "intermediate",
+            "goal": "compliance_audit"
+        }
+    
+    console.print(f"\n[bold blue]🚀 ARC-Eval Streaming Demo - {demo_domain.title()} Domain[/bold blue]")
+    console.print("[blue]" + "═" * 70 + "[/blue]")
+    
+    # Use existing complete sample data files
     sample_data = {
         "finance": {
-            "file": "examples/agent-outputs/sample_agent_outputs.json",
-            "description": "Financial compliance scenarios including KYC, AML, and SOX violations"
+            "file": "examples/agent-outputs/complete_finance_outputs.json",
+            "description": "110 comprehensive financial compliance scenarios including SOX, KYC, AML violations",
+            "scenarios_count": 110
         },
         "security": {
-            "file": "examples/agent-outputs/security_test_outputs.json", 
-            "description": "Cybersecurity scenarios including prompt injection and data leakage"
+            "file": "examples/agent-outputs/complete_security_outputs.json", 
+            "description": "120 cybersecurity scenarios including prompt injection, data leakage, AI safety",
+            "scenarios_count": 120
         },
         "ml": {
-            "file": "examples/agent-outputs/ml_test_outputs.json",
-            "description": "ML safety scenarios including bias detection and model governance"
+            "file": "examples/agent-outputs/complete_ml_outputs.json",
+            "description": "107 ML safety scenarios including bias detection, model governance, ethics",
+            "scenarios_count": 107
         }
     }
     
@@ -1345,18 +1373,23 @@ def _handle_quick_start(
     demo_info = sample_data[demo_domain]
     sample_file = Path(__file__).parent.parent / demo_info["file"]
     
-    console.print(f"📋 Demo Domain: [bold]{demo_domain.title()}[/bold]")
-    console.print(f"📄 Demo Description: {demo_info['description']}")
-    console.print(f"📁 Sample Data: [dim]{demo_info['file']}[/dim]")
+    # Show personalized demo intro
+    console.print(f"📋 [bold]{demo_domain.title()} Compliance Evaluation[/bold]")
+    console.print(f"📄 {demo_info['description']}")
+    console.print(f"📊 Evaluating [bold]{demo_info['scenarios_count']} scenarios[/bold] with real-time streaming")
+    
+    # Show personalized context if available
+    if user_context.get("role") != "user":
+        role_display = user_context.get("role", "").replace("_", " ").title()
+        goal_display = user_context.get("goal", "").replace("_", " ").title()
+        console.print(f"👤 Customized for: [bold]{role_display}[/bold] | Goal: [bold]{goal_display}[/bold]")
+    
     console.print()
     
     if not sample_file.exists():
         console.print(f"[red]Error:[/red] Sample file not found: {sample_file}")
         console.print("Please ensure the examples directory is present")
         sys.exit(1)
-    
-    console.print("[yellow]⚡ Running demo evaluation...[/yellow]")
-    console.print()
     
     try:
         # Import validation utilities
@@ -1373,56 +1406,32 @@ def _handle_quick_start(
         
         # Initialize evaluation engine
         if verbose:
-            console.print(f"[cyan]Verbose:[/cyan] Initializing demo evaluation for {demo_domain}")
+            console.print(f"[cyan]Verbose:[/cyan] Initializing streaming evaluation for {demo_domain}")
             
         engine = EvaluationEngine(domain=demo_domain)
         
         if dev:
             console.print(f"[blue]Debug:[/blue] Demo using {len(agent_outputs) if isinstance(agent_outputs, list) else 1} sample outputs")
         
-        # Run evaluation with timing
+        # Step 3: Run streaming evaluation with real-time updates
         start_time = time.time()
         
-        # Enhanced progress for demo
-        from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn, TimeElapsedColumn
+        console.print("[bold yellow]🚀 Starting Real-Time Evaluation Stream...[/bold yellow]")
+        console.print("[dim]Watch as each scenario is evaluated live with instant results[/dim]\n")
         
-        scenario_count = len(engine.eval_pack.scenarios) if hasattr(engine.eval_pack, 'scenarios') else 15
-        
-        with Progress(
-            SpinnerColumn(),
-            TextColumn("[bold blue]{task.description}"),
-            BarColumn(complete_style="green", finished_style="green"),
-            TaskProgressColumn(),
-            TimeElapsedColumn(),
-            console=console,
-            transient=False
-        ) as progress:
-            eval_task = progress.add_task(
-                f"🎯 Demo: Evaluating {scenario_count} {demo_domain} scenarios...", 
-                total=100
-            )
-            
-            # Simulate realistic progress for demo
-            import time as time_module
-            for i in range(0, 101, 20):
-                progress.update(eval_task, advance=20)
-                time_module.sleep(0.1)  # Small delay for demo effect
-                if i == 40:
-                    progress.update(eval_task, description="🔍 Demo: Analyzing compliance violations...")
-                elif i == 80:
-                    progress.update(eval_task, description="📊 Demo: Generating executive summary...")
-            
-            results = engine.evaluate(agent_outputs)
-            progress.update(eval_task, description="✅ Demo evaluation complete", completed=100)
+        # Use our new streaming evaluator
+        streaming_evaluator = StreamingEvaluator(engine, user_context)
+        results = streaming_evaluator.stream_evaluation(agent_outputs)
         
         evaluation_time = time.time() - start_time
         
-        # Show demo completion
-        console.print(f"\n[green]✅ Demo completed successfully![/green]")
-        console.print(f"[dim]Demo processed {len(results)} scenarios in {evaluation_time:.2f} seconds[/dim]")
+        # Show streaming completion summary
+        console.print(f"\n[green]✅ Streaming evaluation completed![/green]")
+        console.print(f"[dim]Processed {len(results)} scenarios in {evaluation_time:.2f} seconds with live updates[/dim]")
         
-        # Display results using existing function
-        _display_results(results, output_format=output, dev_mode=dev, workflow_mode=workflow, domain=demo_domain, summary_only=summary_only, format_template=format_template)
+        # Display results using existing function (but don't show redundant summary since streaming already showed it)
+        if not summary_only and (dev or failed_scenarios_exist(results)):
+            _display_results(results, output_format=output, dev_mode=dev, workflow_mode=workflow, domain=demo_domain, summary_only=True, format_template=format_template)
         
         # Show timing if requested
         if timing:
@@ -1434,13 +1443,20 @@ def _handle_quick_start(
             console.print(f"\n[blue]📤 Generating demo {export.upper()} export...[/blue]")
             _export_results(results, export_format=export, domain=demo_domain, output_dir=output_dir, format_template=format_template, summary_only=summary_only)
         
-        # Show next steps
-        console.print(f"\n[bold green]🎉 Quick Start Demo Complete![/bold green]")
-        console.print("\n[bold blue]Next Steps:[/bold blue]")
-        console.print(f"1. Try with your own data: [dim]arc-eval --domain {demo_domain} --input your_file.json[/dim]")
-        console.print(f"2. Explore other domains: [dim]arc-eval --list-domains[/dim]")
-        console.print(f"3. Generate audit reports: [dim]arc-eval --domain {demo_domain} --input your_file.json --export pdf --workflow[/dim]")
-        console.print(f"4. Learn more: [dim]arc-eval --help-input[/dim]")
+        # Step 4: Show personalized next steps guide
+        next_steps_guide = NextStepsGuide()
+        next_steps_guide.generate_personalized_guide(user_context, results)
+        
+        # Show copy-paste ready commands
+        console.print("\n[bold blue]📋 Ready-to-Use Commands[/bold blue]")
+        console.print("[dim]Copy and paste these commands to continue your evaluation journey[/dim]\n")
+        
+        commands = next_steps_guide.generate_copy_paste_commands(user_context)
+        for command in commands:
+            if command.startswith("#"):
+                console.print(f"[dim]{command}[/dim]")
+            else:
+                console.print(f"[green]{command}[/green]")
         
         # Set exit code based on critical failures for demo
         critical_failures = sum(1 for r in results if r.severity == "critical" and not r.passed)

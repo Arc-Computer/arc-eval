@@ -74,6 +74,8 @@ DX.md
 .cursor/
 CLAUDE_TASK_DELEGATION.md
 COMPOUND_JUDGE_ROADMAP.md
+roadmap.md
+tasks.md
 
 # API keys
 .env
