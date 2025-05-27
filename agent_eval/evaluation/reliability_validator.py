@@ -210,7 +210,6 @@ class ReliabilityValidator:
                 # Convert Python dict syntax to JSON syntax for pattern matching
                 if output_str.startswith("{") and "'" in output_str:
                     # More robust conversion from Python dict to JSON format
-                    import re
                     # Replace single quotes with double quotes, being careful about nested quotes
                     output_str = re.sub(r"'([^']*)':", r'"\1":', output_str)  # Keys
                     output_str = re.sub(r":\s*'([^']*)'(?=\s*[,}\]])", r': "\1"', output_str)  # String values followed by delimiter
