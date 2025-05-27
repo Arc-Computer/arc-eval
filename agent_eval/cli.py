@@ -1116,10 +1116,6 @@ def _display_agent_judge_results(improvement_report: dict, domain: str, performa
         for strength in feedback["strengths"]:
             console.print(f"  ✅ {strength}")
     
-    if feedback.get("improvement_recommendations"):
-        console.print(f"\n[bold blue]🎯 Top Improvement Recommendations:[/bold blue]")
-        for i, rec in enumerate(feedback["improvement_recommendations"][:3], 1):
-            console.print(f"  {i}. {rec}")
     
     if feedback.get("training_suggestions"):
         console.print(f"\n[bold purple]📚 Training Suggestions:[/bold purple]")
@@ -1210,7 +1206,9 @@ def _display_results(
                 from agent_eval.analysis.interactive_analyst import InteractiveAnalyst
                 
                 # Check if we can run interactive mode
-                if not no_interaction and sys.stdin.isatty() and os.getenv("ANTHROPIC_API_KEY"):
+                # Enable interactive mode unless explicitly disabled or no API key
+                can_interact = not no_interaction and os.getenv("ANTHROPIC_API_KEY")
+                if can_interact:
                     analyst = InteractiveAnalyst(
                         improvement_report=improvement_report,
                         judge_results=improvement_report.get("detailed_results", []),
@@ -1445,22 +1443,13 @@ def _display_table_results(results: list[EvaluationResult], dev_mode: bool, work
         
         console.print(table)
     
-    # Recommendations
-    failed_results = [r for r in results if not r.passed]
-    if failed_results:
-        console.print("\n[bold]Recommendations[/bold]", style="blue")
-        for i, result in enumerate(failed_results[:5], 1):  # Show top 5
-            if result.remediation:
-                console.print(f"{i}. {result.remediation}")
-        
-        if len(failed_results) > 5:
-            console.print(f"... and {len(failed_results) - 5} more recommendations")
     
     # Risk assessment for workflow mode
     if workflow_mode and critical_failures > 0:
         console.print("\n[bold red]Risk Assessment[/bold red]")
         console.print("🔴 Critical compliance violations detected")
         
+        failed_results = [r for r in results if not r.passed]
         compliance_frameworks = set()
         for result in failed_results:
             compliance_frameworks.update(result.compliance)
