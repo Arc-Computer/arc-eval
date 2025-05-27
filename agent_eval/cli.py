@@ -29,6 +29,7 @@ from agent_eval.core.types import EvaluationResult, AgentOutput, EvaluationScena
 from agent_eval.evaluation.agent_judge import AgentJudge
 from agent_eval.benchmarks.adapter import QuickBenchmarkAdapter
 from agent_eval.analysis.judge_comparison import JudgeComparison, JudgeConfig
+from agent_eval.analysis.self_improvement import SelfImprovementEngine
 from agent_eval.exporters.pdf import PDFExporter
 from agent_eval.exporters.csv import CSVExporter
 from agent_eval.exporters.json import JSONExporter
@@ -714,6 +715,46 @@ def main(
                 
                 # Generate improvement report with bias detection
                 improvement_report = agent_judge_instance.generate_improvement_report(judge_results, agent_output_objects[:len(judge_results)])
+                
+                # Record evaluation results in self-improvement engine for training data generation
+                try:
+                    self_improvement_engine = SelfImprovementEngine()
+                    
+                    # Convert judge results to self-improvement format
+                    eval_results_for_training = []
+                    for judge_result in judge_results:
+                        eval_result = {
+                            'scenario_id': judge_result.scenario_id,
+                            'reward_signals': judge_result.reward_signals,
+                            'improvement_recommendations': judge_result.improvement_recommendations,
+                            'compliance_gaps': improvement_report.get('continuous_feedback', {}).get('compliance_gaps', []),
+                            'performance_metrics': {
+                                'confidence': judge_result.confidence,
+                                'evaluation_time': judge_result.evaluation_time,
+                                'model_used': judge_result.model_used
+                            },
+                            'category': 'agent_judge_evaluation',
+                            'severity': 'high' if judge_result.judgment == 'fail' else 'low',
+                            'agent_output': judge_result.reasoning
+                        }
+                        eval_results_for_training.append(eval_result)
+                    
+                    # Record in self-improvement engine
+                    agent_id = f"agent_{domain}_{int(time.time())}"  # Generate unique agent ID
+                    self_improvement_engine.record_evaluation_result(
+                        agent_id=agent_id,
+                        domain=domain,
+                        evaluation_results=eval_results_for_training
+                    )
+                    
+                    if verbose:
+                        console.print(f"[dim]✅ Recorded {len(eval_results_for_training)} evaluation results for future training data generation[/dim]")
+                        
+                except Exception as e:
+                    logger.warning(f"Failed to record results in self-improvement engine: {e}")
+                    if verbose:
+                        console.print(f"[dim yellow]⚠️  Self-improvement recording failed: {e}[/dim yellow]")
+                
                 progress.update(eval_task, advance=20, description="✅ Agent-as-a-Judge evaluation complete", completed=100)
                 
                 # Convert to standard results format for compatibility
