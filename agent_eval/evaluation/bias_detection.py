@@ -5,7 +5,7 @@ import re
 from typing import List, Dict, Any, Optional
 from dataclasses import dataclass
 
-from agent_eval.core.agent_judge import JudgmentResult
+from agent_eval.evaluation.agent_judge import JudgmentResult
 from agent_eval.core.types import BiasMetrics
 import logging
 

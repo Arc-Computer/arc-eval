@@ -23,6 +23,10 @@ class JSONExporter:
             format_template: Template for data formatting (executive, technical, compliance, minimal)
             summary_only: Export summary data only
         """
+        # Handle None or invalid results gracefully
+        if results is None:
+            results = []
+            
         export_data = [r.to_dict() for r in results]
         
         if summary_only:

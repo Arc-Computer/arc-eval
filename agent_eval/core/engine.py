@@ -13,7 +13,7 @@ from agent_eval.core.types import (
     AgentOutput,
     EvaluationSummary
 )
-from agent_eval.core.validators import DomainValidator
+from agent_eval.evaluation.validators import DomainValidator
 
 
 class EvaluationEngine:
@@ -53,12 +53,13 @@ class EvaluationEngine:
         
         return EvaluationPack.from_dict(data)
     
-    def evaluate(self, agent_outputs: Union[str, Dict[str, Any], List[Any]]) -> List[EvaluationResult]:
+    def evaluate(self, agent_outputs: Union[str, Dict[str, Any], List[Any]], scenarios: Optional[List[EvaluationScenario]] = None) -> List[EvaluationResult]:
         """
-        Evaluate agent outputs against all scenarios in the pack.
+        Evaluate agent outputs against scenarios.
         
         Args:
             agent_outputs: Raw agent outputs to evaluate
+            scenarios: Optional list of specific scenarios to evaluate. If None, evaluates all scenarios in the pack.
             
         Returns:
             List of evaluation results
@@ -67,9 +68,12 @@ class EvaluationEngine:
         if not isinstance(agent_outputs, list):
             agent_outputs = [agent_outputs]
         
+        # Use provided scenarios or all scenarios from the pack
+        scenarios_to_evaluate = scenarios if scenarios is not None else self.eval_pack.scenarios
+        
         results = []
         
-        for scenario in self.eval_pack.scenarios:
+        for scenario in scenarios_to_evaluate:
             # For MVP, evaluate each scenario against all outputs
             # In practice, you might want to match scenarios to specific outputs
             scenario_result = self._evaluate_scenario(scenario, agent_outputs)

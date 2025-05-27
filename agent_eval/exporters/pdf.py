@@ -149,6 +149,9 @@ class PDFExporter:
             format_template: Template for report formatting (executive, technical, compliance, minimal)
             summary_only: Generate executive summary only
         """
+        # Handle None or invalid results gracefully
+        if results is None:
+            results = []
         doc = SimpleDocTemplate(
             filename,
             pagesize=letter,

@@ -16,6 +16,7 @@ import sys
 import json
 import time
 import yaml
+import logging
 from pathlib import Path
 from typing import Optional, List
 
@@ -24,16 +25,37 @@ from rich.console import Console
 from rich.table import Table
 
 from agent_eval.core.engine import EvaluationEngine
-from agent_eval.core.agent_judge import AgentJudge
 from agent_eval.core.types import EvaluationResult, AgentOutput, EvaluationScenario
-from agent_eval.core.benchmark_adapter import QuickBenchmarkAdapter
-from agent_eval.core.judge_comparison import JudgeComparison, JudgeConfig
+from agent_eval.evaluation.agent_judge import AgentJudge
+from agent_eval.benchmarks.adapter import QuickBenchmarkAdapter
+from agent_eval.analysis.judge_comparison import JudgeComparison, JudgeConfig
+from agent_eval.analysis.self_improvement import SelfImprovementEngine
 from agent_eval.exporters.pdf import PDFExporter
 from agent_eval.exporters.csv import CSVExporter
 from agent_eval.exporters.json import JSONExporter
 
+logger = logging.getLogger(__name__)
+
 
 console = Console()
+
+
+def failed_scenarios_exist(results: List[EvaluationResult]) -> bool:
+    """Check if any scenarios failed."""
+    return any(not r.passed for r in results)
+
+
+def _find_best_matching_output(scenario: EvaluationScenario, agent_output_objects: List[AgentOutput]) -> Optional[AgentOutput]:
+    """Find the best matching output for a scenario, or return the first available output."""
+    # Look for exact scenario_id match first
+    for output in agent_output_objects:
+        if (hasattr(output, 'metadata') and output.metadata and 
+            isinstance(output.metadata, dict) and 
+            output.metadata.get('scenario_id') == scenario.id):
+            return output
+    
+    # If no exact match, use the first available output
+    return agent_output_objects[0] if agent_output_objects else None
 
 
 def _get_domain_info() -> dict:
@@ -225,7 +247,7 @@ def _get_domain_info() -> dict:
     type=click.Path(exists=True, path_type=Path),
     help="A/B test different judge configurations using YAML config file",
 )
-@click.version_option(version="0.2.1", prog_name="arc-eval")
+@click.version_option(version="0.2.3", prog_name="arc-eval")
 def main(
     domain: Optional[str],
     input_file: Optional[Path],
@@ -347,7 +369,7 @@ def main(
     
     # Handle help flags
     if help_input:
-        from agent_eval.core.validators import InputValidator
+        from agent_eval.evaluation.validators import InputValidator
         console.print("[bold blue]AgentEval Input Format Documentation[/bold blue]")
         console.print(InputValidator.suggest_format_help())
         return
@@ -414,7 +436,7 @@ def main(
     
     
     # Import validation utilities
-    from agent_eval.core.validators import (
+    from agent_eval.evaluation.validators import (
         InputValidator, CLIValidator, ValidationError, format_validation_error
     )
     
@@ -634,20 +656,50 @@ def main(
                 else:
                     agent_output_objects = [AgentOutput.from_raw(agent_outputs)]
                 
-                # Get scenarios from engine
-                scenarios = engine.eval_pack.scenarios
+                # Filter scenarios based on input data scenario_ids if available
+                all_scenarios = engine.eval_pack.scenarios
+                input_scenario_ids = set()
+                
+                # Extract scenario_ids from input data
+                if isinstance(agent_outputs, list):
+                    for output in agent_outputs:
+                        if isinstance(output, dict) and 'scenario_id' in output:
+                            input_scenario_ids.add(output['scenario_id'])
+                elif isinstance(agent_outputs, dict) and 'scenario_id' in agent_outputs:
+                    input_scenario_ids.add(agent_outputs['scenario_id'])
+                
+                # Filter scenarios to only those matching input data
+                if input_scenario_ids:
+                    scenarios = [s for s in all_scenarios if s.id in input_scenario_ids]
+                    if verbose:
+                        console.print(f"[cyan]Verbose:[/cyan] Filtered to {len(scenarios)} scenarios matching input data (scenario_ids: {sorted(input_scenario_ids)})")
+                else:
+                    scenarios = all_scenarios
+                    if verbose:
+                        console.print(f"[cyan]Verbose:[/cyan] No scenario_ids found in input data, evaluating all {len(scenarios)} scenarios")
                 
                 # Update progress during evaluation
                 progress.update(eval_task, advance=20, description="🤖 Initializing Agent Judge...")
                 
                 # Run Agent-as-a-Judge evaluation
-                judge_results = agent_judge_instance.evaluate_batch(agent_output_objects[:len(scenarios)], scenarios)
+                # Evaluate each scenario against all available outputs (matches standard evaluation behavior)
+                judge_results = []
+                for scenario in scenarios:
+                    best_output = _find_best_matching_output(scenario, agent_output_objects)
+                    
+                    if best_output:
+                        try:
+                            result = agent_judge_instance.evaluate_scenario(best_output, scenario)
+                            judge_results.append(result)
+                        except Exception as e:
+                            logger.error(f"Failed to evaluate scenario {scenario.id}: {e}")
+                            continue
                 progress.update(eval_task, advance=40, description="🤖 Agent evaluation complete...")
                 
                 # Run verification if requested
                 if verify:
                     progress.update(eval_task, advance=0, description="🔍 Running verification layer...")
-                    from agent_eval.core.verification_judge import VerificationJudge
+                    from agent_eval.evaluation.verification_judge import VerificationJudge
                     
                     verification_judge = VerificationJudge(domain, agent_judge_instance.api_manager)
                     verification_results = verification_judge.batch_verify(
@@ -666,6 +718,58 @@ def main(
                 
                 # Generate improvement report with bias detection
                 improvement_report = agent_judge_instance.generate_improvement_report(judge_results, agent_output_objects[:len(judge_results)])
+                
+                # Record evaluation results in self-improvement engine for training data generation
+                try:
+                    self_improvement_engine = SelfImprovementEngine()
+                    
+                    # Convert judge results to self-improvement format
+                    eval_results_for_training = []
+                    for judge_result in judge_results:
+                        eval_result = {
+                            'scenario_id': judge_result.scenario_id,
+                            'reward_signals': judge_result.reward_signals,
+                            'improvement_recommendations': judge_result.improvement_recommendations,
+                            'compliance_gaps': improvement_report.get('continuous_feedback', {}).get('compliance_gaps', []),
+                            'performance_metrics': {
+                                'confidence': judge_result.confidence,
+                                'evaluation_time': judge_result.evaluation_time,
+                                'model_used': judge_result.model_used
+                            },
+                            'category': 'agent_judge_evaluation',
+                            'severity': 'high' if judge_result.judgment == 'fail' else 'low',
+                            'agent_output': judge_result.reasoning
+                        }
+                        eval_results_for_training.append(eval_result)
+                    
+                    # Record in self-improvement engine
+                    agent_id = f"agent_{domain}_{int(time.time())}"  # Generate unique agent ID
+                    self_improvement_engine.record_evaluation_result(
+                        agent_id=agent_id,
+                        domain=domain,
+                        evaluation_results=eval_results_for_training
+                    )
+                    
+                    if verbose:
+                        console.print(f"[dim]✅ Recorded {len(eval_results_for_training)} evaluation results for future training data generation[/dim]")
+                        
+                except ImportError as e:
+                    logger.warning(f"Failed to import self-improvement engine: {e}")
+                    if verbose:
+                        console.print(f"[dim yellow]⚠️  Self-improvement module import failed: {e}[/dim yellow]")
+                except (AttributeError, TypeError, ValueError) as e:
+                    logger.warning(f"Failed to record results in self-improvement engine: {e}")
+                    if verbose:
+                        console.print(f"[dim yellow]⚠️  Self-improvement recording failed: {e}[/dim yellow]")
+                except OSError as e:
+                    logger.warning(f"Failed to create retraining data files: {e}")
+                    if verbose:
+                        console.print(f"[dim yellow]⚠️  Could not write training data to disk: {e}[/dim yellow]")
+                except Exception as e:
+                    logger.warning(f"Unexpected error in self-improvement recording: {e}")
+                    if verbose:
+                        console.print(f"[dim yellow]⚠️  Unexpected self-improvement error: {e}[/dim yellow]")
+                
                 progress.update(eval_task, advance=20, description="✅ Agent-as-a-Judge evaluation complete", completed=100)
                 
                 # Convert to standard results format for compatibility
@@ -710,8 +814,30 @@ def main(
                     elif i == 80:
                         progress.update(eval_task, description="🔍 Generating recommendations...")
                 
-                # Run the actual evaluation
-                results = engine.evaluate(agent_outputs)
+                # Filter scenarios based on input data scenario_ids if available
+                all_scenarios = engine.eval_pack.scenarios
+                input_scenario_ids = set()
+                
+                # Extract scenario_ids from input data
+                if isinstance(agent_outputs, list):
+                    for output in agent_outputs:
+                        if isinstance(output, dict) and 'scenario_id' in output:
+                            input_scenario_ids.add(output['scenario_id'])
+                elif isinstance(agent_outputs, dict) and 'scenario_id' in agent_outputs:
+                    input_scenario_ids.add(agent_outputs['scenario_id'])
+                
+                # Filter scenarios to only those matching input data
+                if input_scenario_ids:
+                    scenarios = [s for s in all_scenarios if s.id in input_scenario_ids]
+                    if verbose:
+                        console.print(f"[cyan]Verbose:[/cyan] Filtered to {len(scenarios)} scenarios matching input data (scenario_ids: {sorted(input_scenario_ids)})")
+                else:
+                    scenarios = all_scenarios
+                    if verbose:
+                        console.print(f"[cyan]Verbose:[/cyan] No scenario_ids found in input data, evaluating all {len(scenarios)} scenarios")
+                
+                # Run the actual evaluation with filtered scenarios
+                results = engine.evaluate(agent_outputs, scenarios)
                 progress.update(eval_task, description="✅ Evaluation complete", completed=100)
             
         # Show immediate results summary
@@ -1314,26 +1440,52 @@ def _handle_quick_start(
     format_template: Optional[str] = None,
     summary_only: bool = False
 ) -> None:
-    """Handle quick-start mode with built-in sample data."""
-    console.print("\n[bold blue]🚀 ARC-Eval Quick Start Demo[/bold blue]")
-    console.print("[blue]" + "═" * 50 + "[/blue]")
+    """Handle enhanced quick-start mode with interactive features."""
     
-    # Default to finance domain if not specified
-    demo_domain = domain or "finance"
+    # Import our new interactive modules
+    from agent_eval.ui.interactive_menu import InteractiveMenu
+    from agent_eval.ui.streaming_evaluator import StreamingEvaluator
+    from agent_eval.ui.next_steps_guide import NextStepsGuide
     
-    # Sample data for each domain
+    # Step 1: Interactive domain selection (if not specified)
+    if not domain:
+        menu = InteractiveMenu()
+        demo_domain = menu.domain_selection_menu()
+        
+        # Step 2: Get user context for personalization
+        user_context = menu.get_user_context(demo_domain)
+    else:
+        demo_domain = domain
+        # Create minimal user context for specified domain
+        user_context = {
+            "domain": demo_domain,
+            "role": "user", 
+            "experience": "intermediate",
+            "goal": "compliance_audit"
+        }
+    
+    console.print(f"\n[bold blue]🚀 ARC-Eval Streaming Demo - {demo_domain.title()} Domain[/bold blue]")
+    console.print("[blue]" + "═" * 70 + "[/blue]")
+    
+    # Use demo-optimized sample data files (5 scenarios each for fast demo)
     sample_data = {
         "finance": {
-            "file": "examples/agent-outputs/sample_agent_outputs.json",
-            "description": "Financial compliance scenarios including KYC, AML, and SOX violations"
+            "file": "examples/demo-data/finance.json",
+            "description": "5 key financial compliance scenarios including SOX, KYC, AML violations",
+            "scenarios_count": 5,
+            "full_suite": "110 total scenarios available"
         },
         "security": {
-            "file": "examples/agent-outputs/security_test_outputs.json", 
-            "description": "Cybersecurity scenarios including prompt injection and data leakage"
+            "file": "examples/demo-data/security.json", 
+            "description": "5 critical cybersecurity scenarios including prompt injection, data leakage",
+            "scenarios_count": 5,
+            "full_suite": "120 total scenarios available"
         },
         "ml": {
-            "file": "examples/agent-outputs/ml_test_outputs.json",
-            "description": "ML safety scenarios including bias detection and model governance"
+            "file": "examples/demo-data/ml.json",
+            "description": "5 essential ML safety scenarios including bias detection, model governance",
+            "scenarios_count": 5,
+            "full_suite": "107 total scenarios available"
         }
     }
     
@@ -1345,9 +1497,18 @@ def _handle_quick_start(
     demo_info = sample_data[demo_domain]
     sample_file = Path(__file__).parent.parent / demo_info["file"]
     
-    console.print(f"📋 Demo Domain: [bold]{demo_domain.title()}[/bold]")
-    console.print(f"📄 Demo Description: {demo_info['description']}")
-    console.print(f"📁 Sample Data: [dim]{demo_info['file']}[/dim]")
+    # Show personalized demo intro
+    console.print(f"📋 [bold]{demo_domain.title()} Compliance Evaluation[/bold]")
+    console.print(f"📄 {demo_info['description']}")
+    console.print(f"📊 Evaluating [bold]{demo_info['scenarios_count']} scenarios[/bold] with real-time streaming")
+    console.print(f"[dim]({demo_info['full_suite']} - this demo shows a curated subset)[/dim]")
+    
+    # Show personalized context if available
+    if user_context.get("role") != "user":
+        role_display = user_context.get("role", "").replace("_", " ").title()
+        goal_display = user_context.get("goal", "").replace("_", " ").title()
+        console.print(f"👤 Customized for: [bold]{role_display}[/bold] | Goal: [bold]{goal_display}[/bold]")
+    
     console.print()
     
     if not sample_file.exists():
@@ -1355,12 +1516,9 @@ def _handle_quick_start(
         console.print("Please ensure the examples directory is present")
         sys.exit(1)
     
-    console.print("[yellow]⚡ Running demo evaluation...[/yellow]")
-    console.print()
-    
     try:
         # Import validation utilities
-        from agent_eval.core.validators import InputValidator
+        from agent_eval.evaluation.validators import InputValidator
         
         # Load sample data
         with open(sample_file, 'r') as f:
@@ -1373,56 +1531,34 @@ def _handle_quick_start(
         
         # Initialize evaluation engine
         if verbose:
-            console.print(f"[cyan]Verbose:[/cyan] Initializing demo evaluation for {demo_domain}")
+            console.print(f"[cyan]Verbose:[/cyan] Initializing streaming evaluation for {demo_domain}")
             
         engine = EvaluationEngine(domain=demo_domain)
         
         if dev:
             console.print(f"[blue]Debug:[/blue] Demo using {len(agent_outputs) if isinstance(agent_outputs, list) else 1} sample outputs")
         
-        # Run evaluation with timing
+        # Step 3: Run streaming evaluation with real-time updates
         start_time = time.time()
         
-        # Enhanced progress for demo
-        from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn, TimeElapsedColumn
+        console.print("[bold yellow]🚀 Starting Real-Time Evaluation Stream...[/bold yellow]")
+        console.print("[dim]Watch as each scenario is evaluated live with instant results[/dim]\n")
         
-        scenario_count = len(engine.eval_pack.scenarios) if hasattr(engine.eval_pack, 'scenarios') else 15
-        
-        with Progress(
-            SpinnerColumn(),
-            TextColumn("[bold blue]{task.description}"),
-            BarColumn(complete_style="green", finished_style="green"),
-            TaskProgressColumn(),
-            TimeElapsedColumn(),
-            console=console,
-            transient=False
-        ) as progress:
-            eval_task = progress.add_task(
-                f"🎯 Demo: Evaluating {scenario_count} {demo_domain} scenarios...", 
-                total=100
-            )
-            
-            # Simulate realistic progress for demo
-            import time as time_module
-            for i in range(0, 101, 20):
-                progress.update(eval_task, advance=20)
-                time_module.sleep(0.1)  # Small delay for demo effect
-                if i == 40:
-                    progress.update(eval_task, description="🔍 Demo: Analyzing compliance violations...")
-                elif i == 80:
-                    progress.update(eval_task, description="📊 Demo: Generating executive summary...")
-            
-            results = engine.evaluate(agent_outputs)
-            progress.update(eval_task, description="✅ Demo evaluation complete", completed=100)
+        # Use our new streaming evaluator
+        streaming_evaluator = StreamingEvaluator(engine, user_context)
+        results = streaming_evaluator.stream_evaluation(agent_outputs)
         
         evaluation_time = time.time() - start_time
         
-        # Show demo completion
-        console.print(f"\n[green]✅ Demo completed successfully![/green]")
-        console.print(f"[dim]Demo processed {len(results)} scenarios in {evaluation_time:.2f} seconds[/dim]")
+        # Show streaming completion summary
+        console.print(f"\n[green]✅ Streaming evaluation completed![/green]")
+        console.print(f"[dim]Processed {len(results)} scenarios in {evaluation_time:.2f} seconds with live updates[/dim]")
         
-        # Display results using existing function
-        _display_results(results, output_format=output, dev_mode=dev, workflow_mode=workflow, domain=demo_domain, summary_only=summary_only, format_template=format_template)
+        # Skip redundant results display since streaming already showed comprehensive results
+        # Only show detailed table if specifically requested or in dev mode
+        if dev and not summary_only:
+            console.print("\n[bold blue]📊 Detailed Results (Dev Mode)[/bold blue]")
+            _display_results(results, output_format=output, dev_mode=dev, workflow_mode=workflow, domain=demo_domain, summary_only=True, format_template=format_template)
         
         # Show timing if requested
         if timing:
@@ -1434,13 +1570,20 @@ def _handle_quick_start(
             console.print(f"\n[blue]📤 Generating demo {export.upper()} export...[/blue]")
             _export_results(results, export_format=export, domain=demo_domain, output_dir=output_dir, format_template=format_template, summary_only=summary_only)
         
-        # Show next steps
-        console.print(f"\n[bold green]🎉 Quick Start Demo Complete![/bold green]")
-        console.print("\n[bold blue]Next Steps:[/bold blue]")
-        console.print(f"1. Try with your own data: [dim]arc-eval --domain {demo_domain} --input your_file.json[/dim]")
-        console.print(f"2. Explore other domains: [dim]arc-eval --list-domains[/dim]")
-        console.print(f"3. Generate audit reports: [dim]arc-eval --domain {demo_domain} --input your_file.json --export pdf --workflow[/dim]")
-        console.print(f"4. Learn more: [dim]arc-eval --help-input[/dim]")
+        # Step 4: Show personalized next steps guide
+        next_steps_guide = NextStepsGuide()
+        next_steps_guide.generate_personalized_guide(user_context, results)
+        
+        # Show copy-paste ready commands
+        console.print("\n[bold blue]📋 Ready-to-Use Commands[/bold blue]")
+        console.print("[dim]Copy and paste these commands to continue your evaluation journey[/dim]\n")
+        
+        commands = next_steps_guide.generate_copy_paste_commands(user_context)
+        for command in commands:
+            if command.startswith("#"):
+                console.print(f"[dim]{command}[/dim]")
+            else:
+                console.print(f"[green]{command}[/green]")
         
         # Set exit code based on critical failures for demo
         critical_failures = sum(1 for r in results if r.severity == "critical" and not r.passed)
@@ -1480,7 +1623,7 @@ def _handle_validate(
     
     try:
         # Import validation utilities
-        from agent_eval.core.validators import InputValidator
+        from agent_eval.evaluation.validators import InputValidator
         
         # Load input data
         if input_file:
@@ -1766,7 +1909,7 @@ def _handle_benchmark_evaluation(
                 # Run verification if requested
                 if verify:
                     progress.update(eval_task, advance=0, description="🔍 Running verification layer...")
-                    from agent_eval.core.verification_judge import VerificationJudge
+                    from agent_eval.evaluation.verification_judge import VerificationJudge
                     
                     verification_judge = VerificationJudge(domain, agent_judge_instance.api_manager)
                     verification_results = verification_judge.batch_verify(
