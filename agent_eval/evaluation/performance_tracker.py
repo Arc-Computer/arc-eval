@@ -163,7 +163,23 @@ class PerformanceTracker:
     def get_metrics(self) -> PerformanceMetrics:
         """Calculate and return comprehensive performance metrics."""
         if not self.start_time or not self.end_time:
-            raise ValueError("Performance tracking not completed - missing start or end time")
+            # Return default metrics when tracking not started/completed
+            return PerformanceMetrics(
+                total_execution_time=0.0,
+                agent_execution_time=0.0,
+                judge_execution_time=0.0,
+                peak_memory_mb=0.0,
+                avg_memory_mb=0.0,
+                memory_samples=0,
+                scenarios_per_second=0.0,
+                tokens_per_second=None,
+                cost_per_scenario=0.0,
+                cost_efficiency_score=0.0,
+                cpu_usage_percent=0.0,
+                latency_p50=0.0,
+                latency_p95=0.0,
+                latency_p99=0.0
+            )
         
         total_time = self.end_time - self.start_time
         

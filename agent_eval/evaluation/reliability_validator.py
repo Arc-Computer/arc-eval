@@ -1,10 +1,9 @@
 """Reliability validation for agent tool calls and error handling patterns."""
 
 import re
-import json
 import logging
 from dataclasses import dataclass
-from typing import List, Dict, Any, Optional, Set, Union
+from typing import List, Dict, Any, Optional
 from collections import Counter
 
 logger = logging.getLogger(__name__)
@@ -111,9 +110,26 @@ class ReliabilityValidator:
                     return framework
         return None
     
-    def extract_tool_calls(self, agent_output: str, framework: Optional[str] = None) -> List[str]:
+    def extract_tool_calls(self, agent_output, framework: Optional[str] = None) -> List[str]:
         """Extract tool calls from agent output."""
         detected_tools = []
+        
+        # Handle both string and AgentOutput inputs for backward compatibility
+        from agent_eval.core.types import AgentOutput
+        if isinstance(agent_output, AgentOutput):
+            # Convert AgentOutput to string representation
+            if agent_output.raw_output:
+                output_str = str(agent_output.raw_output)
+                # Convert Python dict syntax to JSON syntax for pattern matching
+                if output_str.startswith("{") and "'" in output_str:
+                    # Replace single quotes with double quotes for JSON compatibility
+                    import re
+                    output_str = re.sub(r"'([^']*)':", r'"\1":', output_str)  # Keys
+                    output_str = re.sub(r":\s*'([^']*)'", r': "\1"', output_str)  # String values
+            else:
+                output_str = ""
+        else:
+            output_str = str(agent_output)
         
         # Try framework-specific patterns first
         if framework and framework in self.tool_patterns:
@@ -125,7 +141,7 @@ class ReliabilityValidator:
                 patterns.extend(fw_patterns)
         
         for pattern in patterns:
-            matches = re.findall(pattern, agent_output, re.IGNORECASE | re.DOTALL)
+            matches = re.findall(pattern, output_str, re.IGNORECASE | re.DOTALL)
             for match in matches:
                 if isinstance(match, tuple):
                     # Handle multiple capture groups
