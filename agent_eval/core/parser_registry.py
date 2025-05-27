@@ -271,6 +271,206 @@ class OutputExtractor:
             return str(data)
 
 
+class ToolCallExtractor:
+    """Extract tool calls from framework-specific data structures."""
+    
+    @staticmethod
+    def extract_tool_calls(data: Union[Dict[str, Any], List[Dict[str, Any]]], framework: str) -> List[str]:
+        """
+        Extract tool calls from framework data.
+        
+        Args:
+            data: Framework-specific data structure
+            framework: Detected framework name
+            
+        Returns:
+            List of tool names that were called
+        """
+        try:
+            if isinstance(data, list) and len(data) > 0:
+                # For list inputs, process each item and combine tool calls
+                all_tools = []
+                for item in data:
+                    if isinstance(item, dict):
+                        tools = ToolCallExtractor._extract_tools_single(item, framework)
+                        all_tools.extend(tools)
+                return list(set(all_tools))  # Remove duplicates
+            else:
+                return ToolCallExtractor._extract_tools_single(data, framework)
+        except Exception as e:
+            logger.error(f"Error extracting tool calls from {framework}: {e}")
+            return []
+    
+    @staticmethod
+    def _extract_tools_single(data: Dict[str, Any], framework: str) -> List[str]:
+        """Extract tool calls from a single data object."""
+        extractors = {
+            "autogen": ToolCallExtractor._extract_tools_autogen,
+            "agno": ToolCallExtractor._extract_tools_agno,
+            "google_adk": ToolCallExtractor._extract_tools_google_adk,
+            "nvidia_aiq": ToolCallExtractor._extract_tools_nvidia_aiq,
+            "langgraph": ToolCallExtractor._extract_tools_langgraph,
+            "openai": ToolCallExtractor._extract_tools_openai,
+            "anthropic": ToolCallExtractor._extract_tools_anthropic,
+            "langchain": ToolCallExtractor._extract_tools_langchain,
+            "crewai": ToolCallExtractor._extract_tools_crewai,
+            "generic": ToolCallExtractor._extract_tools_generic,
+        }
+        
+        extractor = extractors.get(framework, ToolCallExtractor._extract_tools_generic)
+        return extractor(data)
+    
+    @staticmethod
+    def _extract_tools_autogen(data: Dict[str, Any]) -> List[str]:
+        """Extract tool calls from AutoGen format."""
+        tools = []
+        if "messages" in data and isinstance(data["messages"], list):
+            for message in data["messages"]:
+                if isinstance(message, dict):
+                    # Check for function calls in message content
+                    content = str(message.get("content", ""))
+                    if "function_call" in content or "tool_call" in content:
+                        # Extract function names from content
+                        import re
+                        matches = re.findall(r'"name":\s*"([^"]+)"', content)
+                        tools.extend(matches)
+        return [tool.lower() for tool in tools]
+    
+    @staticmethod
+    def _extract_tools_agno(data: Dict[str, Any]) -> List[str]:
+        """Extract tool calls from Agno format."""
+        tools = []
+        if "tools_used" in data and isinstance(data["tools_used"], list):
+            tools.extend([str(tool).lower() for tool in data["tools_used"]])
+        elif "function_calls" in data:
+            calls = data["function_calls"]
+            if isinstance(calls, list):
+                for call in calls:
+                    if isinstance(call, dict) and "name" in call:
+                        tools.append(str(call["name"]).lower())
+        return tools
+    
+    @staticmethod
+    def _extract_tools_google_adk(data: Dict[str, Any]) -> List[str]:
+        """Extract tool calls from Google ADK format."""
+        tools = []
+        if "content" in data and isinstance(data["content"], dict):
+            parts = data["content"].get("parts", [])
+            for part in parts:
+                if isinstance(part, dict) and "functionCall" in part:
+                    func_call = part["functionCall"]
+                    if isinstance(func_call, dict) and "name" in func_call:
+                        tools.append(str(func_call["name"]).lower())
+        return tools
+    
+    @staticmethod
+    def _extract_tools_nvidia_aiq(data: Dict[str, Any]) -> List[str]:
+        """Extract tool calls from NVIDIA AIQ format."""
+        tools = []
+        if "workflow_output" in data:
+            output = str(data["workflow_output"])
+            # Look for tool execution patterns in output
+            import re
+            matches = re.findall(r'(?:tool|action|execute):\s*([a-zA-Z_][a-zA-Z0-9_]*)', output, re.IGNORECASE)
+            tools.extend([match.lower() for match in matches])
+        return tools
+    
+    @staticmethod
+    def _extract_tools_langgraph(data: Dict[str, Any]) -> List[str]:
+        """Extract tool calls from LangGraph format."""
+        tools = []
+        if "messages" in data and isinstance(data["messages"], list):
+            for message in data["messages"]:
+                if isinstance(message, dict):
+                    # Check for tool calls in message
+                    if "tool_calls" in message and isinstance(message["tool_calls"], list):
+                        for tool_call in message["tool_calls"]:
+                            if isinstance(tool_call, dict) and "function" in tool_call:
+                                func = tool_call["function"]
+                                if isinstance(func, dict) and "name" in func:
+                                    tools.append(str(func["name"]).lower())
+        return tools
+    
+    @staticmethod
+    def _extract_tools_openai(data: Dict[str, Any]) -> List[str]:
+        """Extract tool calls from OpenAI format."""
+        tools = []
+        if "choices" in data and isinstance(data["choices"], list):
+            for choice in data["choices"]:
+                if isinstance(choice, dict) and "message" in choice:
+                    message = choice["message"]
+                    if isinstance(message, dict):
+                        # Check for tool calls
+                        if "tool_calls" in message and isinstance(message["tool_calls"], list):
+                            for tool_call in message["tool_calls"]:
+                                if isinstance(tool_call, dict) and "function" in tool_call:
+                                    func = tool_call["function"]
+                                    if isinstance(func, dict) and "name" in func:
+                                        tools.append(str(func["name"]).lower())
+                        # Check for function call (legacy format)
+                        elif "function_call" in message:
+                            func_call = message["function_call"]
+                            if isinstance(func_call, dict) and "name" in func_call:
+                                tools.append(str(func_call["name"]).lower())
+        return tools
+    
+    @staticmethod
+    def _extract_tools_anthropic(data: Dict[str, Any]) -> List[str]:
+        """Extract tool calls from Anthropic format."""
+        tools = []
+        if "content" in data and isinstance(data["content"], list):
+            for block in data["content"]:
+                if isinstance(block, dict) and block.get("type") == "tool_use":
+                    if "name" in block:
+                        tools.append(str(block["name"]).lower())
+        return tools
+    
+    @staticmethod
+    def _extract_tools_langchain(data: Dict[str, Any]) -> List[str]:
+        """Extract tool calls from legacy LangChain format."""
+        tools = []
+        if "tool_calls" in data and isinstance(data["tool_calls"], list):
+            for tool_call in data["tool_calls"]:
+                if isinstance(tool_call, dict) and "tool" in tool_call:
+                    tools.append(str(tool_call["tool"]).lower())
+        elif "intermediate_steps" in data and isinstance(data["intermediate_steps"], list):
+            for step in data["intermediate_steps"]:
+                if isinstance(step, tuple) and len(step) >= 2:
+                    # LangChain intermediate steps format: (AgentAction, observation)
+                    action = step[0]
+                    if hasattr(action, "tool"):
+                        tools.append(str(action.tool).lower())
+        return tools
+    
+    @staticmethod
+    def _extract_tools_crewai(data: Dict[str, Any]) -> List[str]:
+        """Extract tool calls from CrewAI format."""
+        tools = []
+        if "task_results" in data and isinstance(data["task_results"], list):
+            for result in data["task_results"]:
+                if isinstance(result, dict) and "tools_used" in result:
+                    if isinstance(result["tools_used"], list):
+                        tools.extend([str(tool).lower() for tool in result["tools_used"]])
+        elif "tools_used" in data and isinstance(data["tools_used"], list):
+            tools.extend([str(tool).lower() for tool in data["tools_used"]])
+        return tools
+    
+    @staticmethod
+    def _extract_tools_generic(data: Dict[str, Any]) -> List[str]:
+        """Extract tool calls from generic format using text parsing."""
+        tools = []
+        # Convert entire data to string and look for tool patterns
+        content = str(data)
+        
+        # Use reliability validator patterns for generic tool extraction
+        from agent_eval.evaluation.reliability_validator import ReliabilityValidator
+        validator = ReliabilityValidator()
+        detected_tools = validator.extract_tool_calls(content)
+        tools.extend(detected_tools)
+        
+        return tools
+
+
 def detect_and_extract(data: Union[Dict[str, Any], List[Dict[str, Any]]]) -> tuple[Optional[str], str]:
     """
     Convenience function to detect framework and extract output.
@@ -301,3 +501,38 @@ def detect_and_extract(data: Union[Dict[str, Any], List[Dict[str, Any]]]) -> tup
     framework = FrameworkDetector.detect_framework(data)
     output = OutputExtractor.extract_output(data, framework or "generic")
     return framework, output
+
+
+def detect_and_extract_tools(data: Union[Dict[str, Any], List[Dict[str, Any]]]) -> tuple[Optional[str], List[str]]:
+    """
+    Convenience function to detect framework and extract tool calls.
+    
+    Args:
+        data: Raw agent output data
+        
+    Returns:
+        (framework_name, list_of_tool_calls)
+    """
+    # Early validation to prevent error spam from invalid inputs
+    if data is None:
+        return None, []
+    
+    # Handle simple string inputs with generic tool extraction
+    if isinstance(data, str):
+        from agent_eval.evaluation.reliability_validator import ReliabilityValidator
+        validator = ReliabilityValidator()
+        tools = validator.extract_tool_calls(data)
+        return None, tools
+    
+    # Handle numeric and other simple types
+    if not isinstance(data, (dict, list)):
+        return None, []
+    
+    # Handle empty containers
+    if len(data) == 0:
+        return None, []
+    
+    # Proceed with framework detection for valid structured data
+    framework = FrameworkDetector.detect_framework(data)
+    tools = ToolCallExtractor.extract_tool_calls(data, framework or "generic")
+    return framework, tools

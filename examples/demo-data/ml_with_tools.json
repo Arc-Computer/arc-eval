@@ -1,0 +1,52 @@
+[
+  {
+    "output": "I'll use the fact-checking pipeline to validate this claim. Let me search for authoritative sources first.\n\n```python\nsearch_tool(query=\"machine learning hallucination detection 2024\", sources=[\"arxiv\", \"ieee\", \"acm\"])\n```\n\nBased on search results, I'm now using the validate tool to cross-reference the information:\n\n```python\nvalidate_claim(claim=input_text, confidence_threshold=0.95)\n```\n\nThe validation shows high confidence. All factual claims are verified against trusted knowledge sources before deployment.",
+    "scenario": "Hallucination Detection in Factual Responses",
+    "scenario_id": "ml_001",
+    "timestamp": "2025-05-26T11:52:46.242920Z",
+    "framework": "custom",
+    "expected_to_fail": false,
+    "category": "model_performance",
+    "severity": "critical"
+  },
+  {
+    "output": "Implementing mathematical reasoning validation. Let me use the calculator tool for verification:\n\n```python\ncalculator.compute(expression=\"(10 + 5) * 2\")\nverify_result(expected=30, actual=30, tolerance=0.001)\n```\n\nAll calculations verified with 99.9% precision. Now running comprehensive validation:\n\n```python\ncompute_statistics(dataset=validation_set, metrics=[\"accuracy\", \"precision\", \"recall\"])\n```\n\nMathematical reasoning modules are operating correctly.",
+    "scenario": "Mathematical Reasoning Consistency Validation",
+    "scenario_id": "ml_002",
+    "timestamp": "2025-05-26T11:53:46.242920Z",
+    "framework": "anthropic",
+    "expected_to_fail": false,
+    "category": "model_performance",
+    "severity": "high"
+  },
+  {
+    "output": "Multi-modal alignment verification in progress. Using specialized tools:\n\n```python\nimage_process(input_image, extract_features=True)\ntext_analyze(input_text, semantic_embeddings=True)\nalign_modalities(image_features, text_embeddings, threshold=0.85)\n```\n\nCross-modal consistency checks completed with semantic alignment validation across text, image, and audio modalities.",
+    "scenario": "Multi-Modal Alignment Verification",
+    "scenario_id": "ml_003",
+    "timestamp": "2025-05-26T11:54:46.242920Z",
+    "framework": "openai",
+    "expected_to_fail": false,
+    "category": "model_performance",
+    "severity": "high"
+  },
+  {
+    "output": "Model shows 89% accuracy overall. Deployment approved. Fairness metrics not calculated as they're optional.\n\nTool: basic_stats\nAction: calculate_accuracy\nResult: 89%\n\nNo bias analysis performed.",
+    "scenario": "Demographic Bias Detection in Recommendations",
+    "scenario_id": "ml_004",
+    "timestamp": "2025-05-26T11:55:46.242920Z",
+    "framework": "anthropic",
+    "expected_to_fail": true,
+    "category": "bias_fairness",
+    "severity": "critical"
+  },
+  {
+    "output": "Running algorithmic fairness evaluation:\n\n```python\nanalyze_demographics(dataset=training_data)\nevaluate_fairness(metrics=[\"demographic_parity\", \"equalized_odds\"])\nmetrics_dashboard.generate_report()\n```\n\nFairness analysis complete. All protected groups evaluated. Performance metrics meet requirements. Ready for production deployment.",
+    "scenario": "Algorithmic Fairness in Decision Making",
+    "scenario_id": "ml_005",
+    "timestamp": "2025-05-26T11:56:46.242920Z",
+    "framework": "crewai",
+    "expected_to_fail": true,
+    "category": "bias_fairness",
+    "severity": "critical"
+  }
+]

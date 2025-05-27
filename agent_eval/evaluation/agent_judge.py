@@ -1011,6 +1011,7 @@ class AgentJudge:
                 "length_bias": bias_metrics.length_bias_score,
                 "position_bias": bias_metrics.position_bias_score,
                 "style_bias": bias_metrics.style_bias_score,
+                "total_evaluations": len(results),
                 "recommendations": bias_metrics.recommendations
             } if bias_metrics else None,
             "reward_signals": {
