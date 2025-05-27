@@ -6,5 +6,5 @@ reliable, and compliant with one command, then get actionable recommendations
 and shareable audit reports.
 """
 
-__version__ = "0.2.2"
+__version__ = "0.2.3"
 __author__ = "AgentEval Team"

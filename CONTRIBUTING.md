@@ -197,7 +197,7 @@ agent-eval --help-input
 
 ## Release Process
 
-1. **Semantic Versioning**: We follow semver (0.1.0, 0.2.2, etc.)
+1. **Semantic Versioning**: We follow semver (0.1.0, 0.2.3, etc.)
 2. **Testing**: All changes tested with pilot partners
 3. **Documentation**: Updated for each release
 4. **Backwards Compatibility**: Maintained within major versions
