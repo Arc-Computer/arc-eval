@@ -23,6 +23,9 @@ class CSVExporter:
             format_template: Template for data formatting (executive, technical, compliance, minimal)
             summary_only: Export summary data only
         """
+        # Handle None or invalid results gracefully
+        if results is None:
+            results = []
         with open(filename, 'w', newline='', encoding='utf-8') as csvfile:
             # Adjust fieldnames based on template and summary mode
             if summary_only:
