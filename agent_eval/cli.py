@@ -445,7 +445,7 @@ def main(
         return _handle_benchmark_evaluation(
             benchmark, subset, limit, domain, agent_judge, judge_model, 
             export, output, dev, workflow, timing, verbose, output_dir, 
-            format_template, summary_only, verify
+            format_template, summary_only, verify, no_interaction
         )
     
     # Validate domain requirement for CLI mode
@@ -1201,6 +1201,39 @@ def _display_results(
     
     # Table output (default)
     _display_table_results(results, dev_mode, workflow_mode, domain, summary_only, format_template)
+    
+    # Interactive Results Analyst Integration - Replace dense recommendations
+    if improvement_report:
+        failed_results = [r for r in results if not r.passed]
+        if failed_results:
+            try:
+                from agent_eval.analysis.interactive_analyst import InteractiveAnalyst
+                
+                # Check if we can run interactive mode
+                if not no_interaction and sys.stdin.isatty() and os.getenv("ANTHROPIC_API_KEY"):
+                    analyst = InteractiveAnalyst(
+                        improvement_report=improvement_report,
+                        judge_results=improvement_report.get("detailed_results", []),
+                        domain=domain,
+                        performance_metrics=improvement_report.get("performance_metrics"),
+                        reliability_metrics=improvement_report.get("reliability_metrics")
+                    )
+                    
+                    # Display concise summary + start interactive chat
+                    analyst.display_concise_summary_and_chat(console)
+                else:
+                    # Fallback: show condensed recommendations for non-interactive mode
+                    analyst = InteractiveAnalyst(
+                        improvement_report=improvement_report,
+                        judge_results=improvement_report.get("detailed_results", []),
+                        domain=domain,
+                        performance_metrics=improvement_report.get("performance_metrics"),
+                        reliability_metrics=improvement_report.get("reliability_metrics")
+                    )
+                    analyst.display_condensed_recommendations(console)
+            except (ImportError, ValueError):
+                # Fallback to original display if InteractiveAnalyst fails - but this is already handled in _display_table_results
+                pass
 
 
 def _display_table_results(results: list[EvaluationResult], dev_mode: bool, workflow_mode: bool, domain: str = "finance", summary_only: bool = False, format_template: Optional[str] = None) -> None:
@@ -1412,45 +1445,9 @@ def _display_table_results(results: list[EvaluationResult], dev_mode: bool, work
         
         console.print(table)
     
-    # Interactive Results Analyst Integration - Replace dense recommendations
+    # Recommendations
     failed_results = [r for r in results if not r.passed]
-    if failed_results and improvement_report:
-        try:
-            from agent_eval.analysis.interactive_analyst import InteractiveAnalyst
-            
-            # Check if we can run interactive mode
-            if not no_interaction and sys.stdin.isatty() and os.getenv("ANTHROPIC_API_KEY"):
-                analyst = InteractiveAnalyst(
-                    improvement_report=improvement_report,
-                    judge_results=improvement_report.get("detailed_results", []),
-                    domain=domain,
-                    performance_metrics=improvement_report.get("performance_metrics"),
-                    reliability_metrics=improvement_report.get("reliability_metrics")
-                )
-                
-                # Display concise summary + start interactive chat
-                analyst.display_concise_summary_and_chat(console)
-            else:
-                # Fallback: show condensed recommendations for non-interactive mode
-                analyst = InteractiveAnalyst(
-                    improvement_report=improvement_report,
-                    judge_results=improvement_report.get("detailed_results", []),
-                    domain=domain,
-                    performance_metrics=improvement_report.get("performance_metrics"),
-                    reliability_metrics=improvement_report.get("reliability_metrics")
-                )
-                analyst.display_condensed_recommendations(console)
-        except (ImportError, ValueError):
-            # Fallback to original display if InteractiveAnalyst fails
-            console.print("\n[bold]Recommendations[/bold]", style="blue")
-            for i, result in enumerate(failed_results[:5], 1):  # Show top 5
-                if result.remediation:
-                    console.print(f"{i}. {result.remediation}")
-            
-            if len(failed_results) > 5:
-                console.print(f"... and {len(failed_results) - 5} more recommendations")
-    elif failed_results:
-        # No improvement_report available, show original recommendations
+    if failed_results:
         console.print("\n[bold]Recommendations[/bold]", style="blue")
         for i, result in enumerate(failed_results[:5], 1):  # Show top 5
             if result.remediation:
@@ -1964,6 +1961,7 @@ def _handle_benchmark_evaluation(
     format_template: Optional[str],
     summary_only: bool,
     verify: bool,
+    no_interaction: bool,
 ) -> None:
     """Handle benchmark evaluation mode."""
     console.print(f"\n[bold blue]📊 ARC-Eval Benchmark Evaluation[/bold blue]")
