@@ -337,7 +337,7 @@ class SecurityJudge:
         
         # Initialize confidence calibrator if enabled
         if self.enable_confidence_calibration:
-            from agent_eval.core.confidence_calibrator import ConfidenceCalibrator
+            from agent_eval.evaluation.confidence_calibrator import ConfidenceCalibrator
             self.confidence_calibrator = ConfidenceCalibrator()
         
     def evaluate(self, agent_output: AgentOutput, scenario: EvaluationScenario) -> JudgmentResult:
@@ -529,7 +529,7 @@ class MLJudge:
         
         # Initialize confidence calibrator if enabled
         if self.enable_confidence_calibration:
-            from agent_eval.core.confidence_calibrator import ConfidenceCalibrator
+            from agent_eval.evaluation.confidence_calibrator import ConfidenceCalibrator
             self.confidence_calibrator = ConfidenceCalibrator()
         
     def evaluate(self, agent_output: AgentOutput, scenario: EvaluationScenario) -> JudgmentResult:
@@ -733,7 +733,7 @@ class FinanceJudge:
         
         # Initialize confidence calibrator if enabled
         if self.enable_confidence_calibration:
-            from agent_eval.core.confidence_calibrator import ConfidenceCalibrator
+            from agent_eval.evaluation.confidence_calibrator import ConfidenceCalibrator
             self.confidence_calibrator = ConfidenceCalibrator()
         
     def evaluate(self, agent_output: AgentOutput, scenario: EvaluationScenario) -> JudgmentResult:
@@ -975,7 +975,7 @@ class AgentJudge:
         # Generate bias detection metrics for transparency using actual outputs
         bias_metrics = None
         if agent_outputs:
-            from agent_eval.core.bias_detection import BasicBiasDetection
+            from agent_eval.evaluation.bias_detection import BasicBiasDetection
             bias_detector = BasicBiasDetection()
             
             # Extract content from agent outputs for bias analysis
@@ -983,7 +983,7 @@ class AgentJudge:
             bias_metrics = bias_detector.generate_bias_report(results, output_contents)
         else:
             # Fallback if no outputs provided (shouldn't happen in normal usage)
-            from agent_eval.core.bias_detection import BasicBiasDetection
+            from agent_eval.evaluation.bias_detection import BasicBiasDetection
             bias_detector = BasicBiasDetection()
             dummy_outputs = [""] * len(results)  # Empty strings for minimal bias analysis
             bias_metrics = bias_detector.generate_bias_report(results, dummy_outputs)

@@ -24,10 +24,10 @@ from rich.console import Console
 from rich.table import Table
 
 from agent_eval.core.engine import EvaluationEngine
-from agent_eval.core.agent_judge import AgentJudge
 from agent_eval.core.types import EvaluationResult, AgentOutput, EvaluationScenario
-from agent_eval.core.benchmark_adapter import QuickBenchmarkAdapter
-from agent_eval.core.judge_comparison import JudgeComparison, JudgeConfig
+from agent_eval.evaluation.agent_judge import AgentJudge
+from agent_eval.benchmarks.adapter import QuickBenchmarkAdapter
+from agent_eval.analysis.judge_comparison import JudgeComparison, JudgeConfig
 from agent_eval.exporters.pdf import PDFExporter
 from agent_eval.exporters.csv import CSVExporter
 from agent_eval.exporters.json import JSONExporter
@@ -352,7 +352,7 @@ def main(
     
     # Handle help flags
     if help_input:
-        from agent_eval.core.validators import InputValidator
+        from agent_eval.evaluation.validators import InputValidator
         console.print("[bold blue]AgentEval Input Format Documentation[/bold blue]")
         console.print(InputValidator.suggest_format_help())
         return
@@ -419,7 +419,7 @@ def main(
     
     
     # Import validation utilities
-    from agent_eval.core.validators import (
+    from agent_eval.evaluation.validators import (
         InputValidator, CLIValidator, ValidationError, format_validation_error
     )
     
@@ -639,8 +639,27 @@ def main(
                 else:
                     agent_output_objects = [AgentOutput.from_raw(agent_outputs)]
                 
-                # Get scenarios from engine
-                scenarios = engine.eval_pack.scenarios
+                # Filter scenarios based on input data scenario_ids if available
+                all_scenarios = engine.eval_pack.scenarios
+                input_scenario_ids = set()
+                
+                # Extract scenario_ids from input data
+                if isinstance(agent_outputs, list):
+                    for output in agent_outputs:
+                        if isinstance(output, dict) and 'scenario_id' in output:
+                            input_scenario_ids.add(output['scenario_id'])
+                elif isinstance(agent_outputs, dict) and 'scenario_id' in agent_outputs:
+                    input_scenario_ids.add(agent_outputs['scenario_id'])
+                
+                # Filter scenarios to only those matching input data
+                if input_scenario_ids:
+                    scenarios = [s for s in all_scenarios if s.id in input_scenario_ids]
+                    if verbose:
+                        console.print(f"[cyan]Verbose:[/cyan] Filtered to {len(scenarios)} scenarios matching input data (scenario_ids: {sorted(input_scenario_ids)})")
+                else:
+                    scenarios = all_scenarios
+                    if verbose:
+                        console.print(f"[cyan]Verbose:[/cyan] No scenario_ids found in input data, evaluating all {len(scenarios)} scenarios")
                 
                 # Update progress during evaluation
                 progress.update(eval_task, advance=20, description="🤖 Initializing Agent Judge...")
@@ -652,7 +671,7 @@ def main(
                 # Run verification if requested
                 if verify:
                     progress.update(eval_task, advance=0, description="🔍 Running verification layer...")
-                    from agent_eval.core.verification_judge import VerificationJudge
+                    from agent_eval.evaluation.verification_judge import VerificationJudge
                     
                     verification_judge = VerificationJudge(domain, agent_judge_instance.api_manager)
                     verification_results = verification_judge.batch_verify(
@@ -715,8 +734,30 @@ def main(
                     elif i == 80:
                         progress.update(eval_task, description="🔍 Generating recommendations...")
                 
-                # Run the actual evaluation
-                results = engine.evaluate(agent_outputs)
+                # Filter scenarios based on input data scenario_ids if available
+                all_scenarios = engine.eval_pack.scenarios
+                input_scenario_ids = set()
+                
+                # Extract scenario_ids from input data
+                if isinstance(agent_outputs, list):
+                    for output in agent_outputs:
+                        if isinstance(output, dict) and 'scenario_id' in output:
+                            input_scenario_ids.add(output['scenario_id'])
+                elif isinstance(agent_outputs, dict) and 'scenario_id' in agent_outputs:
+                    input_scenario_ids.add(agent_outputs['scenario_id'])
+                
+                # Filter scenarios to only those matching input data
+                if input_scenario_ids:
+                    scenarios = [s for s in all_scenarios if s.id in input_scenario_ids]
+                    if verbose:
+                        console.print(f"[cyan]Verbose:[/cyan] Filtered to {len(scenarios)} scenarios matching input data (scenario_ids: {sorted(input_scenario_ids)})")
+                else:
+                    scenarios = all_scenarios
+                    if verbose:
+                        console.print(f"[cyan]Verbose:[/cyan] No scenario_ids found in input data, evaluating all {len(scenarios)} scenarios")
+                
+                # Run the actual evaluation with filtered scenarios
+                results = engine.evaluate(agent_outputs, scenarios)
                 progress.update(eval_task, description="✅ Evaluation complete", completed=100)
             
         # Show immediate results summary
@@ -1322,9 +1363,9 @@ def _handle_quick_start(
     """Handle enhanced quick-start mode with interactive features."""
     
     # Import our new interactive modules
-    from agent_eval.core.interactive_menu import InteractiveMenu
-    from agent_eval.core.streaming_evaluator import StreamingEvaluator
-    from agent_eval.core.next_steps_guide import NextStepsGuide
+    from agent_eval.ui.interactive_menu import InteractiveMenu
+    from agent_eval.ui.streaming_evaluator import StreamingEvaluator
+    from agent_eval.ui.next_steps_guide import NextStepsGuide
     
     # Step 1: Interactive domain selection (if not specified)
     if not domain:
@@ -1349,19 +1390,19 @@ def _handle_quick_start(
     # Use demo-optimized sample data files (5 scenarios each for fast demo)
     sample_data = {
         "finance": {
-            "file": "examples/agent-outputs/demo_finance_outputs.json",
+            "file": "examples/demo-data/finance.json",
             "description": "5 key financial compliance scenarios including SOX, KYC, AML violations",
             "scenarios_count": 5,
             "full_suite": "110 total scenarios available"
         },
         "security": {
-            "file": "examples/agent-outputs/demo_security_outputs.json", 
+            "file": "examples/demo-data/security.json", 
             "description": "5 critical cybersecurity scenarios including prompt injection, data leakage",
             "scenarios_count": 5,
             "full_suite": "120 total scenarios available"
         },
         "ml": {
-            "file": "examples/agent-outputs/demo_ml_outputs.json",
+            "file": "examples/demo-data/ml.json",
             "description": "5 essential ML safety scenarios including bias detection, model governance",
             "scenarios_count": 5,
             "full_suite": "107 total scenarios available"
@@ -1397,7 +1438,7 @@ def _handle_quick_start(
     
     try:
         # Import validation utilities
-        from agent_eval.core.validators import InputValidator
+        from agent_eval.evaluation.validators import InputValidator
         
         # Load sample data
         with open(sample_file, 'r') as f:
@@ -1502,7 +1543,7 @@ def _handle_validate(
     
     try:
         # Import validation utilities
-        from agent_eval.core.validators import InputValidator
+        from agent_eval.evaluation.validators import InputValidator
         
         # Load input data
         if input_file:
@@ -1788,7 +1829,7 @@ def _handle_benchmark_evaluation(
                 # Run verification if requested
                 if verify:
                     progress.update(eval_task, advance=0, description="🔍 Running verification layer...")
-                    from agent_eval.core.verification_judge import VerificationJudge
+                    from agent_eval.evaluation.verification_judge import VerificationJudge
                     
                     verification_judge = VerificationJudge(domain, agent_judge_instance.api_manager)
                     verification_results = verification_judge.batch_verify(
