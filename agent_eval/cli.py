@@ -753,7 +753,11 @@ def main(
                     if verbose:
                         console.print(f"[dim]✅ Recorded {len(eval_results_for_training)} evaluation results for future training data generation[/dim]")
                         
-                except (ImportError, AttributeError, TypeError, ValueError) as e:
+                except ImportError as e:
+                    logger.warning(f"Failed to import self-improvement engine: {e}")
+                    if verbose:
+                        console.print(f"[dim yellow]⚠️  Self-improvement module import failed: {e}[/dim yellow]")
+                except (AttributeError, TypeError, ValueError) as e:
                     logger.warning(f"Failed to record results in self-improvement engine: {e}")
                     if verbose:
                         console.print(f"[dim yellow]⚠️  Self-improvement recording failed: {e}[/dim yellow]")
