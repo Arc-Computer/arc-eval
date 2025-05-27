@@ -187,7 +187,7 @@ class StreamingEvaluator:
         # Progress bar representation
         progress_percent = (completed / total) * 100 if total > 0 else 0
         bar_length = 30
-        filled_length = int(bar_length * completed // total)
+        filled_length = int(bar_length * completed // total) if total > 0 else 0
         bar = "█" * filled_length + "░" * (bar_length - filled_length)
         
         content = f"[bold blue]📊 Progress: {completed}/{total} scenarios ({progress_percent:.1f}%)[/bold blue]\n"
