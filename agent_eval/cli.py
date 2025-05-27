@@ -16,6 +16,7 @@ import sys
 import json
 import time
 import yaml
+import logging
 from pathlib import Path
 from typing import Optional, List
 
@@ -31,6 +32,8 @@ from agent_eval.analysis.judge_comparison import JudgeComparison, JudgeConfig
 from agent_eval.exporters.pdf import PDFExporter
 from agent_eval.exporters.csv import CSVExporter
 from agent_eval.exporters.json import JSONExporter
+
+logger = logging.getLogger(__name__)
 
 
 console = Console()
@@ -665,7 +668,28 @@ def main(
                 progress.update(eval_task, advance=20, description="🤖 Initializing Agent Judge...")
                 
                 # Run Agent-as-a-Judge evaluation
-                judge_results = agent_judge_instance.evaluate_batch(agent_output_objects[:len(scenarios)], scenarios)
+                # Evaluate each scenario against all available outputs (matches standard evaluation behavior)
+                judge_results = []
+                for scenario in scenarios:
+                    # Find the best matching output for this scenario, or use the first available output
+                    best_output = None
+                    for output in agent_output_objects:
+                        if (hasattr(output, 'metadata') and output.metadata and 
+                            isinstance(output.metadata, dict) and 
+                            output.metadata.get('scenario_id') == scenario.id):
+                            best_output = output
+                            break
+                    # If no exact match, use the first available output
+                    if not best_output and agent_output_objects:
+                        best_output = agent_output_objects[0]
+                    
+                    if best_output:
+                        try:
+                            result = agent_judge_instance.evaluate_scenario(best_output, scenario)
+                            judge_results.append(result)
+                        except Exception as e:
+                            logger.error(f"Failed to evaluate scenario {scenario.id}: {e}")
+                            continue
                 progress.update(eval_task, advance=40, description="🤖 Agent evaluation complete...")
                 
                 # Run verification if requested

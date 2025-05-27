@@ -281,6 +281,23 @@ def detect_and_extract(data: Union[Dict[str, Any], List[Dict[str, Any]]]) -> tup
     Returns:
         (framework_name, extracted_output)
     """
+    # Early validation to prevent error spam from invalid inputs
+    if data is None:
+        return None, "None"
+    
+    # Handle simple string inputs
+    if isinstance(data, str):
+        return None, data.strip()
+    
+    # Handle numeric and other simple types
+    if not isinstance(data, (dict, list)):
+        return None, str(data)
+    
+    # Handle empty containers
+    if len(data) == 0:
+        return None, str(data)
+    
+    # Proceed with framework detection for valid structured data
     framework = FrameworkDetector.detect_framework(data)
     output = OutputExtractor.extract_output(data, framework or "generic")
     return framework, output
