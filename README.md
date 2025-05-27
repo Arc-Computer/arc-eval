@@ -51,7 +51,7 @@ Based on the [MetaAuto AI research](https://github.com/metauto-ai/agent-as-a-jud
 - **Multi-Model Support**: Claude Sonnet, Haiku with automatic cost optimization
 
 ### Evaluation Pipeline
-```
+```bash
 Agent Output → Domain Judge → Compliance Assessment + Improvement Recommendations + Training Signals
 ```
 

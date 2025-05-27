@@ -274,6 +274,51 @@ class ReliabilityMetrics:
     # Overall reliability score
     reliability_score: float           # Overall reliability (0.0-1.0)
     reliability_issues: List[str]      # List of reliability concerns
+    
+    @property
+    def tool_call_success_rate(self) -> float:
+        """Alias for tool_call_accuracy for backward compatibility."""
+        return self.tool_call_accuracy
+    
+    @property 
+    def framework_detection_accuracy(self) -> float:
+        """Overall framework detection accuracy."""
+        return self.framework_compliance.get("overall", 0.0)
+    
+    @property
+    def expected_vs_actual_coverage(self) -> float:
+        """Coverage rate of expected vs actual tool calls."""
+        return self.tool_call_accuracy
+    
+    @property
+    def reliability_grade(self) -> str:
+        """Letter grade based on reliability score."""
+        if self.reliability_score >= 0.9:
+            return "A"
+        elif self.reliability_score >= 0.8:
+            return "B"
+        elif self.reliability_score >= 0.7:
+            return "C"
+        elif self.reliability_score >= 0.6:
+            return "D"
+        else:
+            return "F"
+    
+    @property
+    def improvement_recommendations(self) -> List[str]:
+        """Generate improvement recommendations based on metrics."""
+        recommendations = []
+        
+        if self.tool_call_accuracy < 0.7:
+            recommendations.append("Improve tool call accuracy - agents may not be using expected tools")
+        
+        if self.error_recovery_rate < 0.3:
+            recommendations.append("Implement better error recovery patterns")
+        
+        if self.framework_detection_accuracy < 0.8:
+            recommendations.append("Ensure consistent framework pattern usage")
+        
+        return recommendations
 
 
 @dataclass
