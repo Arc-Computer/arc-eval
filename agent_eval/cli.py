@@ -234,7 +234,7 @@ def _get_domain_info() -> dict:
     type=click.Path(exists=True, path_type=Path),
     help="A/B test different judge configurations using YAML config file",
 )
-@click.version_option(version="0.2.1", prog_name="arc-eval")
+@click.version_option(version="0.2.2", prog_name="arc-eval")
 def main(
     domain: Optional[str],
     input_file: Optional[Path],
