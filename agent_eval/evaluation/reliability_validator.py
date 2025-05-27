@@ -209,10 +209,19 @@ class ReliabilityValidator:
                 output_str = str(agent_output.raw_output)
                 # Convert Python dict syntax to JSON syntax for pattern matching
                 if output_str.startswith("{") and "'" in output_str:
-                    # More robust conversion from Python dict to JSON format
-                    # Replace single quotes with double quotes, being careful about nested quotes
-                    output_str = re.sub(r"'([^']*)':", r'"\1":', output_str)  # Keys
-                    output_str = re.sub(r":\s*'([^']*)'(?=\s*[,}\]])", r': "\1"', output_str)  # String values followed by delimiter
+                    # Use safer ast.literal_eval + json.dumps approach
+                    import ast
+                    import json
+                    try:
+                        # Safely evaluate the string as a Python dictionary
+                        parsed_dict = ast.literal_eval(output_str)
+                        # Convert the Python dictionary to a JSON string
+                        output_str = json.dumps(parsed_dict)
+                    except (ValueError, SyntaxError) as e:
+                        logger.warning(f"Failed to parse dict string safely, falling back to regex: {e}")
+                        # Fallback to regex approach if ast.literal_eval fails
+                        output_str = re.sub(r"'([^']*)':", r'"\1":', output_str)  # Keys
+                        output_str = re.sub(r":\s*'([^']*)'(?=\s*[,}\]])", r': "\1"', output_str)  # String values
             else:
                 output_str = ""
         else:
@@ -353,6 +362,7 @@ class ReliabilityValidator:
         """Calculate overall reliability score from various factors."""
         
         # Perfect tool accuracy should yield perfect score when no issues
+        # Note: missing_count and unexpected_count are passed as parameters
         if tool_accuracy == 1.0 and missing_count == 0 and unexpected_count == 0:
             return 1.0
         
