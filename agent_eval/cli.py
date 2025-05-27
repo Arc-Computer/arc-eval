@@ -659,7 +659,10 @@ def main(
                 # Filter scenarios based on input data scenario_ids if available
                 all_scenarios = engine.eval_pack.scenarios
                 input_scenario_ids = set()
-                
+                        console.print(
+                            f"[cyan]Verbose:[/cyan] Filtered to {len(scenarios)} scenarios "
+                            f"matching input data (scenario_ids: {sorted(input_scenario_ids)})"
+                        )
                 # Extract scenario_ids from input data
                 if isinstance(agent_outputs, list):
                     for output in agent_outputs:
