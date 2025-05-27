@@ -19,6 +19,7 @@ import yaml
 import logging
 from pathlib import Path
 from typing import Optional, List
+from contextlib import nullcontext
 
 import click
 from rich.console import Console
@@ -649,13 +650,16 @@ def main(
             agent_judge_instance = AgentJudge(domain=domain, preferred_model=judge_model)
             
             # Initialize performance tracking if requested
-            performance_tracker = None
             if performance:
                 from agent_eval.evaluation.performance_tracker import PerformanceTracker
                 performance_tracker = PerformanceTracker()
-                performance_tracker.__enter__()
+            else:
+                performance_tracker = None
             
-            with Progress(
+            # Use context manager for performance tracking
+            perf_context = performance_tracker if performance_tracker else nullcontext()
+            
+            with perf_context, Progress(
                 SpinnerColumn(),
                 TextColumn("[bold blue]{task.description}"),
                 BarColumn(complete_style="green", finished_style="green"),
@@ -809,7 +813,6 @@ def main(
                     try:
                         # Add final cost tracking
                         performance_tracker.add_cost(agent_judge_instance.api_manager.total_cost)
-                        performance_tracker.__exit__(None, None, None)
                         performance_metrics = performance_tracker.get_performance_summary()
                     except Exception as e:
                         logger.warning(f"Failed to generate performance metrics: {e}")
@@ -820,7 +823,6 @@ def main(
                 if reliability:
                     try:
                         from agent_eval.evaluation.reliability_validator import ReliabilityValidator
-                        from agent_eval.core.parser_registry import detect_and_extract_tools
                         
                         reliability_validator = ReliabilityValidator()
                         

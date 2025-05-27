@@ -56,6 +56,28 @@ class ReliabilityValidator:
                 r'Action:\s*([a-zA-Z_][a-zA-Z0-9_]*)',
                 r'Thought.*?Action:\s*([a-zA-Z_][a-zA-Z0-9_]*)',
             ],
+            "autogen": [
+                r'"function_call".*?"name":\s*"([^"]+)"',  # AutoGen function calls
+                r'execute_code.*?language.*?([a-zA-Z_][a-zA-Z0-9_]*)',
+                r'Tool execution:\s*([a-zA-Z_][a-zA-Z0-9_]*)',
+            ],
+            "agno": [
+                r'"tools_used":\s*\[.*?"([^"]+)".*?\]',  # Agno tools_used array
+                r'"function_calls".*?"name":\s*"([^"]+)"',  # Agno function calls
+                r'using tool:\s*([a-zA-Z_][a-zA-Z0-9_]*)',
+            ],
+            "google_adk": [
+                r'"functionCall":\s*{\s*"name":\s*"([^"]+)"',  # Google ADK function calls
+                r'function call:\s*([a-zA-Z_][a-zA-Z0-9_]*)',
+            ],
+            "nvidia_aiq": [
+                r'(?:tool|action|execute):\s*([a-zA-Z_][a-zA-Z0-9_]*)',  # NVIDIA AIQ patterns
+                r'workflow execution:\s*([a-zA-Z_][a-zA-Z0-9_]*)',
+            ],
+            "langgraph": [
+                r'"tool_calls".*?"function".*?"name":\s*"([^"]+)"',  # LangGraph tool calls
+                r'node execution:\s*([a-zA-Z_][a-zA-Z0-9_]*)',
+            ],
             "generic": [
                 r'(?:call|calling|invoke|invoking|use|using|execute|executing).*?tool.*?([a-zA-Z_][a-zA-Z0-9_]*)',
                 r'(?:function|method|api).*?call.*?([a-zA-Z_][a-zA-Z0-9_]*)',

@@ -294,7 +294,7 @@ class ToolCallExtractor:
                     if isinstance(item, dict):
                         tools = ToolCallExtractor._extract_tools_single(item, framework)
                         all_tools.extend(tools)
-                return list(set(all_tools))  # Remove duplicates
+                return list(dict.fromkeys(all_tools))  # Remove duplicates while preserving order
             else:
                 return ToolCallExtractor._extract_tools_single(data, framework)
         except Exception as e:

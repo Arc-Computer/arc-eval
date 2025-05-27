@@ -2,7 +2,7 @@
 Core data types and structures for AgentEval.
 """
 
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, asdict, field
 from typing import Any, Dict, List, Optional, Union
 from enum import Enum
 
@@ -30,13 +30,13 @@ class EvaluationScenario:
     name: str
     description: str
     severity: str
-    compliance: List[str]
     test_type: str
     category: str
     input_template: str
     expected_behavior: str
-    failure_indicators: List[str]
     remediation: str
+    compliance: List[str] = field(default_factory=list)
+    failure_indicators: List[str] = field(default_factory=list)
     regulatory_reference: Optional[str] = None
     owasp_category: Optional[str] = None
     mitre_mapping: Optional[List[str]] = None
@@ -59,11 +59,11 @@ class EvaluationResult:
     scenario_name: str
     description: str
     severity: str
-    compliance: List[str]
     test_type: str
     passed: bool
     status: str
     confidence: float
+    compliance: List[str] = field(default_factory=list)
     failure_reason: Optional[str] = None
     agent_output: Optional[str] = None
     remediation: Optional[str] = None
@@ -90,8 +90,8 @@ class EvaluationPack:
     name: str
     version: str
     description: str
-    compliance_frameworks: List[str]
-    scenarios: List[EvaluationScenario]
+    compliance_frameworks: List[str] = field(default_factory=list)
+    scenarios: List[EvaluationScenario] = field(default_factory=list)
     categories: Optional[List[EvaluationCategory]] = None
     
     @classmethod
@@ -185,8 +185,8 @@ class EvaluationSummary:
     failed: int
     critical_failures: int
     high_failures: int
-    compliance_frameworks: List[str]
     domain: str
+    compliance_frameworks: List[str] = field(default_factory=list)
     
     @property
     def pass_rate(self) -> float:
@@ -203,7 +203,7 @@ class VerificationSummary:
     """Simple verification summary for backward compatibility."""
     verified: bool
     confidence_delta: float
-    issues_found: List[str]  # Max 3 for readability
+    issues_found: List[str] = field(default_factory=list)  # Max 3 for readability
 
 
 @dataclass
@@ -212,7 +212,7 @@ class BiasScore:
     bias_type: str
     score: float  # 0.0 = no bias, 1.0 = high bias
     confidence: float
-    evidence: List[str]
+    evidence: List[str] = field(default_factory=list)
 
 
 @dataclass
@@ -222,7 +222,7 @@ class BiasMetrics:
     position_bias_score: float
     style_bias_score: float
     overall_bias_risk: str  # "low", "medium", "high"
-    recommendations: List[str]
+    recommendations: List[str] = field(default_factory=list)
 
 
 @dataclass
