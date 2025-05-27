@@ -13,6 +13,7 @@ except ImportError:
     pass
 
 import sys
+import os
 import json
 import time
 import yaml
@@ -258,6 +259,11 @@ def _get_domain_info() -> dict:
     type=click.Path(exists=True, path_type=Path),
     help="A/B test different judge configurations using YAML config file",
 )
+@click.option(
+    "--no-interaction",
+    is_flag=True,
+    help="Skip interactive Q&A session after evaluation results",
+)
 @click.version_option(version="0.2.3", prog_name="arc-eval")
 def main(
     domain: Optional[str],
@@ -288,6 +294,7 @@ def main(
     verify: bool,
     confidence_calibration: bool,
     compare_judges: Optional[Path],
+    no_interaction: bool,
 ) -> None:
     """
     ARC-Eval: Enterprise-grade compliance evaluation for AI agents and LLMs.
@@ -949,7 +956,17 @@ def main(
             )
         
         # Display results
-        _display_results(results, output_format=output, dev_mode=dev, workflow_mode=workflow, domain=domain, summary_only=summary_only, format_template=format_template)
+        _display_results(
+            results, 
+            output_format=output, 
+            dev_mode=dev, 
+            workflow_mode=workflow, 
+            domain=domain, 
+            summary_only=summary_only, 
+            format_template=format_template,
+            improvement_report=improvement_report if agent_judge and 'improvement_report' in locals() else None,
+            no_interaction=no_interaction
+        )
         
         # Show timing information if requested
         if timing:
@@ -1165,7 +1182,9 @@ def _display_results(
     workflow_mode: bool,
     domain: str = "finance",
     summary_only: bool = False,
-    format_template: Optional[str] = None
+    format_template: Optional[str] = None,
+    improvement_report: Optional[dict] = None,
+    no_interaction: bool = False
 ) -> None:
     """Display evaluation results in the specified format."""
     
@@ -1393,9 +1412,45 @@ def _display_table_results(results: list[EvaluationResult], dev_mode: bool, work
         
         console.print(table)
     
-    # Recommendations
+    # Interactive Results Analyst Integration - Replace dense recommendations
     failed_results = [r for r in results if not r.passed]
-    if failed_results:
+    if failed_results and improvement_report:
+        try:
+            from agent_eval.analysis.interactive_analyst import InteractiveAnalyst
+            
+            # Check if we can run interactive mode
+            if not no_interaction and sys.stdin.isatty() and os.getenv("ANTHROPIC_API_KEY"):
+                analyst = InteractiveAnalyst(
+                    improvement_report=improvement_report,
+                    judge_results=improvement_report.get("detailed_results", []),
+                    domain=domain,
+                    performance_metrics=improvement_report.get("performance_metrics"),
+                    reliability_metrics=improvement_report.get("reliability_metrics")
+                )
+                
+                # Display concise summary + start interactive chat
+                analyst.display_concise_summary_and_chat(console)
+            else:
+                # Fallback: show condensed recommendations for non-interactive mode
+                analyst = InteractiveAnalyst(
+                    improvement_report=improvement_report,
+                    judge_results=improvement_report.get("detailed_results", []),
+                    domain=domain,
+                    performance_metrics=improvement_report.get("performance_metrics"),
+                    reliability_metrics=improvement_report.get("reliability_metrics")
+                )
+                analyst.display_condensed_recommendations(console)
+        except (ImportError, ValueError):
+            # Fallback to original display if InteractiveAnalyst fails
+            console.print("\n[bold]Recommendations[/bold]", style="blue")
+            for i, result in enumerate(failed_results[:5], 1):  # Show top 5
+                if result.remediation:
+                    console.print(f"{i}. {result.remediation}")
+            
+            if len(failed_results) > 5:
+                console.print(f"... and {len(failed_results) - 5} more recommendations")
+    elif failed_results:
+        # No improvement_report available, show original recommendations
         console.print("\n[bold]Recommendations[/bold]", style="blue")
         for i, result in enumerate(failed_results[:5], 1):  # Show top 5
             if result.remediation:
@@ -1694,7 +1749,7 @@ def _handle_quick_start(
         # Only show detailed table if specifically requested or in dev mode
         if dev and not summary_only:
             console.print("\n[bold blue]📊 Detailed Results (Dev Mode)[/bold blue]")
-            _display_results(results, output_format=output, dev_mode=dev, workflow_mode=workflow, domain=demo_domain, summary_only=True, format_template=format_template)
+            _display_results(results, output_format=output, dev_mode=dev, workflow_mode=workflow, domain=demo_domain, summary_only=True, format_template=format_template, improvement_report=None, no_interaction=True)
         
         # Show timing if requested
         if timing:
@@ -2141,7 +2196,9 @@ def _handle_benchmark_evaluation(
             workflow_mode=workflow, 
             domain=f"{benchmark.upper()}_benchmark",
             summary_only=summary_only,
-            format_template=format_template
+            format_template=format_template,
+            improvement_report=improvement_report if agent_judge and 'improvement_report' in locals() else None,
+            no_interaction=no_interaction
         )
         
         # Show timing if requested
