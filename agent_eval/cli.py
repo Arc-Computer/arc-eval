@@ -45,6 +45,19 @@ def failed_scenarios_exist(results: List[EvaluationResult]) -> bool:
     return any(not r.passed for r in results)
 
 
+def _find_best_matching_output(scenario: EvaluationScenario, agent_output_objects: List[AgentOutput]) -> Optional[AgentOutput]:
+    """Find the best matching output for a scenario, or return the first available output."""
+    # Look for exact scenario_id match first
+    for output in agent_output_objects:
+        if (hasattr(output, 'metadata') and output.metadata and 
+            isinstance(output.metadata, dict) and 
+            output.metadata.get('scenario_id') == scenario.id):
+            return output
+    
+    # If no exact match, use the first available output
+    return agent_output_objects[0] if agent_output_objects else None
+
+
 def _get_domain_info() -> dict:
     """Get centralized domain information to avoid duplication."""
     return {
@@ -672,17 +685,7 @@ def main(
                 # Evaluate each scenario against all available outputs (matches standard evaluation behavior)
                 judge_results = []
                 for scenario in scenarios:
-                    # Find the best matching output for this scenario, or use the first available output
-                    best_output = None
-                    for output in agent_output_objects:
-                        if (hasattr(output, 'metadata') and output.metadata and 
-                            isinstance(output.metadata, dict) and 
-                            output.metadata.get('scenario_id') == scenario.id):
-                            best_output = output
-                            break
-                    # If no exact match, use the first available output
-                    if not best_output and agent_output_objects:
-                        best_output = agent_output_objects[0]
+                    best_output = _find_best_matching_output(scenario, agent_output_objects)
                     
                     if best_output:
                         try:
@@ -750,10 +753,18 @@ def main(
                     if verbose:
                         console.print(f"[dim]✅ Recorded {len(eval_results_for_training)} evaluation results for future training data generation[/dim]")
                         
-                except Exception as e:
+                except (ImportError, AttributeError, TypeError, ValueError) as e:
                     logger.warning(f"Failed to record results in self-improvement engine: {e}")
                     if verbose:
                         console.print(f"[dim yellow]⚠️  Self-improvement recording failed: {e}[/dim yellow]")
+                except OSError as e:
+                    logger.warning(f"Failed to create retraining data files: {e}")
+                    if verbose:
+                        console.print(f"[dim yellow]⚠️  Could not write training data to disk: {e}[/dim yellow]")
+                except Exception as e:
+                    logger.warning(f"Unexpected error in self-improvement recording: {e}")
+                    if verbose:
+                        console.print(f"[dim yellow]⚠️  Unexpected self-improvement error: {e}[/dim yellow]")
                 
                 progress.update(eval_task, advance=20, description="✅ Agent-as-a-Judge evaluation complete", completed=100)
                 
