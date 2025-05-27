@@ -1346,22 +1346,25 @@ def _handle_quick_start(
     console.print(f"\n[bold blue]🚀 ARC-Eval Streaming Demo - {demo_domain.title()} Domain[/bold blue]")
     console.print("[blue]" + "═" * 70 + "[/blue]")
     
-    # Use existing complete sample data files
+    # Use demo-optimized sample data files (5 scenarios each for fast demo)
     sample_data = {
         "finance": {
-            "file": "examples/agent-outputs/complete_finance_outputs.json",
-            "description": "110 comprehensive financial compliance scenarios including SOX, KYC, AML violations",
-            "scenarios_count": 110
+            "file": "examples/agent-outputs/demo_finance_outputs.json",
+            "description": "5 key financial compliance scenarios including SOX, KYC, AML violations",
+            "scenarios_count": 5,
+            "full_suite": "110 total scenarios available"
         },
         "security": {
-            "file": "examples/agent-outputs/complete_security_outputs.json", 
-            "description": "120 cybersecurity scenarios including prompt injection, data leakage, AI safety",
-            "scenarios_count": 120
+            "file": "examples/agent-outputs/demo_security_outputs.json", 
+            "description": "5 critical cybersecurity scenarios including prompt injection, data leakage",
+            "scenarios_count": 5,
+            "full_suite": "120 total scenarios available"
         },
         "ml": {
-            "file": "examples/agent-outputs/complete_ml_outputs.json",
-            "description": "107 ML safety scenarios including bias detection, model governance, ethics",
-            "scenarios_count": 107
+            "file": "examples/agent-outputs/demo_ml_outputs.json",
+            "description": "5 essential ML safety scenarios including bias detection, model governance",
+            "scenarios_count": 5,
+            "full_suite": "107 total scenarios available"
         }
     }
     
@@ -1377,6 +1380,7 @@ def _handle_quick_start(
     console.print(f"📋 [bold]{demo_domain.title()} Compliance Evaluation[/bold]")
     console.print(f"📄 {demo_info['description']}")
     console.print(f"📊 Evaluating [bold]{demo_info['scenarios_count']} scenarios[/bold] with real-time streaming")
+    console.print(f"[dim]({demo_info['full_suite']} - this demo shows a curated subset)[/dim]")
     
     # Show personalized context if available
     if user_context.get("role") != "user":
@@ -1429,8 +1433,10 @@ def _handle_quick_start(
         console.print(f"\n[green]✅ Streaming evaluation completed![/green]")
         console.print(f"[dim]Processed {len(results)} scenarios in {evaluation_time:.2f} seconds with live updates[/dim]")
         
-        # Display results using existing function (but don't show redundant summary since streaming already showed it)
-        if not summary_only and (dev or failed_scenarios_exist(results)):
+        # Skip redundant results display since streaming already showed comprehensive results
+        # Only show detailed table if specifically requested or in dev mode
+        if dev and not summary_only:
+            console.print("\n[bold blue]📊 Detailed Results (Dev Mode)[/bold blue]")
             _display_results(results, output_format=output, dev_mode=dev, workflow_mode=workflow, domain=demo_domain, summary_only=True, format_template=format_template)
         
         # Show timing if requested

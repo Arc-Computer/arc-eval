@@ -30,7 +30,27 @@ class StreamingEvaluator:
     def stream_evaluation(self, agent_outputs: List[Any], callback: Optional[Callable] = None) -> List[EvaluationResult]:
         """Run evaluation with real-time streaming updates."""
         
-        scenarios = self.engine.eval_pack.scenarios
+        # For demo mode, only evaluate scenarios that have corresponding agent outputs
+        # This ensures we only process the subset of scenarios in the demo data
+        all_scenarios = self.engine.eval_pack.scenarios
+        
+        # Extract scenario IDs from agent outputs to limit evaluation scope
+        if isinstance(agent_outputs, list) and len(agent_outputs) > 0:
+            # Get scenario IDs from input data
+            input_scenario_ids = set()
+            for output in agent_outputs:
+                if isinstance(output, dict) and 'scenario_id' in output:
+                    input_scenario_ids.add(output['scenario_id'])
+            
+            # Filter scenarios to only those present in input data
+            if input_scenario_ids:
+                scenarios = [s for s in all_scenarios if s.id in input_scenario_ids]
+            else:
+                # Fallback: use first N scenarios where N = number of input outputs
+                scenarios = all_scenarios[:len(agent_outputs)]
+        else:
+            scenarios = all_scenarios
+        
         total_scenarios = len(scenarios)
         
         # Create live display layout

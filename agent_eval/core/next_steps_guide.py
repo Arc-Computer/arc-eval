@@ -124,18 +124,18 @@ class NextStepsGuide:
         
         if critical_failures > 0:
             console.print(f"[bold red]🚨 URGENT: {critical_failures} critical issues require immediate attention[/bold red]")
-            console.print("\n[bold]Copy and run this command with your real data:[/bold]")
-            console.print(f"[green]arc-eval --domain {domain} --input YOUR_OUTPUTS.json --agent-judge --export pdf[/green]")
-            console.print("[dim]Replace YOUR_OUTPUTS.json with your actual agent output file[/dim]")
+            console.print("\n[bold]Next step - evaluate your real system:[/bold]")
+            console.print(f"[green]arc-eval --domain {domain} --input path/to/your/outputs.json --agent-judge --export pdf[/green]")
+            console.print("[dim]Replace path/to/your/outputs.json with your actual agent output file[/dim]")
             
         elif failed > 0:
             console.print(f"[yellow]⚠️ {failed} scenarios failed - review recommended[/yellow]")
             console.print("\n[bold]Next step - evaluate your real system:[/bold]")
-            console.print(f"[green]arc-eval --domain {domain} --input YOUR_OUTPUTS.json --export pdf --workflow[/green]")
+            console.print(f"[green]arc-eval --domain {domain} --input path/to/your/outputs.json --export pdf --workflow[/green]")
             
         else:
             console.print(f"[green]🎉 Demo passed! Now test with your real {domain} system:[/green]")
-            console.print(f"[green]arc-eval --domain {domain} --input YOUR_OUTPUTS.json[/green]")
+            console.print(f"[green]arc-eval --domain {domain} --input path/to/your/outputs.json[/green]")
         
         console.print()
     
@@ -260,20 +260,20 @@ class NextStepsGuide:
         
         # Basic evaluation
         commands.append(f"# Evaluate your {domain} system")
-        commands.append(f"arc-eval --domain {domain} --input YOUR_OUTPUTS.json")
+        commands.append(f"arc-eval --domain {domain} --input path/to/your/outputs.json")
         
         # Advanced features
         if experience in ["intermediate", "expert"]:
             commands.append(f"\n# With AI-powered evaluation")
-            commands.append(f"arc-eval --domain {domain} --input YOUR_OUTPUTS.json --agent-judge")
+            commands.append(f"arc-eval --domain {domain} --input path/to/your/outputs.json --agent-judge")
         
         # Goal-specific commands
         if goal == "compliance_audit":
             commands.append(f"\n# Generate compliance report")
-            commands.append(f"arc-eval --domain {domain} --input YOUR_OUTPUTS.json --export pdf --workflow")
+            commands.append(f"arc-eval --domain {domain} --input path/to/your/outputs.json --export pdf --workflow")
         elif goal == "model_validation":
             commands.append(f"\n# Validate with verification")
-            commands.append(f"arc-eval --domain {domain} --input YOUR_OUTPUTS.json --agent-judge --verify")
+            commands.append(f"arc-eval --domain {domain} --input path/to/your/outputs.json --agent-judge --verify")
         
         # Enterprise features
         if experience == "expert":
