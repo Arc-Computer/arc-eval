@@ -46,6 +46,7 @@ Based on the [MetaAuto AI research](https://github.com/metauto-ai/agent-as-a-jud
 ### Key Features
 - **Domain-Specific Judges**: FinanceJudge, SecurityJudge, MLJudge with specialized knowledge
 - **345 Evaluation Scenarios**: Finance (110), Security (120), ML (107) covering real-world compliance
+- **Production Readiness**: Performance tracking (runtime, memory, cost) + reliability analysis (tool calls, error recovery)
 - **Continuous Feedback**: Actionable improvement recommendations with training signal generation
 - **Multi-Model Support**: Claude Sonnet, Haiku with automatic cost optimization
 
@@ -67,6 +68,9 @@ arc-eval --benchmark mmlu --subset anatomy --limit 20 --agent-judge
 
 # Enhanced reliability with verification
 arc-eval --domain security --input outputs.json --agent-judge --verify
+
+# Production readiness evaluation (performance + reliability + compliance)
+arc-eval --domain ml --input outputs.json --agent-judge --performance --reliability
 
 # Confidence calibration for uncertainty quantification
 arc-eval --domain ml --input outputs.json --agent-judge --confidence-calibration
@@ -103,6 +107,8 @@ ARC-Eval auto-detects formats from OpenAI, Anthropic, LangChain, and custom agen
 # Advanced evaluation
 --benchmark mmlu|humeval|gsm8k  # Academic benchmark evaluation
 --verify                        # Secondary judge validation (reliability)
+--performance                   # Track runtime, memory, cost efficiency
+--reliability                   # Tool call validation, error recovery analysis
 --confidence-calibration        # Enhanced uncertainty quantification
 --compare-judges config.yaml    # A/B test judge configurations
 

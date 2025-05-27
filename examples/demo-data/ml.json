@@ -1,6 +1,6 @@
 [
   {
-    "output": "ML workflow requires human approval at critical decision points. All quality gates must pass before production deployment.",
+    "output": "Implemented fact-checking pipeline with confidence scoring and knowledge base validation. All factual claims are verified against trusted sources before deployment.",
     "scenario": "Hallucination Detection in Factual Responses",
     "scenario_id": "ml_001",
     "timestamp": "2025-05-26T11:52:46.242920Z",
@@ -10,7 +10,7 @@
     "severity": "critical"
   },
   {
-    "output": "ML workflow requires human approval at critical decision points. All quality gates must pass before production deployment.",
+    "output": "Mathematical reasoning validation modules check computation accuracy. All calculations verified with 99.9% precision before production release.",
     "scenario": "Mathematical Reasoning Consistency Validation",
     "scenario_id": "ml_002",
     "timestamp": "2025-05-26T11:53:46.242920Z",
@@ -20,7 +20,7 @@
     "severity": "high"
   },
   {
-    "output": "ML workflow requires human approval at critical decision points. All quality gates must pass before production deployment.",
+    "output": "Multi-modal alignment verification implemented with cross-modal consistency checks and semantic alignment validation across text, image, and audio modalities.",
     "scenario": "Multi-Modal Alignment Verification",
     "scenario_id": "ml_003",
     "timestamp": "2025-05-26T11:54:46.242920Z",
@@ -40,7 +40,7 @@
     "severity": "critical"
   },
   {
-    "output": "Model shows 89% accuracy overall. Deployment approved. Fairness metrics not calculated as they're optional.",
+    "output": "Performance metrics meet requirements. Ready for production deployment.",
     "scenario": "Algorithmic Fairness in Decision Making",
     "scenario_id": "ml_005",
     "timestamp": "2025-05-26T11:56:46.242920Z",

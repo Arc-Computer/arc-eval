@@ -19,6 +19,7 @@ import yaml
 import logging
 from pathlib import Path
 from typing import Optional, List
+from contextlib import nullcontext
 
 import click
 from rich.console import Console
@@ -176,6 +177,16 @@ def _get_domain_info() -> dict:
     help="Show execution time and performance metrics",
 )
 @click.option(
+    "--performance",
+    is_flag=True,
+    help="Enable comprehensive performance tracking (runtime, memory, cost efficiency)",
+)
+@click.option(
+    "--reliability",
+    is_flag=True,
+    help="Enable reliability evaluation (tool call validation, error recovery analysis)",
+)
+@click.option(
     "--verbose",
     is_flag=True,
     help="Enable verbose logging with detailed debugging information",
@@ -261,6 +272,8 @@ def main(
     help_input: bool,
     list_domains: bool,
     timing: bool,
+    performance: bool,
+    reliability: bool,
     verbose: bool,
     quick_start: bool,
     validate: bool,
@@ -636,7 +649,17 @@ def main(
             # Use Agent-as-a-Judge evaluation with model preference
             agent_judge_instance = AgentJudge(domain=domain, preferred_model=judge_model)
             
-            with Progress(
+            # Initialize performance tracking if requested
+            if performance:
+                from agent_eval.evaluation.performance_tracker import PerformanceTracker
+                performance_tracker = PerformanceTracker()
+            else:
+                performance_tracker = None
+            
+            # Use context manager for performance tracking
+            perf_context = performance_tracker if performance_tracker else nullcontext()
+            
+            with perf_context, Progress(
                 SpinnerColumn(),
                 TextColumn("[bold blue]{task.description}"),
                 BarColumn(complete_style="green", finished_style="green"),
@@ -684,13 +707,27 @@ def main(
                 # Run Agent-as-a-Judge evaluation
                 # Evaluate each scenario against all available outputs (matches standard evaluation behavior)
                 judge_results = []
-                for scenario in scenarios:
+                for i, scenario in enumerate(scenarios):
                     best_output = _find_best_matching_output(scenario, agent_output_objects)
                     
                     if best_output:
                         try:
-                            result = agent_judge_instance.evaluate_scenario(best_output, scenario)
+                            scenario_start_time = time.time()
+                            
+                            # Track judge execution time if performance monitoring is enabled
+                            if performance_tracker:
+                                with performance_tracker.track_judge_execution():
+                                    result = agent_judge_instance.evaluate_scenario(best_output, scenario)
+                            else:
+                                result = agent_judge_instance.evaluate_scenario(best_output, scenario)
+                            
                             judge_results.append(result)
+                            
+                            # Track scenario completion for performance metrics
+                            if performance_tracker:
+                                scenario_time = time.time() - scenario_start_time
+                                performance_tracker.track_scenario_completion(scenario_time)
+                                
                         except Exception as e:
                             logger.error(f"Failed to evaluate scenario {scenario.id}: {e}")
                             continue
@@ -769,6 +806,58 @@ def main(
                     logger.warning(f"Unexpected error in self-improvement recording: {e}")
                     if verbose:
                         console.print(f"[dim yellow]⚠️  Unexpected self-improvement error: {e}[/dim yellow]")
+                
+                # Finalize performance tracking if enabled
+                performance_metrics = None
+                if performance_tracker:
+                    try:
+                        # Add final cost tracking
+                        performance_tracker.add_cost(agent_judge_instance.api_manager.total_cost)
+                        performance_metrics = performance_tracker.get_performance_summary()
+                    except Exception as e:
+                        logger.warning(f"Failed to generate performance metrics: {e}")
+                        performance_metrics = None
+                
+                # Run reliability evaluation if enabled
+                reliability_metrics = None
+                if reliability:
+                    try:
+                        from agent_eval.evaluation.reliability_validator import ReliabilityValidator
+                        
+                        reliability_validator = ReliabilityValidator()
+                        
+                        # Extract tool calls from agent outputs
+                        validations = []
+                        for i, agent_output in enumerate(agent_output_objects[:len(scenarios)]):
+                            scenario = scenarios[i]
+                            
+                            # Get expected tools from scenario (if available)
+                            expected_tools = []
+                            # For demo purposes, define some expected tools based on scenario content
+                            scenario_text = f"{scenario.name} {scenario.description}".lower()
+                            if "fact" in scenario_text or "validation" in scenario_text:
+                                expected_tools = ["search", "validate", "verify"]
+                            elif "mathematical" in scenario_text or "calculation" in scenario_text:
+                                expected_tools = ["calculator", "compute", "verify"]
+                            elif "bias" in scenario_text or "fairness" in scenario_text:
+                                expected_tools = ["analyze", "evaluate", "metrics"]
+                            elif "multi-modal" in scenario_text:
+                                expected_tools = ["image_process", "text_analyze", "align"]
+                            
+                            # Validate tool calls
+                            validation = reliability_validator.validate_tool_calls(
+                                agent_output.normalized_output,
+                                expected_tools,
+                                {"scenario_id": scenario.id, "scenario_name": scenario.name}
+                            )
+                            validations.append(validation)
+                        
+                        # Generate reliability metrics
+                        reliability_metrics = reliability_validator.generate_reliability_metrics(validations)
+                        
+                    except Exception as e:
+                        logger.warning(f"Failed to generate reliability metrics: {e}")
+                        reliability_metrics = None
                 
                 progress.update(eval_task, advance=20, description="✅ Agent-as-a-Judge evaluation complete", completed=100)
                 
@@ -852,7 +941,12 @@ def main(
         
         # Display Agent Judge specific results if applicable
         if agent_judge:
-            _display_agent_judge_results(improvement_report, domain)
+            _display_agent_judge_results(
+                improvement_report, 
+                domain, 
+                performance_metrics if 'performance_metrics' in locals() else None,
+                reliability_metrics if 'reliability_metrics' in locals() else None
+            )
         
         # Display results
         _display_results(results, output_format=output, dev_mode=dev, workflow_mode=workflow, domain=domain, summary_only=summary_only, format_template=format_template)
@@ -924,7 +1018,7 @@ def main(
         sys.exit(1)
 
 
-def _display_agent_judge_results(improvement_report: dict, domain: str) -> None:
+def _display_agent_judge_results(improvement_report: dict, domain: str, performance_metrics: Optional[dict] = None, reliability_metrics: Optional[dict] = None) -> None:
     """Display Agent-as-a-Judge specific results with continuous feedback."""
     console.print(f"\n[bold blue]🤖 Agent-as-a-Judge Improvement Report[/bold blue]")
     console.print("[blue]" + "═" * 60 + "[/blue]")
@@ -1014,6 +1108,48 @@ def _display_agent_judge_results(improvement_report: dict, domain: str) -> None:
         console.print(f"\n[bold purple]📚 Training Suggestions:[/bold purple]")
         for suggestion in feedback["training_suggestions"]:
             console.print(f"  📖 {suggestion}")
+    
+    # Performance metrics display
+    if performance_metrics:
+        console.print(f"\n[bold cyan]⚡ Performance Metrics:[/bold cyan]")
+        
+        runtime = performance_metrics.get("runtime", {})
+        memory = performance_metrics.get("memory", {})
+        latency = performance_metrics.get("latency", {})
+        cost_efficiency = performance_metrics.get("cost_efficiency", {})
+        resources = performance_metrics.get("resources", {})
+        
+        console.print(f"• Total Execution Time: {runtime.get('total_execution_time', 0):.2f}s")
+        console.print(f"• Judge Execution Time: {runtime.get('judge_execution_time', 0):.2f}s")
+        console.print(f"• Throughput: {runtime.get('scenarios_per_second', 0):.2f} scenarios/sec")
+        console.print(f"• Peak Memory: {memory.get('peak_memory_mb', 0):.1f} MB")
+        console.print(f"• P95 Latency: {latency.get('p95_seconds', 0):.3f}s")
+        console.print(f"• Cost per Scenario: ${cost_efficiency.get('cost_per_scenario', 0):.4f}")
+        
+        if resources.get('avg_cpu_percent'):
+            console.print(f"• Avg CPU Usage: {resources.get('avg_cpu_percent', 0):.1f}%")
+    
+    # Reliability metrics display
+    if reliability_metrics:
+        console.print(f"\n[bold magenta]🔧 Reliability Metrics:[/bold magenta]")
+        
+        console.print(f"• Overall Reliability Score: {reliability_metrics.get('overall_reliability_score', 0):.2f}")
+        console.print(f"• Tool Call Accuracy: {reliability_metrics.get('tool_call_accuracy', 0):.1%}")
+        console.print(f"• Error Recovery Rate: {reliability_metrics.get('error_recovery_rate', 0):.1%}")
+        console.print(f"• Framework Detection Rate: {reliability_metrics.get('framework_detection_rate', 0):.1%}")
+        
+        # Show framework distribution
+        framework_dist = reliability_metrics.get('framework_distribution', {})
+        if framework_dist:
+            frameworks = ', '.join([f"{fw}: {count}" for fw, count in framework_dist.items()])
+            console.print(f"• Framework Distribution: {frameworks}")
+        
+        # Show reliability issues if any
+        issues = reliability_metrics.get('reliability_issues', [])
+        if issues and issues != ["No major reliability issues detected"]:
+            console.print(f"\n[bold red]⚠️  Reliability Issues:[/bold red]")
+            for issue in issues[:3]:  # Show top 3 issues
+                console.print(f"  • {issue}")
     
     if feedback.get("compliance_gaps"):
         console.print(f"\n[bold red]⚠️  Compliance Gaps:[/bold red]")

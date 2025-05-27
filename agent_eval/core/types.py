@@ -2,7 +2,7 @@
 Core data types and structures for AgentEval.
 """
 
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, asdict, field
 from typing import Any, Dict, List, Optional, Union
 from enum import Enum
 
@@ -30,13 +30,13 @@ class EvaluationScenario:
     name: str
     description: str
     severity: str
-    compliance: List[str]
     test_type: str
     category: str
     input_template: str
     expected_behavior: str
-    failure_indicators: List[str]
     remediation: str
+    compliance: List[str] = field(default_factory=list)
+    failure_indicators: List[str] = field(default_factory=list)
     regulatory_reference: Optional[str] = None
     owasp_category: Optional[str] = None
     mitre_mapping: Optional[List[str]] = None
@@ -59,11 +59,11 @@ class EvaluationResult:
     scenario_name: str
     description: str
     severity: str
-    compliance: List[str]
     test_type: str
     passed: bool
     status: str
     confidence: float
+    compliance: List[str] = field(default_factory=list)
     failure_reason: Optional[str] = None
     agent_output: Optional[str] = None
     remediation: Optional[str] = None
@@ -90,8 +90,8 @@ class EvaluationPack:
     name: str
     version: str
     description: str
-    compliance_frameworks: List[str]
-    scenarios: List[EvaluationScenario]
+    compliance_frameworks: List[str] = field(default_factory=list)
+    scenarios: List[EvaluationScenario] = field(default_factory=list)
     categories: Optional[List[EvaluationCategory]] = None
     
     @classmethod
@@ -185,8 +185,8 @@ class EvaluationSummary:
     failed: int
     critical_failures: int
     high_failures: int
-    compliance_frameworks: List[str]
     domain: str
+    compliance_frameworks: List[str] = field(default_factory=list)
     
     @property
     def pass_rate(self) -> float:
@@ -203,7 +203,7 @@ class VerificationSummary:
     """Simple verification summary for backward compatibility."""
     verified: bool
     confidence_delta: float
-    issues_found: List[str]  # Max 3 for readability
+    issues_found: List[str] = field(default_factory=list)  # Max 3 for readability
 
 
 @dataclass
@@ -212,7 +212,7 @@ class BiasScore:
     bias_type: str
     score: float  # 0.0 = no bias, 1.0 = high bias
     confidence: float
-    evidence: List[str]
+    evidence: List[str] = field(default_factory=list)
 
 
 @dataclass
@@ -222,4 +222,89 @@ class BiasMetrics:
     position_bias_score: float
     style_bias_score: float
     overall_bias_risk: str  # "low", "medium", "high"
-    recommendations: List[str]
+    recommendations: List[str] = field(default_factory=list)
+
+
+@dataclass
+class PerformanceMetrics:
+    """Performance metrics for agent evaluation."""
+    
+    # Runtime metrics
+    total_execution_time: float  # Total wall clock time in seconds
+    agent_execution_time: float  # Time spent on agent operations
+    judge_execution_time: float  # Time spent on Agent-as-a-Judge evaluation
+    
+    # Memory metrics
+    peak_memory_mb: float  # Peak memory usage in MB
+    avg_memory_mb: float   # Average memory usage in MB
+    
+    # Throughput metrics
+    scenarios_per_second: float     # Evaluation throughput
+    tokens_per_second: Optional[float]  # Token processing rate
+    
+    # Cost efficiency metrics
+    cost_per_scenario: float        # Cost per evaluation scenario
+    cost_efficiency_score: float    # Cost per second of execution
+    
+    # Resource utilization
+    cpu_usage_percent: float        # Average CPU usage during evaluation
+    
+    # Performance quality indicators
+    latency_p50: float             # 50th percentile latency
+    latency_p95: float             # 95th percentile latency
+    latency_p99: float             # 99th percentile latency
+
+
+@dataclass
+class ReliabilityMetrics:
+    """Reliability metrics for agent tool call validation."""
+    
+    # Tool call validation
+    expected_tool_calls: List[str]     # Expected tool calls for scenario
+    actual_tool_calls: List[str]       # Actual tool calls detected
+    tool_call_accuracy: float          # Percentage of correct tool calls
+    
+    # Error handling
+    error_recovery_rate: float         # Rate of graceful error handling
+    timeout_rate: float                # Rate of timeout occurrences
+    
+    # Framework-specific reliability
+    framework_compliance: Dict[str, float]  # Compliance with framework patterns
+    
+    # Overall reliability score
+    reliability_score: float           # Overall reliability (0.0-1.0)
+    reliability_issues: List[str]      # List of reliability concerns
+
+
+@dataclass
+class ProductionReadinessReport:
+    """Comprehensive production readiness assessment."""
+    
+    # Core evaluation results
+    compliance_summary: EvaluationSummary
+    
+    # Performance assessment
+    performance_metrics: Optional[PerformanceMetrics] = None
+    performance_grade: Optional[str] = None  # A, B, C, D, F
+    
+    # Reliability assessment 
+    reliability_metrics: Optional[ReliabilityMetrics] = None
+    reliability_grade: Optional[str] = None  # A, B, C, D, F
+    
+    # Overall production readiness
+    production_ready: bool = False
+    readiness_score: float = 0.0  # 0.0-100.0
+    blocking_issues: List[str] = None
+    
+    # Recommendations
+    performance_recommendations: List[str] = None
+    reliability_recommendations: List[str] = None
+    
+    def __post_init__(self):
+        """Initialize default values for optional fields."""
+        if self.blocking_issues is None:
+            self.blocking_issues = []
+        if self.performance_recommendations is None:
+            self.performance_recommendations = []
+        if self.reliability_recommendations is None:
+            self.reliability_recommendations = []

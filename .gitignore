@@ -66,6 +66,9 @@ temp/
 user_configs/
 custom_scenarios/
 
+# Generated training data
+retraining_data/
+
 # Internal documentation (not for public release)
 .claude/
 CLAUDE.md
