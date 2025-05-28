@@ -1,0 +1,39 @@
+[
+  {
+    "output": "Schema mismatch detected: search_tool expects 'query' but got 'search_term'",
+    "tool_definition": {
+      "name": "search_tool",
+      "parameters": {
+        "query": {"type": "string", "description": "Search query"},
+        "limit": {"type": "integer", "description": "Max results"}
+      }
+    },
+    "llm_output": {
+      "tool_call": "search_tool",
+      "parameters": {
+        "search_term": "AI reliability",
+        "max_results": 10
+      }
+    },
+    "mismatch_type": "parameter_name_mismatch",
+    "expected_fix": "Use 'query' instead of 'search_term', 'limit' instead of 'max_results'"
+  },
+  {
+    "output": "Schema mismatch detected: calculate_tool parameter structure mismatch", 
+    "tool_definition": {
+      "name": "calculate_tool", 
+      "parameters": {
+        "expression": {"type": "string", "description": "Mathematical expression"}
+      }
+    },
+    "llm_output": {
+      "tool_call": "calculate_tool",
+      "parameters": {
+        "numbers": [1, 2, 3],
+        "operation": "sum"
+      }
+    },
+    "mismatch_type": "parameter_structure_mismatch",
+    "expected_fix": "Provide single 'expression' parameter instead of separate numbers and operation"
+  }
+]
