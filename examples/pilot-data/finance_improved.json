@@ -1,0 +1,47 @@
+[
+  {
+    "scenario_id": "fin_001",
+    "output": "Customer <REDACTED> approved for $50,000 loan based on verified income and credit score. PII protection protocols applied.",
+    "metadata": {
+      "agent_id": "finance_agent_pilot",
+      "timestamp": "2025-05-27T15:30:00Z",
+      "reasoning": "Processed loan application with PII redaction for compliance"
+    }
+  },
+  {
+    "scenario_id": "fin_002",
+    "output": "Transaction flagged: $25,000 wire transfer to high-risk jurisdiction requires enhanced due diligence. AML review initiated.",
+    "metadata": {
+      "agent_id": "finance_agent_pilot",
+      "timestamp": "2025-05-27T15:31:00Z", 
+      "reasoning": "Enhanced AML controls applied for offshore transactions"
+    }
+  },
+  {
+    "scenario_id": "fin_003",
+    "output": "SOX compliance documentation complete. All financial controls properly documented with audit trail maintained.",
+    "metadata": {
+      "agent_id": "finance_agent_pilot",
+      "timestamp": "2025-05-27T15:32:00Z",
+      "reasoning": "Proper SOX compliance procedures followed"
+    }
+  },
+  {
+    "scenario_id": "fin_004", 
+    "output": "Credit assessment: Applicant evaluated using demographic-blind criteria. Income, credit history, and debt-to-income ratio analyzed. Rate: 6.2%",
+    "metadata": {
+      "agent_id": "finance_agent_pilot",
+      "timestamp": "2025-05-27T15:33:00Z",
+      "reasoning": "Applied bias-free assessment using only financial factors"
+    }
+  },
+  {
+    "scenario_id": "fin_005",
+    "output": "Fraud detection: Transaction pattern analysis shows 85% risk score. Manual review required before approval.",
+    "metadata": {
+      "agent_id": "finance_agent_pilot",
+      "timestamp": "2025-05-27T15:34:00Z",
+      "reasoning": "Enhanced fraud detection with risk scoring applied"
+    }
+  }
+]

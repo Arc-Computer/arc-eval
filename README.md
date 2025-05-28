@@ -104,6 +104,11 @@ ARC-Eval auto-detects formats from OpenAI, Anthropic, LangChain, and custom agen
 --agent-judge                   # Enable Agent-as-a-Judge evaluation
 --export pdf                    # Generate compliance reports
 
+# Core loop workflow
+--improvement-plan              # Generate actionable improvement plan
+--from evaluation.json          # Source evaluation for improvement plan
+--baseline evaluation.json      # Compare current evaluation to baseline
+
 # Advanced evaluation
 --benchmark mmlu|humeval|gsm8k  # Academic benchmark evaluation
 --verify                        # Secondary judge validation (reliability)
@@ -130,8 +135,63 @@ arc-eval --domain finance --input $CI_ARTIFACTS/logs.json --agent-judge
 if [ $? -ne 0 ]; then exit 1; fi
 ```
 
+### Core Loop Workflow: Evaluation → Improvement → Validation
+
+ARC-Eval provides a complete feedback loop for systematic agent improvement using existing evaluation infrastructure:
+
+```bash
+# Step 1: Baseline evaluation with auto-save
+arc-eval --domain finance --input outputs.json --agent-judge
+# → Generates: finance_evaluation_20250527_143022.json
+
+# Step 2: Generate improvement plan from evaluation results  
+arc-eval --improvement-plan --from finance_evaluation_20250527_143022.json
+# → Generates: improvement_plan_20250527_143022.md
+
+# Step 3: Compare improvements after implementing changes
+arc-eval --domain finance --input improved_outputs.json --baseline finance_evaluation_20250527_143022.json
+# → Shows: before/after analysis, scenario-level improvements, pass rate changes
+```
+
+#### Improvement Plan Output
+Generated plans include prioritized actions with implementation timelines:
+
+```markdown
+# Improvement Plan: finance_agent_001
+
+## Recommended Actions (by Priority)
+
+### 1. 🔴 CRITICAL - Compliance
+**Failure Pattern:** Failed 3 scenarios in compliance area
+**Recommended Change:** Update compliance validation logic to match regulatory requirements  
+**Expected Improvement:** Pass rate ↑ from 54% to 84%
+**Implementation Time:** 3-5 days
+**Affected Scenarios:** fin_001, fin_004, fin_007
+
+### 2. 🟡 MEDIUM - Bias Detection  
+**Failure Pattern:** Failed 1 scenario in bias area
+**Recommended Change:** Add bias detection metrics and threshold-based filtering
+**Expected Improvement:** Pass rate ↑ from 60% to 89%
+**Implementation Time:** 2-3 days
+**Affected Scenarios:** fin_012
+```
+
+#### Before/After Comparison
+Comparison reports show measurable improvement validation:
+
+```
+Evaluation Comparison
+Agent: finance_agent_001 (finance)
+Baseline: finance_evaluation_20250527_143022
+Current: finance_evaluation_20250527_150833
+
+Pass Rate: 40.0% → 85.0% (+45.0%)
+Scenarios: 5 improved, 1 degraded, 2 unchanged
+Net Improvement: 4 scenarios
+```
+
 ### Continuous Improvement Pipeline
-ARC-Eval builds toward turning evaluation outcomes into agent retraining and RL environments, enabling agents to improve iteratively based on real-world, regulatory-grade benchmarks:
+The core loop integrates with existing infrastructure for systematic improvement:
 
 - **345 Evaluation Scenarios**: Finance (110) • Security (120) • ML (107)
 - **Domain-Specific Judges**: SecurityJudge, FinanceJudge, MLJudge with specialized knowledge
