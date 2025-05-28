@@ -32,20 +32,46 @@ arc-eval --quick-start --domain finance --agent-judge
 arc-eval --domain finance --input your_outputs.json --agent-judge
 ```
 
+## 🚀 Intelligent Workflow (NEW!)
+
+ARC-Eval now features **intelligent workflow automation** that eliminates manual filename copying and provides contextual guidance:
+
+```bash
+# Smart defaults activate automatically
+arc-eval --domain finance --input your_data.json
+# → Auto-enables Agent-as-a-Judge for large files
+# → Auto-enables PDF export for finance/security domains  
+# → Auto-enables verification for ML domain
+
+# Zero-configuration workflow continuation
+arc-eval --continue
+# → Auto-detects latest evaluation
+# → Suggests next step (plan → re-evaluate)
+# → Interactive prompts with smart defaults
+```
+
+### Enterprise Shortcuts
+```bash
+# Complete compliance audit workflow
+arc-eval --domain finance --input data.json --audit
+
+# Cost-optimized development workflow
+arc-eval --domain security --input data.json --dev-mode
+```
+
 ## Core Loop Workflow
 
 ```bash
 📊 Evaluate → 📋 Plan → 🔄 Re-evaluate → 📈 Compare
 ```
 
-### Step 1: Initial Evaluation
+### Traditional Manual Workflow
 ```bash
+# Step 1: Initial Evaluation
 arc-eval --domain finance --input baseline_data.json --agent-judge
 # → Auto-saves: finance_evaluation_20240527_143022.json
-```
 
-### Step 2: Generate Improvement Plan  
-```bash
+# Step 2: Generate Improvement Plan (manual filename copying)
 arc-eval --improvement-plan --from-evaluation finance_evaluation_20240527_143022.json
 # → Auto-saves: improvement_plan_20240527_143025.md
 ```
@@ -54,6 +80,22 @@ arc-eval --improvement-plan --from-evaluation finance_evaluation_20240527_143022
 ```bash
 arc-eval --domain finance --input improved_data.json --baseline finance_evaluation_20240527_143022.json  
 # → Shows: before/after metrics, scenario-level improvements
+```
+
+### 🚀 Intelligent Workflow (Recommended)
+```bash
+# Step 1: Initial evaluation with smart defaults
+arc-eval --domain finance --input your_data.json
+# → Smart defaults auto-activate based on domain and file size
+
+# Step 2: Continue workflow (zero configuration)
+arc-eval --continue
+# → Auto-detects latest evaluation and workflow state
+# → Guides you to next step with interactive prompts
+
+# Step 3: Follow guided next steps
+arc-eval --continue
+# → Automatically suggests re-evaluation when improvement plan exists
 ```
 
 ## Key Commands
