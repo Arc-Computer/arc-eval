@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-ARC-Eval Pilot Validation Script
+ARC-Eval Session Validation Script
 
 Based on Core_loop.md validation requirements (lines 172-188).
-Automates pilot session tracking and success criteria measurement.
+Automates session tracking and success criteria measurement.
 """
 
 import json
@@ -18,10 +18,10 @@ from dataclasses import dataclass, asdict
 import argparse
 
 @dataclass
-class PilotSession:
-    """Track pilot session data and metrics."""
+class EvaluationSession:
+    """Track evaluation session data and metrics."""
     
-    customer_name: str
+    user_name: str
     domain: str
     session_date: str
     baseline_evaluation_file: str
@@ -54,29 +54,29 @@ class PilotSession:
             self.integration_needs = []
 
 
-class PilotValidator:
-    """Automate pilot validation and success criteria tracking."""
+class SessionValidator:
+    """Automate session validation and success criteria tracking."""
     
-    def __init__(self, output_dir: str = "pilot_results"):
+    def __init__(self, output_dir: str = "session_results"):
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(exist_ok=True)
         
         # Success criteria thresholds from Core_loop.md
         self.success_thresholds = {
-            "weekly_usage_intent": 0.75,  # ≥75% of pilots show weekly usage intent
+            "regular_usage_intent": 0.75,  # ≥75% show regular usage intent
             "implementation_rate": 0.50,  # ≥50% of improvement plans implemented
             "improvement_measurement": 0.30,  # ≥30% violation reduction
-            "payment_intent": 0.60,  # ≥60% indicate payment willingness
+            "value_recognition": 0.60,  # ≥60% recognize clear value
         }
     
-    def run_baseline_evaluation(self, domain: str, input_file: str, customer_name: str) -> PilotSession:
-        """Execute baseline evaluation and start pilot session tracking."""
+    def run_baseline_evaluation(self, domain: str, input_file: str, user_name: str) -> EvaluationSession:
+        """Execute baseline evaluation and start session tracking."""
         
-        print(f"🔄 Starting pilot validation for {customer_name} ({domain} domain)")
+        print(f"🔄 Starting session validation for {user_name} ({domain} domain)")
         start_time = time.time()
         
-        session = PilotSession(
-            customer_name=customer_name,
+        session = EvaluationSession(
+            user_name=user_name,
             domain=domain,
             session_date=datetime.now().isoformat(),
             baseline_evaluation_file=""
@@ -114,7 +114,7 @@ class PilotValidator:
         session.execution_time_minutes = (time.time() - start_time) / 60
         return session
     
-    def generate_improvement_plan(self, session: PilotSession) -> PilotSession:
+    def generate_improvement_plan(self, session: EvaluationSession) -> EvaluationSession:
         """Generate improvement plan and track execution."""
         
         if not session.baseline_evaluation_file:
@@ -150,7 +150,7 @@ class PilotValidator:
         
         return session
     
-    def run_comparison_evaluation(self, session: PilotSession, improved_input_file: str) -> PilotSession:
+    def run_comparison_evaluation(self, session: EvaluationSession, improved_input_file: str) -> EvaluationSession:
         """Run comparison evaluation with improved data."""
         
         if not session.baseline_evaluation_file:
@@ -192,15 +192,15 @@ class PilotValidator:
         
         return session
     
-    def collect_feedback(self, session: PilotSession) -> PilotSession:
-        """Collect customer feedback and usage validation."""
+    def collect_feedback(self, session: EvaluationSession) -> EvaluationSession:
+        """Collect user feedback and usage validation."""
         
-        print(f"\n📋 Collecting feedback for {session.customer_name}")
-        print("Please answer based on customer responses during pilot session:")
+        print(f"\n📋 Collecting feedback for {session.user_name}")
+        print("Please answer based on user responses during session:")
         
         # Usage validation questions
-        weekly_usage = input("Would customer use this 3+ times per week per agent? (y/n): ").lower().startswith('y')
-        session.weekly_usage_intent = weekly_usage
+        regular_usage = input("Would user integrate this into regular workflow? (y/n): ").lower().startswith('y')
+        session.weekly_usage_intent = regular_usage
         
         try:
             impl_pct = int(input("What percentage of recommendations would they implement? (0-100): "))
@@ -211,8 +211,8 @@ class PilotValidator:
         value_recognized = input("Do they see clear value in before/after measurement? (y/n): ").lower().startswith('y')
         session.improvement_value_recognized = value_recognized
         
-        payment_intent = input("Would they pay for continued access? (y/n): ").lower().startswith('y')
-        session.payment_willingness = payment_intent
+        value_recognition = input("Do they see clear value for continued usage? (y/n): ").lower().startswith('y')
+        session.payment_willingness = value_recognition
         
         # Recommendation quality feedback
         try:
@@ -235,10 +235,10 @@ class PilotValidator:
         
         return session
     
-    def save_session(self, session: PilotSession) -> str:
-        """Save pilot session data to JSON file."""
+    def save_session(self, session: EvaluationSession) -> str:
+        """Save session data to JSON file."""
         
-        session_file = self.output_dir / f"pilot_{session.customer_name}_{session.domain}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+        session_file = self.output_dir / f"session_{session.user_name}_{session.domain}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
         
         with open(session_file, 'w') as f:
             json.dump(asdict(session), f, indent=2)
@@ -246,11 +246,11 @@ class PilotValidator:
         print(f"💾 Session data saved: {session_file}")
         return str(session_file)
     
-    def generate_session_report(self, session: PilotSession) -> str:
+    def generate_session_report(self, session: EvaluationSession) -> str:
         """Generate human-readable session report."""
         
         report = f"""
-# Pilot Session Report: {session.customer_name}
+# Session Report: {session.user_name}
 
 **Domain**: {session.domain}  
 **Date**: {session.session_date[:19]}  
@@ -262,10 +262,10 @@ class PilotValidator:
 - **Technical Errors**: {len(session.technical_errors)} {'✅ None' if not session.technical_errors else '❌ Issues found'}
 
 ## Usage Validation  
-- **Weekly Usage Intent**: {'✅ Yes' if session.weekly_usage_intent else '❌ No'}
+- **Regular Usage Intent**: {'✅ Yes' if session.weekly_usage_intent else '❌ No'}
 - **Implementation Percentage**: {session.implementation_percentage}% ({'✅ ≥50%' if session.implementation_percentage >= 50 else '❌ <50%'})
 - **Value Recognition**: {'✅ Yes' if session.improvement_value_recognized else '❌ No'}
-- **Payment Willingness**: {'✅ Yes' if session.payment_willingness else '❌ No'}
+- **Continued Usage Value**: {'✅ Yes' if session.payment_willingness else '❌ No'}
 
 ## Recommendation Quality
 - **Actionable Recommendations**: {session.actionable_recommendations_pct}% ({'✅ ≥80%' if session.actionable_recommendations_pct >= 80 else '⚠️ <80%'})
@@ -280,9 +280,9 @@ class PilotValidator:
         
         if session.weekly_usage_intent:
             criteria_met += 1
-            report += "- ✅ Weekly usage intent\n"
+            report += "- ✅ Regular usage intent\n"
         else:
-            report += "- ❌ Weekly usage intent\n"
+            report += "- ❌ Regular usage intent\n"
         
         if session.implementation_percentage >= 50:
             criteria_met += 1
@@ -298,9 +298,9 @@ class PilotValidator:
         
         if session.payment_willingness:
             criteria_met += 1
-            report += "- ✅ Payment willingness\n"
+            report += "- ✅ Continued usage value recognized\n"
         else:
-            report += "- ❌ No payment willingness\n"
+            report += "- ❌ No continued usage value recognized\n"
         
         success_rate = (criteria_met / total_criteria) * 100
         report += f"\n**Overall Success Rate**: {criteria_met}/{total_criteria} ({success_rate:.0f}%)\n"
@@ -322,8 +322,8 @@ class PilotValidator:
         
         return report
     
-    def analyze_pilot_cohort(self, session_files: List[str]) -> Dict[str, Any]:
-        """Analyze results across multiple pilot sessions."""
+    def analyze_session_cohort(self, session_files: List[str]) -> Dict[str, Any]:
+        """Analyze results across multiple sessions."""
         
         sessions = []
         for file_path in session_files:
@@ -337,16 +337,16 @@ class PilotValidator:
         total_sessions = len(sessions)
         
         # Calculate aggregate metrics
-        weekly_usage_count = sum(1 for s in sessions if s['weekly_usage_intent'])
+        regular_usage_count = sum(1 for s in sessions if s['weekly_usage_intent'])
         implementation_avg = sum(s['implementation_percentage'] for s in sessions) / total_sessions
-        payment_intent_count = sum(1 for s in sessions if s['payment_willingness'])
+        value_recognition_count = sum(1 for s in sessions if s['payment_willingness'])
         workflow_completed_count = sum(1 for s in sessions if s['workflow_completed'])
         
         analysis = {
-            "total_pilots": total_sessions,
-            "weekly_usage_rate": weekly_usage_count / total_sessions,
+            "total_sessions": total_sessions,
+            "regular_usage_rate": regular_usage_count / total_sessions,
             "avg_implementation_percentage": implementation_avg,
-            "payment_intent_rate": payment_intent_count / total_sessions,
+            "value_recognition_rate": value_recognition_count / total_sessions,
             "technical_success_rate": workflow_completed_count / total_sessions,
             "success_criteria_met": {},
             "recommendation": ""
@@ -354,9 +354,9 @@ class PilotValidator:
         
         # Check against success thresholds
         analysis["success_criteria_met"] = {
-            "weekly_usage": analysis["weekly_usage_rate"] >= self.success_thresholds["weekly_usage_intent"],
+            "regular_usage": analysis["regular_usage_rate"] >= self.success_thresholds["regular_usage_intent"],
             "implementation": implementation_avg >= self.success_thresholds["implementation_rate"],
-            "payment_intent": analysis["payment_intent_rate"] >= self.success_thresholds["payment_intent"],
+            "value_recognition": analysis["value_recognition_rate"] >= self.success_thresholds["value_recognition"],
         }
         
         # Generate recommendation
@@ -372,25 +372,25 @@ class PilotValidator:
 
 
 def main():
-    parser = argparse.ArgumentParser(description="ARC-Eval Pilot Validation")
+    parser = argparse.ArgumentParser(description="ARC-Eval Session Validation")
     parser.add_argument("command", choices=["run", "analyze"], help="Command to execute")
-    parser.add_argument("--customer", required=False, help="Customer name")
+    parser.add_argument("--user", required=False, help="User name")
     parser.add_argument("--domain", choices=["finance", "security", "ml"], help="Evaluation domain")
     parser.add_argument("--baseline-input", help="Baseline input file")
     parser.add_argument("--improved-input", help="Improved input file for comparison")
-    parser.add_argument("--sessions-dir", default="pilot_results", help="Directory containing session files")
+    parser.add_argument("--sessions-dir", default="session_results", help="Directory containing session files")
     
     args = parser.parse_args()
     
-    validator = PilotValidator()
+    validator = SessionValidator()
     
     if args.command == "run":
-        if not all([args.customer, args.domain, args.baseline_input]):
-            print("Error: --customer, --domain, and --baseline-input required for 'run' command")
+        if not all([args.user, args.domain, args.baseline_input]):
+            print("Error: --user, --domain, and --baseline-input required for 'run' command")
             sys.exit(1)
         
-        # Run complete pilot workflow
-        session = validator.run_baseline_evaluation(args.domain, args.baseline_input, args.customer)
+        # Run complete session workflow
+        session = validator.run_baseline_evaluation(args.domain, args.baseline_input, args.user)
         session = validator.generate_improvement_plan(session)
         
         if args.improved_input:
@@ -411,8 +411,8 @@ def main():
     
     elif args.command == "analyze":
         # Analyze all sessions in directory
-        session_files = list(Path(args.sessions_dir).glob("pilot_*.json"))
-        analysis = validator.analyze_pilot_cohort([str(f) for f in session_files])
+        session_files = list(Path(args.sessions_dir).glob("session_*.json"))
+        analysis = validator.analyze_session_cohort([str(f) for f in session_files])
         
         print(json.dumps(analysis, indent=2))
 

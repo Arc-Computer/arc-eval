@@ -1,5 +1,5 @@
 """
-Basic usage analytics tracking for ARC-Eval pilot validation.
+Basic usage analytics tracking for ARC-Eval validation.
 Tracks key metrics for core loop workflow adoption.
 """
 
@@ -27,7 +27,7 @@ class UsageEvent:
 
 
 class UsageAnalytics:
-    """Simple analytics tracker for pilot validation."""
+    """Simple analytics tracker for usage validation."""
     
     def __init__(self, analytics_dir: str = ".arc_analytics"):
         self.analytics_dir = Path(analytics_dir)
@@ -170,16 +170,16 @@ class UsageAnalytics:
         
         return summary
     
-    def get_pilot_metrics(self) -> Dict[str, Any]:
-        """Get pilot-specific metrics for validation."""
+    def get_validation_metrics(self) -> Dict[str, Any]:
+        """Get validation-specific metrics for usage analysis."""
         
         summary = self.generate_summary()
         
         if "error" in summary:
             return summary
         
-        # Calculate pilot validation metrics
-        pilot_metrics = {
+        # Calculate validation metrics
+        validation_metrics = {
             "usage_frequency": {
                 "total_evaluations": summary["event_breakdown"].get("evaluation", 0),
                 "evaluations_per_week": summary["recent_activity_7d"] / 7 if summary["recent_activity_7d"] > 0 else 0,
@@ -197,7 +197,7 @@ class UsageAnalytics:
             "domain_distribution": summary["domain_usage"]
         }
         
-        return pilot_metrics
+        return validation_metrics
     
     def _generate_session_id(self) -> str:
         """Generate unique session ID."""

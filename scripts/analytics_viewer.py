@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 ARC-Eval Analytics Viewer
-Simple tool to view usage analytics and pilot metrics.
+Simple tool to view usage analytics and validation metrics.
 """
 
 import json
@@ -28,7 +28,7 @@ def main():
         
         analytics = get_analytics()
         summary = analytics.generate_summary()
-        pilot_metrics = analytics.get_pilot_metrics()
+        validation_metrics = analytics.get_validation_metrics()
         
     except Exception as e:
         console.print(f"[red]Error loading analytics: {e}[/red]")
@@ -78,33 +78,33 @@ def main():
         
         console.print(domain_table)
     
-    # Pilot validation metrics
-    if "error" not in pilot_metrics:
-        console.print("\n[bold blue]Pilot Validation Metrics[/bold blue]")
+    # Validation metrics
+    if "error" not in validation_metrics:
+        console.print("\n[bold blue]Usage Validation Metrics[/bold blue]")
         
-        pilot_summary = f"""
+        validation_summary = f"""
 **Usage Frequency:**
-• Total Evaluations: {pilot_metrics['usage_frequency']['total_evaluations']}
-• Evaluations/Week: {pilot_metrics['usage_frequency']['evaluations_per_week']:.1f}
-• Meets 3x/week threshold: {'✅ Yes' if pilot_metrics['usage_frequency']['meets_3x_week_threshold'] else '❌ No'}
+• Total Evaluations: {validation_metrics['usage_frequency']['total_evaluations']}
+• Evaluations/Week: {validation_metrics['usage_frequency']['evaluations_per_week']:.1f}
+• Meets 3x/week threshold: {'✅ Yes' if validation_metrics['usage_frequency']['meets_3x_week_threshold'] else '❌ No'}
 
 **Workflow Adoption:**
-• Complete Workflows: {pilot_metrics['workflow_adoption']['complete_workflows']}
-• Completion Rate: {pilot_metrics['workflow_adoption']['workflow_completion_rate']}
-• Meets threshold: {'✅ Yes' if pilot_metrics['workflow_adoption']['meets_completion_threshold'] else '❌ No'}
+• Complete Workflows: {validation_metrics['workflow_adoption']['complete_workflows']}
+• Completion Rate: {validation_metrics['workflow_adoption']['workflow_completion_rate']}
+• Meets threshold: {'✅ Yes' if validation_metrics['workflow_adoption']['meets_completion_threshold'] else '❌ No'}
 
 **Technical Reliability:**
-• Success Rate: {pilot_metrics['technical_reliability']['success_rate']}
-• Meets threshold: {'✅ Yes' if pilot_metrics['technical_reliability']['meets_reliability_threshold'] else '❌ No'}
+• Success Rate: {validation_metrics['technical_reliability']['success_rate']}
+• Meets threshold: {'✅ Yes' if validation_metrics['technical_reliability']['meets_reliability_threshold'] else '❌ No'}
         """
         
-        console.print(Panel(pilot_summary.strip(), title="Pilot Metrics", border_style="green"))
+        console.print(Panel(validation_summary.strip(), title="Validation Metrics", border_style="green"))
         
-        # Overall pilot success
+        # Overall success
         success_criteria = [
-            pilot_metrics['usage_frequency']['meets_3x_week_threshold'],
-            pilot_metrics['workflow_adoption']['meets_completion_threshold'],
-            pilot_metrics['technical_reliability']['meets_reliability_threshold']
+            validation_metrics['usage_frequency']['meets_3x_week_threshold'],
+            validation_metrics['workflow_adoption']['meets_completion_threshold'],
+            validation_metrics['technical_reliability']['meets_reliability_threshold']
         ]
         
         criteria_met = sum(success_criteria)

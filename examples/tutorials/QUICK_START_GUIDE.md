@@ -1,10 +1,10 @@
-# ARC-Eval Core Loop Pilot Guide
+# ARC-Eval Core Loop Quick Start Guide
 
 **Target Duration**: 15 minutes  
 **Objective**: Validate complete evaluation → improvement → validation workflow  
 **Prerequisites**: `ANTHROPIC_API_KEY` set, agent outputs ready for evaluation
 
-## Pilot Session Structure
+## Session Structure
 
 ### **Minute 0-2: Setup & Context**
 ```bash
@@ -16,7 +16,7 @@ echo $ANTHROPIC_API_KEY  # Should return your API key
 arc-eval --list-domains
 ```
 
-**Context Setting**: "We'll validate ARC-Eval's complete improvement workflow using your agent data. The goal is measuring whether this drives weekly usage through actionable improvement cycles."
+**Context Setting**: "We'll validate ARC-Eval's complete improvement workflow using your agent data. This demonstrates how to measure and improve agent compliance through actionable improvement cycles."
 
 ### **Minute 2-7: Baseline Evaluation**
 ```bash
@@ -60,12 +60,12 @@ arc-eval --domain [finance|security|ml] --input improved_outputs.json --baseline
 - Net improvement calculation
 - Degraded scenarios identification
 
-### **Minute 13-15: Usage Pattern Discussion**
-**Critical Questions**:
-1. **Frequency**: "Would you run this 3+ times per week per agent?"
-2. **Implementation**: "What percentage of recommendations would you actually implement?"
-3. **Value**: "Does the improvement measurement justify weekly usage?"
-4. **Payment Intent**: "Would you pay $X/month for this workflow?"
+### **Minute 13-15: Workflow Discussion**
+**Key Questions**:
+1. **Frequency**: "How often would you run this evaluation on your agents?"
+2. **Implementation**: "What percentage of recommendations would you implement?"
+3. **Value**: "Does the improvement measurement provide clear value?"
+4. **Integration**: "How would this fit into your existing workflow?"
 
 ## Success Criteria Validation
 
@@ -76,10 +76,10 @@ arc-eval --domain [finance|security|ml] --input improved_outputs.json --baseline
 - [ ] No technical errors or confusing output
 
 ### **Usage Validation**  
-- [ ] Customer indicates ≥3 evaluations/week usage intent
-- [ ] Customer would implement ≥50% of recommendations
-- [ ] Customer sees clear value in before/after measurement
-- [ ] Customer indicates willingness to pay for continued access
+- [ ] User indicates regular evaluation usage intent
+- [ ] User would implement ≥50% of recommendations
+- [ ] User sees clear value in before/after measurement
+- [ ] User understands integration possibilities
 
 ### **Feedback Collection**
 - [ ] Specific scenarios where recommendations were unclear
@@ -90,13 +90,13 @@ arc-eval --domain [finance|security|ml] --input improved_outputs.json --baseline
 ## Post-Session Follow-up
 
 ### **Week 1 Actions**
-1. **Day 1**: Send improvement plan for customer implementation
-2. **Day 3**: Check implementation progress via email/slack
+1. **Day 1**: Send improvement plan for implementation
+2. **Day 3**: Check implementation progress
 3. **Day 7**: Schedule re-evaluation session
 
 ### **Week 2 Validation**
 1. **Day 7**: Run comparison evaluation together
-2. **Day 8**: Capture final feedback and payment intent
+2. **Day 8**: Capture final feedback and workflow integration discussion
 3. **Day 9**: Document lessons learned and success metrics
 
 ## Domain-Specific Focus Areas
@@ -105,19 +105,19 @@ arc-eval --domain [finance|security|ml] --input improved_outputs.json --baseline
 - Compliance violations (SOX, KYC, AML, PCI-DSS)
 - Bias detection in financial decisions
 - PII exposure and data protection
-- **Customer Context**: Regulatory audit preparation, customer demo confidence
+- **Use Case Context**: Regulatory audit preparation, compliance validation
 
 ### **Security Domain**  
 - Prompt injection vulnerabilities
 - Data leakage detection
 - OWASP LLM Top 10 compliance
-- **Customer Context**: Enterprise deployment readiness, security certification
+- **Use Case Context**: Enterprise deployment readiness, security certification
 
 ### **ML Domain**
 - Algorithmic bias and fairness
 - Model governance and ethics
 - Performance reliability
-- **Customer Context**: Production deployment, bias compliance, model validation
+- **Use Case Context**: Production deployment, bias compliance, model validation
 
 ## Troubleshooting
 
@@ -137,7 +137,7 @@ ls *evaluation*.json  # Check auto-generated files
 ```
 
 ### **Backup Demo Data**
-If customer data has issues, use provided samples:
+If your data has issues, use provided samples:
 ```bash
 # Finance demo
 arc-eval --domain finance --input examples/demo-data/finance.json --agent-judge
@@ -154,28 +154,28 @@ arc-eval --domain ml --input examples/demo-data/ml.json --agent-judge
 | Metric | Target | Measurement |
 |--------|--------|-------------|
 | Technical completion | 100% | Workflow executes without errors |
-| Recommendation quality | ≥80% actionable | Customer feedback on implementability |
-| Usage intent | ≥3x/week | Direct customer indication |
-| Implementation intent | ≥50% of recommendations | Customer commitment level |
-| Payment intent | ≥60% | Direct pricing discussion |
-| Session duration | ≤15 minutes | Actual pilot time |
+| Recommendation quality | ≥80% actionable | User feedback on implementability |
+| Usage intent | Regular use | User indication of ongoing usage |
+| Implementation intent | ≥50% of recommendations | User commitment level |
+| Value recognition | Clear value seen | User understanding of benefits |
+| Session duration | ≤15 minutes | Actual session time |
 
 ## Next Steps Template
 
-**For customers showing strong engagement**:
+**For users showing strong engagement**:
 ```
 Next Steps:
 1. Implement 2-3 high-priority recommendations from plan
 2. Schedule follow-up evaluation for [Day 7]
-3. Begin weekly evaluation cycle discussion
-4. Pricing and contract conversation if metrics hit thresholds
+3. Begin regular evaluation cycle discussion
+4. Explore integration into existing workflows
 ```
 
-**For customers showing weak engagement**:
+**For users showing limited engagement**:
 ```
 Follow-up Actions:
 1. Understand specific blockers to implementation
 2. Identify missing features or integration needs
 3. Assess fit with current evaluation workflow
-4. Determine if timing or product-market fit issues exist
+4. Determine if timing or workflow fit issues exist
 ```
