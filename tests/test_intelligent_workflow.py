@@ -45,7 +45,9 @@ class TestIntelligentWorkflow:
         ]
         
         # Duplicate data to reach desired size
-        data = base_data * (size_kb * 10)  # Approximate size
+        # Each base_data entry is ~200 bytes, so multiplying by (size_kb * 10) 
+        # approximates the target size in KB (10 multiplier accounts for JSON overhead)
+        data = base_data * (size_kb * 10)
         
         filename = "test_data.json"
         with open(filename, 'w') as f:
