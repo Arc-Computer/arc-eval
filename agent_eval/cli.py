@@ -321,8 +321,11 @@ def _get_domain_info() -> dict:
 )
 @click.option(
     "--framework",
-    type=click.Choice(["langchain", "crewai", "autogen", "openai", "anthropic"]),
-    help="Optimize analysis for specific agent framework"
+    type=click.Choice([
+        "langchain", "langgraph", "crewai", "autogen", "openai", "anthropic", 
+        "google_adk", "nvidia_aiq", "agno", "generic"
+    ]),
+    help="Optimize analysis for specific agent framework (auto-detected if not specified)"
 )
 @click.version_option(version="0.2.3", prog_name="arc-eval")
 def main(
@@ -3054,6 +3057,7 @@ def _handle_unified_debugging(
     # Load agent outputs
     try:
         from agent_eval.evaluation.validators import InputValidator
+        from agent_eval.core.parser_registry import detect_and_extract, detect_and_extract_tools
         
         if input_file:
             with open(input_file, 'r') as f:
@@ -3071,40 +3075,153 @@ def _handle_unified_debugging(
     console.print(f"🔧 Starting unified debugging session...")
     console.print(f"📊 Analyzing {len(agent_outputs)} workflow steps...")
     
-    if framework:
-        console.print(f"🎯 Framework detected: [cyan]{framework.upper()}[/cyan] - optimization available")
+    # Automatic framework detection
+    detected_frameworks = set()
+    tool_call_analysis = []
+    memory_issues = []
     
-    # Create reliability dashboard
-    console.print("\n" + "="*60)
-    console.print("🔧 [bold]Agent Workflow Analysis[/bold]")
-    console.print("="*60)
-    
-    # Calculate basic metrics
-    tool_calls_successful = sum(1 for output in agent_outputs if 'success' in str(output).lower())
-    total_outputs = len(agent_outputs)
-    success_rate = (tool_calls_successful / total_outputs * 100) if total_outputs > 0 else 0
-    
-    console.print(f"🎯 Reliability Score: [bold cyan]{success_rate:.0f}%[/bold cyan]  ⚠️ Issues Found: [bold yellow]{max(0, total_outputs - tool_calls_successful)}[/bold yellow] Detected")
-    console.print(f"✅ Tool Calls: [green]{tool_calls_successful}[/green]/{total_outputs}       ❌ Error Recovery: [red]Analyzing...[/red]")
-    
-    console.print("\n🛠️ [bold]Workflow Issues Detected:[/bold]")
-    
-    # Basic issue analysis
-    issues_found = []
     for i, output in enumerate(agent_outputs):
-        output_str = str(output).lower()
-        if 'error' in output_str or 'failed' in output_str:
-            issues_found.append(f"Step {i+1}: Error detected in workflow output")
-        elif 'timeout' in output_str:
-            issues_found.append(f"Step {i+1}: Timeout detected")
+        # Detect framework for each output
+        detected_framework, extracted_text = detect_and_extract(output)
+        framework_tools, tool_calls = detect_and_extract_tools(output)
+        
+        if detected_framework:
+            detected_frameworks.add(detected_framework)
+        
+        # Analyze tool calls
+        tool_call_analysis.append({
+            "step": i + 1,
+            "framework": detected_framework or "unknown",
+            "tools_called": tool_calls,
+            "output_text": extracted_text[:100] + "..." if len(extracted_text) > 100 else extracted_text,
+            "has_error": any(keyword in extracted_text.lower() for keyword in ['error', 'failed', 'timeout'])
+        })
+        
+        # Check for memory continuity issues
+        if i > 0 and isinstance(output, dict) and isinstance(agent_outputs[i-1], dict):
+            prev_context = str(agent_outputs[i-1]).lower()
+            curr_context = str(output).lower()
+            if 'context' in prev_context and 'context' not in curr_context:
+                memory_issues.append(f"Step {i+1}: Potential memory gap - context lost")
     
-    if issues_found:
-        for issue in issues_found[:5]:  # Show first 5 issues
-            console.print(f"  🔴 {issue}")
-        if len(issues_found) > 5:
-            console.print(f"  ... and {len(issues_found) - 5} more issues")
+    # Display framework detection results
+    if detected_frameworks:
+        frameworks_str = ", ".join(f.upper() for f in detected_frameworks)
+        console.print(f"🎯 Framework(s) detected: [cyan]{frameworks_str}[/cyan]")
+        if framework and framework not in detected_frameworks:
+            console.print(f"⚠️ Manual framework ([yellow]{framework.upper()}[/yellow]) differs from detected")
+    elif framework:
+        console.print(f"🎯 Framework specified: [cyan]{framework.upper()}[/cyan] (manual override)")
     else:
-        console.print("  ✅ No obvious issues detected in workflow trace")
+        console.print("🔍 Framework: [yellow]Auto-detection inconclusive[/yellow] - using generic analysis")
+    
+    # Enhanced reliability dashboard
+    console.print("\n" + "="*80)
+    console.print("🔧 [bold]Unified Agent Workflow Analysis[/bold]")
+    console.print("="*80)
+    
+    # Calculate advanced metrics
+    total_steps = len(agent_outputs)
+    successful_steps = sum(1 for analysis in tool_call_analysis if not analysis["has_error"])
+    total_tools_called = sum(len(analysis["tools_called"]) for analysis in tool_call_analysis)
+    unique_tools = set()
+    for analysis in tool_call_analysis:
+        unique_tools.update(analysis["tools_called"])
+    
+    reliability_score = (successful_steps / total_steps * 100) if total_steps > 0 else 0
+    tool_diversity = len(unique_tools)
+    error_count = total_steps - successful_steps
+    
+    console.print(f"🎯 Overall Reliability Score: [bold cyan]{reliability_score:.1f}%[/bold cyan]")
+    console.print(f"✅ Successful Steps: [green]{successful_steps}[/green]/{total_steps}")
+    console.print(f"🛠️ Tool Calls Made: [blue]{total_tools_called}[/blue] ({tool_diversity} unique tools)")
+    console.print(f"❌ Issues Found: [bold red]{error_count}[/bold red] Critical")
+    console.print(f"🧠 Memory Continuity: [yellow]{len(memory_issues)} gaps detected[/yellow]")
+    
+    # Step-by-step analysis table
+    console.print(f"\n📋 [bold]Step-by-Step Workflow Analysis:[/bold]")
+    from rich.table import Table
+    
+    table = Table(show_header=True, header_style="bold magenta")
+    table.add_column("Step", style="cyan", width=6)
+    table.add_column("Framework", style="blue", width=12)
+    table.add_column("Tools Called", style="green", width=20)
+    table.add_column("Status", style="white", width=10)
+    table.add_column("Output Preview", style="dim", width=30)
+    
+    for analysis in tool_call_analysis:
+        status = "✅ Success" if not analysis["has_error"] else "❌ Error"
+        tools_str = ", ".join(analysis["tools_called"][:3])  # Show first 3 tools
+        if len(analysis["tools_called"]) > 3:
+            tools_str += f" +{len(analysis['tools_called'])-3} more"
+        
+        table.add_row(
+            str(analysis["step"]),
+            analysis["framework"].replace("_", " ").title(),
+            tools_str or "None",
+            status,
+            analysis["output_text"]
+        )
+    
+    console.print(table)
+    
+    # Memory and state analysis
+    if memory_issues:
+        console.print(f"\n🧠 [bold red]Memory & State Issues Detected:[/bold red]")
+        for issue in memory_issues:
+            console.print(f"  🔴 {issue}")
+    
+    # Framework-specific recommendations
+    if detected_frameworks or framework:
+        active_framework = framework or list(detected_frameworks)[0] if detected_frameworks else "generic"
+        console.print(f"\n🎯 [bold]{active_framework.upper()} Framework-Specific Analysis:[/bold]")
+        
+        framework_recommendations = {
+            "langchain": [
+                "⚡ Performance: Consider direct LLM calls for simple tasks",
+                "🔧 Architecture: Use LangGraph for complex state management",
+                "🛠️ Tools: Implement custom tools for better control"
+            ],
+            "langgraph": [
+                "📊 State Management: Review graph state transitions",
+                "🔄 Flow Control: Optimize node connections and conditions",
+                "💾 Persistence: Ensure checkpointing for long workflows"
+            ],
+            "crewai": [
+                "⏱️ Performance: Monitor 30s+ response times in delegation",
+                "🤖 Agents: Review agent role definitions and capabilities",
+                "🔧 Delegation: Consider custom delegation logic for speed"
+            ],
+            "autogen": [
+                "💬 Conversations: Optimize message patterns for efficiency",
+                "🔄 State: Implement proper multi-turn state management",
+                "📍 Checkpoints: Add conversation checkpoints for recovery"
+            ],
+            "google_adk": [
+                "🔧 Parts: Ensure proper content.parts structure",
+                "🛠️ Function Calls: Validate functionCall parameter format",
+                "📊 Content: Review content block organization"
+            ],
+            "nvidia_aiq": [
+                "🔄 Workflow: Monitor workflow_output consistency",
+                "🤖 Agent State: Review agent_state transitions",
+                "⚡ Performance: Optimize workflow execution paths"
+            ],
+            "agno": [
+                "🛠️ Tools: Validate tools_used tracking accuracy",
+                "📊 Structure: Review structured_output format",
+                "🔧 Integration: Ensure proper agent_run_id handling"
+            ]
+        }
+        
+        recommendations = framework_recommendations.get(active_framework, [
+            "🔍 Analysis: Framework-specific optimizations available",
+            "🛠️ Tools: Review tool call patterns and success rates",
+            "📊 Performance: Monitor response times and error rates"
+        ])
+        
+        for rec in recommendations:
+            console.print(f"  {rec}")
     
     console.print("\n💡 [bold]Next Steps:[/bold]")
     console.print("1. Generate reliability improvement plan: [green]arc-eval --continue[/green]")
@@ -3116,7 +3233,7 @@ def _handle_unified_debugging(
     console.print("💼 Export audit reports: [green]arc-eval --domain <domain> --export pdf[/green]")
     
     if dev:
-        console.print(f"\n[dim]Debug: Processed {len(agent_outputs)} outputs, framework: {framework or 'auto-detect'}[/dim]")
+        console.print(f"\n[dim]Debug: Processed {len(agent_outputs)} outputs, detected frameworks: {list(detected_frameworks)}[/dim]")
 
 
 def _handle_workflow_reliability_analysis(
@@ -3159,30 +3276,59 @@ def _handle_workflow_reliability_analysis(
     if framework:
         console.print(f"\n📋 [bold]{framework.upper()} Framework-Specific Recommendations:[/bold]")
         
-        if framework == "langchain":
-            recommendations = [
+        framework_recommendations = {
+            "langchain": [
                 "Reduce abstraction layers - consider direct LLM calls for simple tasks",
                 "Use LangGraph for complex workflows requiring state management", 
                 "Implement custom tools instead of generic LangChain tools for better control"
-            ]
-        elif framework == "crewai":
-            recommendations = [
+            ],
+            "langgraph": [
+                "Review graph state transitions and node connections",
+                "Optimize condition logic for better flow control",
+                "Implement proper checkpointing for long-running workflows"
+            ],
+            "crewai": [
                 "Monitor response times - CrewAI can be slow for complex multi-agent workflows",
                 "Implement custom delegation logic for better performance",
                 "Consider framework alternatives for latency-critical applications"
-            ]
-        elif framework == "autogen":
-            recommendations = [
+            ],
+            "autogen": [
                 "Optimize conversation patterns to reduce token usage",
                 "Implement proper state management for multi-turn conversations",
                 "Add conversation checkpoints for long-running workflows"
+            ],
+            "google_adk": [
+                "Ensure proper content.parts structure for function calls",
+                "Validate functionCall parameter format consistency",
+                "Review content block organization for optimal performance"
+            ],
+            "nvidia_aiq": [
+                "Monitor workflow_output consistency across iterations",
+                "Review agent_state transitions for efficiency",
+                "Optimize workflow execution paths for reduced latency"
+            ],
+            "agno": [
+                "Validate tools_used tracking accuracy",
+                "Review structured_output format consistency",
+                "Ensure proper agent_run_id handling for debugging"
+            ],
+            "openai": [
+                "Optimize tool_calls format for function calling",
+                "Review message structure for multi-turn conversations",
+                "Monitor token usage and response time patterns"
+            ],
+            "anthropic": [
+                "Optimize tool_use content blocks structure",
+                "Review content array organization for complex outputs",
+                "Monitor stop_reason patterns for workflow completion"
             ]
-        else:
-            recommendations = [
-                "Framework-specific optimizations available",
-                "Tool call consistency patterns analyzed",
-                "Error recovery patterns evaluated"
-            ]
+        }
+        
+        recommendations = framework_recommendations.get(framework, [
+            "Framework-specific optimizations available",
+            "Tool call consistency patterns analyzed", 
+            "Error recovery patterns evaluated"
+        ])
         
         for rec in recommendations:
             console.print(f"  • {rec}")
