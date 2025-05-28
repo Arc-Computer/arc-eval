@@ -161,7 +161,7 @@ def _display_help_input() -> None:
 @click.option("--workflow-reliability", is_flag=True, help="Focus evaluation on workflow reliability metrics")
 @click.option("--unified-debug", is_flag=True, help="Single view of tool calls, prompts, memory, timeouts, hallucinations")
 @click.option("--framework", type=click.Choice(["langchain", "langgraph", "crewai", "autogen", "openai", "anthropic", "google_adk", "nvidia_aiq", "agno", "generic"]), help="Optimize analysis for specific agent framework (auto-detected if not specified)")
-@click.version_option(version="0.2.3", prog_name="arc-eval")
+@click.version_option(version="0.2.5", prog_name="arc-eval")
 def main(
     domain: Optional[str],
     input_file: Optional[Path],
