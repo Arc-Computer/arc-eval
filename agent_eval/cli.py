@@ -1037,10 +1037,10 @@ def main(
             if verbose:
                 console.print(f"[cyan]Verbose:[/cyan] Saved evaluation results to: {evaluation_file}")
             
-            # Show core loop next steps
-            console.print(f"\n[bold blue]🔄 Core Loop Next Steps:[/bold blue]")
+            # Show improvement workflow
+            console.print(f"\n[bold blue]Improvement Workflow:[/bold blue]")
             console.print(f"1. Generate improvement plan: [green]arc-eval --improvement-plan --from {evaluation_file}[/green]")
-            console.print(f"2. After implementing fixes, compare: [green]arc-eval --domain {domain} --input improved_outputs.json --baseline {evaluation_file}[/green]")
+            console.print(f"2. After implementing changes, compare: [green]arc-eval --domain {domain} --input improved_outputs.json --baseline {evaluation_file}[/green]")
             
         except Exception as e:
             if verbose:
@@ -2488,41 +2488,41 @@ def _handle_improvement_plan_generation(from_evaluation: Optional[Path],
             )
         
         # Display summary
-        console.print(f"\n[bold green]✅ Improvement Plan Generated![/bold green]")
-        console.print(f"📄 Plan saved to: [cyan]{output_path}[/cyan]")
+        console.print(f"\n[bold green]Improvement plan generated[/bold green]")
+        console.print(f"Plan saved to: [cyan]{output_path}[/cyan]")
         
         # Show summary
-        console.print(f"\n[bold blue]📊 Plan Summary:[/bold blue]")
+        console.print(f"\n[bold blue]Plan Summary:[/bold blue]")
         console.print(f"• Agent: {improvement_plan.agent_id}")
         console.print(f"• Domain: {improvement_plan.domain}")
-        console.print(f"• Total Actions: {len(improvement_plan.actions)}")
-        console.print(f"• Estimated Time: {improvement_plan.summary.get('estimated_total_time', 'Unknown')}")
+        console.print(f"• Recommended actions: {len(improvement_plan.actions)}")
+        console.print(f"• Estimated implementation time: {improvement_plan.summary.get('estimated_total_time', 'Unknown')}")
         
         # Show priority breakdown
         priority_counts = improvement_plan.summary.get('priority_breakdown', {})
         if priority_counts:
-            console.print(f"• Priority Breakdown:")
+            console.print(f"• Action priority distribution:")
             for priority, count in priority_counts.items():
                 emoji = {"CRITICAL": "🔴", "HIGH": "🟠", "MEDIUM": "🟡", "LOW": "🟢"}.get(priority, "⚪")
                 console.print(f"  {emoji} {priority}: {count}")
         
         # Show next steps
-        console.print(f"\n[bold blue]🎯 Next Steps:[/bold blue]")
+        console.print(f"\n[bold blue]Next Steps:[/bold blue]")
         console.print(f"1. Review improvement plan: [green]cat {output_path}[/green]")
-        console.print(f"2. Implement the suggested actions")
+        console.print(f"2. Implement recommended changes")
         console.print(f"3. Re-evaluate with comparison: [green]arc-eval --domain {{domain}} --input improved_outputs.json --baseline {from_evaluation}[/green]")
         
         if dev:
             console.print(f"\n[dim]Debug: Generated {len(improvement_plan.actions)} actions from {improvement_plan.summary['failed_scenarios']} failed scenarios[/dim]")
         
     except Exception as e:
-        console.print(f"\n[red]❌ Improvement Plan Generation Failed[/red]")
+        console.print(f"\n[red]Improvement plan generation failed[/red]")
         console.print(f"[bold]Error: [yellow]{e}[/yellow][/bold]\n")
         
-        console.print("[bold blue]💡 Troubleshooting:[/bold blue]")
-        console.print("• Check that the evaluation file exists and is valid JSON")
-        console.print("• Ensure the evaluation file contains 'results' field")
-        console.print("• Try with --dev flag for detailed error info")
+        console.print("[bold blue]Troubleshooting:[/bold blue]")
+        console.print("• Verify evaluation file exists and contains valid JSON")
+        console.print("• Ensure evaluation file has 'results' field with scenario data")
+        console.print("• Use --dev flag for detailed error information")
         
         if dev:
             console.print_exception()
@@ -2563,29 +2563,29 @@ def _handle_baseline_comparison(current_evaluation_data: Dict[str, Any],
             )
         
         # Display comparison results
-        console.print(f"\n[bold green]✅ Comparison Complete![/bold green]")
-        console.print(f"📄 Report saved to: [cyan]{output_path}[/cyan]")
+        console.print(f"\n[bold green]Comparison complete[/bold green]")
+        console.print(f"Report saved to: [cyan]{output_path}[/cyan]")
         
         # Display summary in console
         comparison_engine.display_comparison_summary(comparison_report)
         
         # Show next steps
-        console.print(f"\n[bold blue]🎯 Next Steps:[/bold blue]")
+        console.print(f"\n[bold blue]Next Steps:[/bold blue]")
         console.print(f"1. Review detailed report: [green]cat {output_path}[/green]")
-        console.print(f"2. Address any degraded scenarios if needed")
-        console.print(f"3. Generate new improvement plan if pass rate is still low")
+        console.print(f"2. Address degraded scenarios if any")
+        console.print(f"3. Generate new improvement plan if needed")
         
         if dev:
             console.print(f"\n[dim]Debug: Compared {len(comparison_report.scenario_comparisons)} scenarios[/dim]")
         
     except Exception as e:
-        console.print(f"\n[red]❌ Baseline Comparison Failed[/red]")
+        console.print(f"\n[red]Baseline comparison failed[/red]")
         console.print(f"[bold]Error: [yellow]{e}[/yellow][/bold]\n")
         
-        console.print("[bold blue]💡 Troubleshooting:[/bold blue]")
-        console.print("• Check that the baseline file exists and is valid JSON")
-        console.print("• Ensure both evaluations have the same domain")
-        console.print("• Try with --dev flag for detailed error info")
+        console.print("[bold blue]Troubleshooting:[/bold blue]")
+        console.print("• Verify baseline file exists and contains valid JSON")
+        console.print("• Ensure both evaluations target the same domain")
+        console.print("• Use --dev flag for detailed error information")
         
         if dev:
             console.print_exception()

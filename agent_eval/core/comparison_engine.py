@@ -267,29 +267,29 @@ class ComparisonEngine:
         degraded_count = summary.get("scenarios_degraded", 0)
         
         if net_improvement > 0:
-            recommendations.append(f"✅ Good progress! {improved_count} scenarios improved with {degraded_count} degraded")
+            recommendations.append(f"Net improvement: {improved_count} scenarios improved, {degraded_count} degraded")
         elif net_improvement < 0:
-            recommendations.append(f"⚠️ Performance degraded: {degraded_count} scenarios worse, {improved_count} improved")
+            recommendations.append(f"Performance regression: {degraded_count} scenarios worse, {improved_count} improved")
         else:
-            recommendations.append("📊 Mixed results: Equal improvements and degradations")
+            recommendations.append("Mixed results: equal improvements and degradations")
         
         # Check pass rate change
         pass_rate_change = float(summary.get("pass_rate_change", "0%").replace("%", "").replace("+", ""))
         if pass_rate_change > 5:
-            recommendations.append(f"🎯 Significant pass rate improvement: +{pass_rate_change:.1f}%")
+            recommendations.append(f"Pass rate improved by {pass_rate_change:.1f}%")
         elif pass_rate_change < -5:
-            recommendations.append(f"🔴 Pass rate declined: {pass_rate_change:.1f}%")
+            recommendations.append(f"Pass rate declined by {abs(pass_rate_change):.1f}%")
         
         # Identify specific areas needing attention
         degraded_scenarios = [c for c in comparisons if c.improvement_status == "degraded"]
         if degraded_scenarios:
             scenario_ids = [c.scenario_id for c in degraded_scenarios[:3]]  # Top 3
-            recommendations.append(f"🔍 Review degraded scenarios: {', '.join(scenario_ids)}")
+            recommendations.append(f"Review degraded scenarios: {', '.join(scenario_ids)}")
         
         # Check for consistent improvement
         improved_scenarios = [c for c in comparisons if c.improvement_status == "improved"]
         if len(improved_scenarios) > len(degraded_scenarios) * 2:
-            recommendations.append("🚀 Improvement strategy is working - continue current approach")
+            recommendations.append("Improvement pattern suggests effective changes")
         
         return recommendations
     
@@ -347,11 +347,11 @@ class ComparisonEngine:
 **Net Improvement:** {report.summary['net_improvement']} scenarios
         """
         
-        console.print(Panel(summary_text.strip(), title="📊 Evaluation Comparison", border_style="blue"))
+        console.print(Panel(summary_text.strip(), title="Evaluation Comparison", border_style="blue"))
         
-        # Display recommendations
+        # Display analysis
         if report.recommendations:
-            console.print("\n🎯 **Recommendations:**")
+            console.print("\n**Analysis:**")
             for rec in report.recommendations:
                 console.print(f"  • {rec}")
         
@@ -362,12 +362,12 @@ class ComparisonEngine:
         ]
         
         if significant_changes:
-            table = Table(title="Significant Changes")
+            table = Table(title="Scenario Changes")
             table.add_column("Scenario ID", style="cyan")
             table.add_column("Status", style="yellow")
             table.add_column("Baseline", style="red")
             table.add_column("Current", style="green")
-            table.add_column("Change", style="bold")
+            table.add_column("Score Delta", style="bold")
             
             for change in significant_changes[:10]:  # Show top 10 changes
                 status_emoji = "✅" if change.improvement_status == "improved" else "❌"
