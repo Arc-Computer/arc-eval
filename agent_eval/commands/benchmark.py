@@ -17,7 +17,7 @@ from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskPr
 from .base import BaseCommandHandler
 from agent_eval.core.engine import EvaluationEngine
 from agent_eval.core.types import EvaluationResult, AgentOutput
-from agent_eval.evaluation.agent_judge import AgentJudge
+from agent_eval.evaluation.judges import AgentJudge
 from agent_eval.benchmarks.adapter import QuickBenchmarkAdapter
 
 console = Console()

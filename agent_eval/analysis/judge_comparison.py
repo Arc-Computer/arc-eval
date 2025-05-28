@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from agent_eval.core.types import AgentOutput, EvaluationScenario
-from agent_eval.evaluation.agent_judge import AgentJudge, JudgmentResult
+from agent_eval.evaluation.judges import AgentJudge, JudgmentResult
 import logging
 
 logger = logging.getLogger(__name__)
