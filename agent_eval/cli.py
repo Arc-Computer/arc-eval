@@ -2537,7 +2537,7 @@ def _handle_improvement_plan_generation(from_evaluation: Optional[Path],
         console.print(f"\n[bold blue]Next Steps:[/bold blue]")
         console.print(f"1. Review improvement plan: [green]cat {output_path}[/green]")
         console.print(f"2. Implement recommended changes")
-        console.print(f"3. Re-evaluate with comparison: [green]arc-eval --domain {{domain}} --input improved_outputs.json --baseline {from_evaluation}[/green]")
+        console.print(f"3. Re-evaluate with comparison: [green]arc-eval --domain {improvement_plan.domain} --input improved_outputs.json --baseline {from_evaluation}[/green]")
         
         if dev:
             console.print(f"\n[dim]Debug: Generated {len(improvement_plan.actions)} actions from {improvement_plan.summary['failed_scenarios']} failed scenarios[/dim]")
