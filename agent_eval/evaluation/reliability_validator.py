@@ -6,6 +6,8 @@ from dataclasses import dataclass
 from typing import List, Dict, Any, Optional
 from collections import Counter
 
+from agent_eval.core.types import ReliabilityMetrics
+
 logger = logging.getLogger(__name__)
 
 

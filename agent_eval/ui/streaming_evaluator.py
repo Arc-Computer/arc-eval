@@ -13,6 +13,7 @@ from rich.text import Text
 
 from agent_eval.core.types import EvaluationResult, EvaluationScenario, AgentOutput
 from agent_eval.core.engine import EvaluationEngine
+from agent_eval.evaluation.reliability_validator import ReliabilityValidator
 
 
 console = Console()
