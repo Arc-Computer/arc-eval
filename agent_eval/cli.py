@@ -271,7 +271,7 @@ def _get_domain_info() -> dict:
     help="Generate actionable improvement plan from evaluation results",
 )
 @click.option(
-    "--from",
+    "--from-evaluation",
     "from_evaluation",
     type=click.Path(exists=True, path_type=Path),
     help="Source evaluation file for improvement plan generation",
@@ -342,7 +342,7 @@ def main(
       arc-eval --domain finance --input baseline_outputs.json --agent-judge --no-interaction
       
       # Step 2: Generate actionable improvement plan
-      arc-eval --improvement-plan --from finance_evaluation_20240527_143022.json
+      arc-eval --improvement-plan --from-evaluation finance_evaluation_20240527_143022.json
       
       # Step 3: Re-evaluate with improved data and compare
       arc-eval --domain finance --input improved_outputs.json --baseline finance_evaluation_20240527_143022.json --no-interaction
@@ -353,7 +353,7 @@ def main(
     💡 IMPROVEMENT WORKFLOW COMMANDS:
     
       # Generate improvement plan from any evaluation results
-      arc-eval --improvement-plan --from path/to/evaluation_results.json
+      arc-eval --improvement-plan --from-evaluation path/to/evaluation_results.json
       
       # Compare before/after improvements with baseline comparison
       arc-eval --domain finance --input improved_data.json --baseline original_evaluation.json
@@ -1065,7 +1065,7 @@ def main(
             
             # Show improvement workflow
             console.print(f"\n[bold blue]Improvement Workflow:[/bold blue]")
-            console.print(f"1. Generate improvement plan: [green]arc-eval --improvement-plan --from {evaluation_file}[/green]")
+            console.print(f"1. Generate improvement plan: [green]arc-eval --improvement-plan --from-evaluation {evaluation_file}[/green]")
             console.print(f"2. After implementing changes, compare: [green]arc-eval --domain {domain} --input improved_outputs.json --baseline {evaluation_file}[/green]")
             
         except Exception as e:
@@ -2485,9 +2485,9 @@ def _handle_improvement_plan_generation(from_evaluation: Optional[Path],
     """Handle improvement plan generation workflow."""
     
     if not from_evaluation:
-        console.print("[red]Error:[/red] --from is required when using --improvement-plan")
+        console.print("[red]Error:[/red] --from-evaluation is required when using --improvement-plan")
         console.print("Specify the evaluation JSON file to generate improvement plan from")
-        console.print("Example: [green]arc-eval --improvement-plan --from baseline_evaluation.json[/green]")
+        console.print("Example: [green]arc-eval --improvement-plan --from-evaluation baseline_evaluation.json[/green]")
         sys.exit(1)
     
     try:

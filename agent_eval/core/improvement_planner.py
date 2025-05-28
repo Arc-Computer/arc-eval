@@ -140,7 +140,7 @@ class ImprovementPlanner:
         summary = self._create_summary(evaluation_data, actions, curriculum)
         
         # Generate next steps
-        next_steps = self._generate_next_steps(evaluation_data.get('evaluation_id', 'latest'))
+        next_steps = self._generate_next_steps(evaluation_data.get('evaluation_id', 'latest'), domain)
         
         return ImprovementPlan(
             agent_id=agent_id,
@@ -277,11 +277,11 @@ class ImprovementPlanner:
             "focus_areas": [action.area.replace('_', ' ').title() for action in actions[:3]]
         }
     
-    def _generate_next_steps(self, evaluation_id: str) -> str:
+    def _generate_next_steps(self, evaluation_id: str, domain: str) -> str:
         """Generate next steps instruction."""
         
         return f"""WHEN DONE → Re-run evaluation:
-arc-eval --domain {{domain}} --input {{improved_outputs.json}} --baseline {evaluation_id}.json"""
+arc-eval --domain {domain} --input improved_outputs.json --baseline {evaluation_id}.json"""
     
     def _save_plan_to_markdown(self, plan: ImprovementPlan, output_file: Path) -> None:
         """Save improvement plan as formatted markdown."""

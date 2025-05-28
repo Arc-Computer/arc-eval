@@ -46,7 +46,7 @@ arc-eval --domain finance --input baseline_data.json --agent-judge
 
 ### Step 2: Generate Improvement Plan  
 ```bash
-arc-eval --improvement-plan --from finance_evaluation_20240527_143022.json
+arc-eval --improvement-plan --from-evaluation finance_evaluation_20240527_143022.json
 # → Auto-saves: improvement_plan_20240527_143025.md
 ```
 
@@ -61,7 +61,7 @@ arc-eval --domain finance --input improved_data.json --baseline finance_evaluati
 ```bash
 # Essential commands
 arc-eval --domain finance --input outputs.json --agent-judge     # Basic evaluation
-arc-eval --improvement-plan --from evaluation.json              # Generate improvement plan  
+arc-eval --improvement-plan --from-evaluation evaluation.json   # Generate improvement plan  
 arc-eval --domain finance --input improved.json --baseline old.json  # Compare improvements
 
 # Domain evaluation  
