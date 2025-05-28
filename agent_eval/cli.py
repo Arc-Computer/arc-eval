@@ -54,7 +54,7 @@ def _get_domain_info() -> dict:
             "name": "ML Infrastructure & Safety",
             "description": "ML ops, safety, and bias evaluation for AI systems",
             "frameworks": ["NIST-AI-RMF", "IEEE-2857", "ISO-23053", "GDPR-AI", "EU-AI-ACT"],
-            "scenarios": 107,
+            "scenarios": 148,
             "use_cases": "ML Models, AI Pipelines, Model Serving, Training",
             "examples": "Bias detection, Model safety, Explainability, Performance"
         }

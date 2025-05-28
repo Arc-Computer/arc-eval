@@ -6,7 +6,7 @@
 
 ![Agent-as-a-Judge Demo](public/agent-as-judge-demo.png)
 
-ARC-Eval evaluates AI agent reliability and provides debugging tools for agent workflow failures. Built on the MetaAuto AI Agent-as-a-Judge framework, it includes 355 domain-specific evaluation scenarios across security, finance, and ML infrastructure.
+ARC-Eval evaluates AI agent reliability and provides debugging tools for agent workflow failures. Built on the MetaAuto AI Agent-as-a-Judge framework, it includes 378 domain-specific evaluation scenarios across security, finance, and ML infrastructure.
 
 The platform addresses two core problems: debugging agent failures in production and evaluating agent behavior against domain requirements. It provides framework-agnostic analysis for LangChain, CrewAI, OpenAI, Anthropic, and other agent implementations.
 
@@ -37,7 +37,7 @@ ARC-Eval implements Agent-as-a-Judge evaluation ([Wang et al., 2024](https://arx
 ```mermaid
 graph TB
     A[Agent Outputs<br/>JSON/Logs] --> B[Framework Detection]
-    B --> C[Domain Evaluation<br/>355 Scenarios]
+    B --> C[Domain Evaluation<br/>378 Scenarios]
     C --> D[Agent Judge<br/>Claude Sonnet/Haiku]
     D --> E[Reliability Analysis]
     E --> F[Improvement Planning]
@@ -50,7 +50,7 @@ graph TB
     
     C --> C1[Finance<br/>110 scenarios]
     C --> C2[Security<br/>120 scenarios]
-    C --> C3[ML Safety<br/>125 scenarios]
+    C --> C3[ML Safety<br/>148 scenarios]
     
     D --> D1[Multi-Judge<br/>Verification]
     D --> D2[Confidence<br/>Calibration]
@@ -88,13 +88,13 @@ The system includes six core components that work together to provide comprehens
 
 ## Evaluation Domains
 
-ARC-Eval includes three evaluation packs covering 355 scenarios designed for production agent systems across different domains.
+ARC-Eval includes three evaluation packs covering 378 scenarios designed for production agent systems across different domains.
 
 **Finance (110 scenarios)** covers SOX, KYC, AML, PCI-DSS, and GDPR compliance testing for banking, fintech, and payment processing agents. These scenarios test for real-world issues like PII exposure, transaction monitoring violations, and regulatory compliance gaps that can result in significant penalties.
 
 **Security (120 scenarios)** implements OWASP LLM Top 10, NIST AI-RMF, and ISO 27001 vulnerability assessment for AI agents, chatbots, and code generation systems. The scenarios cover prompt injection, data leakage, authentication bypass, and other security vulnerabilities specific to LLM-based systems.
 
-**ML (125 scenarios)** evaluates EU AI Act, IEEE Ethics, and Model Cards compliance for ML safety, bias detection, and governance. These scenarios test for algorithmic bias, fairness violations, explainability requirements, and other ethical AI considerations.
+**ML (148 scenarios)** evaluates EU AI Act, IEEE Ethics, and Model Cards compliance for ML safety, bias detection, and governance. These scenarios test for algorithmic bias, fairness violations, explainability requirements, and other ethical AI considerations.
 
 Each domain pack includes detailed scenario definitions, compliance framework mappings, and specific remediation guidance tailored to the regulatory requirements and best practices for that domain.
 
@@ -106,7 +106,7 @@ ARC-Eval implements a complete evaluation and improvement cycle for agent perfor
 
 ```mermaid
 graph LR
-    A[Agent Outputs] --> B[Domain Evaluation<br/>355 Scenarios]
+    A[Agent Outputs] --> B[Domain Evaluation<br/>378 Scenarios]
     B --> C[Failure Analysis<br/>Pattern Detection]
     C --> D[Improvement Planning<br/>Prioritized Actions]
     D --> E[Implementation<br/>Agent Updates]
@@ -132,7 +132,7 @@ graph LR
     style M fill:#e1f5fe
 ```
 
-The improvement loop operates through three interconnected phases. First, the evaluation engine runs 355 domain-specific scenarios against your agent outputs to identify specific failure patterns, compliance violations, and performance bottlenecks. Each scenario tests for real-world issues like PII exposure, security vulnerabilities, or bias in decision-making.
+The improvement loop operates through three interconnected phases. First, the evaluation engine runs 378 domain-specific scenarios against your agent outputs to identify specific failure patterns, compliance violations, and performance bottlenecks. Each scenario tests for real-world issues like PII exposure, security vulnerabilities, or bias in decision-making.
 
 Second, the improvement planner analyzes evaluation results and generates actionable improvement plans with prioritized actions, expected timelines, and measurable impact projections. The planner categorizes issues by severity and provides specific implementation steps for each identified problem.
 

@@ -1,8 +1,20 @@
 eval_pack:
   name: "ML Infrastructure & Enterprise MLOps - Professional 2025"
   version: "3.0.0"
-  description: "Enterprise-grade evaluation pack for ML professionals covering comprehensive MLOps workflows, production reliability, governance frameworks, agent-specific ML evaluation, and cutting-edge MCP security vulnerabilities with 125 scenarios designed for sophisticated ML teams at companies like Snowflake and NVIDIA"
+  description: "Enterprise-grade evaluation pack for ML professionals covering comprehensive MLOps workflows, production reliability, governance frameworks, agent-specific ML evaluation, and cutting-edge MCP security vulnerabilities with 148 scenarios designed for sophisticated ML teams at companies like Snowflake and NVIDIA"
   compliance_frameworks: ["EU-AI-ACT", "ISO-IEC-23053", "NIST-AI-RMF", "ISO-IEC-23894", "IEEE-2857", "SOC2-ML", "MODEL-CARDS-V2", "MLOPS-GOVERNANCE", "ALGORITHMIC-ACCOUNTABILITY", "DATA-GOVERNANCE", "ML-SECURITY", "RESPONSIBLE-AI", "RESEARCH-INTEGRITY", "GREEN-AI", "ML-OBSERVABILITY"]
+  total_scenarios: 148
+  benchmark_alignment:
+    - "MLPerf inference optimization (mlperf_inf)"
+    - "NVIDIA Triton deployment evaluation (triton_eval)"
+    - "Snowflake ML pipeline assessment (snowpark_ml)"
+    - "Enterprise MLOps governance (mlops_gov)"
+  enterprise_features:
+    - "Agent-as-a-Judge evaluation with continuous feedback"
+    - "Multi-step ML workflow validation"
+    - "Production reliability assessment"
+    - "Enterprise MLOps governance evaluation"
+    - "MCP security vulnerability testing"
 
 categories:
   - name: "Model Performance & Accuracy"
