@@ -83,8 +83,36 @@ class FrameworkPerformanceAnalysis:
     recommendation_strength: str          # "high", "medium", "low"
 
 
-class ReliabilityValidator:
-    """Validates agent reliability through tool call analysis and error pattern detection."""
+@dataclass
+class ComprehensiveReliabilityAnalysis:
+    """Complete reliability analysis results for unified debugging and workflow analysis."""
+    
+    # Framework Detection
+    detected_framework: Optional[str]
+    framework_confidence: float
+    auto_detection_successful: bool
+    
+    # Performance Analysis
+    framework_performance: Optional[FrameworkPerformanceAnalysis]
+    workflow_metrics: WorkflowReliabilityMetrics
+    
+    # Tool Call Analysis
+    tool_call_summary: Dict[str, Any]
+    validation_results: List[Dict[str, Any]]
+    
+    # Dashboard Data
+    reliability_dashboard: str  # Rich formatted dashboard for CLI display
+    insights_summary: List[str]  # Key insights for user
+    next_steps: List[str]       # Recommended actions
+    
+    # Evidence and Confidence
+    analysis_confidence: float
+    evidence_quality: str      # "high", "medium", "low"
+    sample_size: int
+
+
+class ReliabilityAnalyzer:
+    """Comprehensive reliability analyzer combining validation, framework analysis, and dashboard generation."""
     
     def __init__(self):
         """Initialize reliability validator with framework-specific patterns."""
@@ -200,8 +228,8 @@ class ReliabilityValidator:
             ]
         }
     
-    def detect_framework(self, agent_output: str) -> Optional[str]:
-        """Detect the agent framework based on structural patterns."""
+    def detect_framework_comprehensive(self, agent_outputs: List[Any]) -> Dict[str, Any]:
+        """Comprehensive framework detection with confidence scoring and auto-detection."""
         
         # Framework detection should look for structural indicators, not tool patterns
         framework_indicators = {
@@ -248,12 +276,43 @@ class ReliabilityValidator:
             ],
         }
         
-        for framework, patterns in framework_indicators.items():
-            for pattern in patterns:
-                if re.search(pattern, agent_output, re.IGNORECASE | re.DOTALL):
-                    return framework
+        # Count framework matches across all outputs
+        framework_scores = {fw: 0 for fw in framework_indicators.keys()}
+        total_outputs = len(agent_outputs)
         
-        return None
+        for output in agent_outputs:
+            output_str = str(output)
+            for framework, patterns in framework_indicators.items():
+                for pattern in patterns:
+                    if re.search(pattern, output_str, re.IGNORECASE | re.DOTALL):
+                        framework_scores[framework] += 1
+                        break  # Only count once per output per framework
+        
+        # Find the best match
+        if total_outputs == 0:
+            return {
+                'detected_framework': None,
+                'confidence': 0.0,
+                'auto_detection_successful': False,
+                'framework_scores': framework_scores
+            }
+        
+        best_framework = max(framework_scores.items(), key=lambda x: x[1])
+        framework_name, match_count = best_framework
+        
+        # Calculate confidence as percentage of outputs that matched
+        confidence = match_count / total_outputs if total_outputs > 0 else 0.0
+        
+        # Only return a framework if confidence is reasonable
+        detected_framework = framework_name if confidence >= 0.3 else None
+        auto_detection_successful = confidence >= 0.5
+        
+        return {
+            'detected_framework': detected_framework,
+            'confidence': confidence,
+            'auto_detection_successful': auto_detection_successful,
+            'framework_scores': framework_scores
+        }
     
     def extract_tool_calls(self, agent_output, framework: Optional[str] = None) -> List[str]:
         """Extract tool calls from agent output."""
@@ -879,3 +938,436 @@ class ReliabilityValidator:
             framework_counts[framework] += 1
         
         return dict(framework_counts)
+    
+    def generate_comprehensive_analysis(
+        self, 
+        agent_outputs: List[Any], 
+        framework: Optional[str] = None,
+        expected_tools: Optional[List[str]] = None
+    ) -> ComprehensiveReliabilityAnalysis:
+        """Generate comprehensive reliability analysis combining all functionality."""
+        
+        sample_size = len(agent_outputs)
+        if sample_size == 0:
+            return self._create_empty_analysis()
+        
+        # 1. Framework Detection (consolidating duplicate logic)
+        if framework:
+            framework_detection = {
+                'detected_framework': framework,
+                'confidence': 1.0,
+                'auto_detection_successful': True,
+                'framework_scores': {framework: sample_size}
+            }
+        else:
+            framework_detection = self.detect_framework_comprehensive(agent_outputs)
+        
+        detected_framework = framework_detection['detected_framework']
+        
+        # 2. Tool Call Analysis
+        if expected_tools:
+            tool_validations = []
+            for output in agent_outputs:
+                validation = self.validate_tool_usage(output, expected_tools)
+                tool_validations.append(validation)
+            
+            tool_call_summary = {
+                'total_validations': len(tool_validations),
+                'avg_tool_accuracy': sum(v['coverage_rate'] for v in tool_validations) / len(tool_validations),
+                'tools_consistently_missing': self._find_consistently_missing_tools(tool_validations),
+                'validation_details': tool_validations
+            }
+        else:
+            # Basic tool extraction without validation
+            all_detected_tools = []
+            for output in agent_outputs:
+                tools = self.extract_tool_calls(output, detected_framework)
+                all_detected_tools.extend(tools)
+            
+            tool_call_summary = {
+                'total_outputs_analyzed': sample_size,
+                'unique_tools_detected': len(set(all_detected_tools)),
+                'most_common_tools': Counter(all_detected_tools).most_common(5),
+                'framework_specific_analysis': detected_framework is not None
+            }
+        
+        # 3. Framework Performance Analysis (if framework detected)
+        framework_performance = None
+        if detected_framework:
+            try:
+                framework_performance = self.analyze_framework_performance(agent_outputs, detected_framework)
+            except Exception as e:
+                logger.warning(f"Framework performance analysis failed: {e}")
+        
+        # 4. Workflow Reliability Metrics
+        workflow_metrics = self._calculate_workflow_metrics(
+            agent_outputs, 
+            detected_framework,
+            framework_performance
+        )
+        
+        # 5. Generate Rich Dashboard
+        reliability_dashboard = self._generate_reliability_dashboard(
+            framework_detection,
+            tool_call_summary,
+            framework_performance,
+            workflow_metrics,
+            sample_size
+        )
+        
+        # 6. Generate Insights and Next Steps
+        insights_summary = self._generate_insights(
+            framework_detection,
+            tool_call_summary,
+            framework_performance,
+            workflow_metrics
+        )
+        
+        next_steps = self._generate_next_steps(
+            detected_framework,
+            framework_performance,
+            workflow_metrics
+        )
+        
+        # 7. Calculate Overall Analysis Confidence
+        analysis_confidence = self._calculate_overall_confidence(
+            framework_detection['confidence'],
+            sample_size,
+            framework_performance
+        )
+        
+        evidence_quality = self._determine_evidence_quality(analysis_confidence, sample_size)
+        
+        return ComprehensiveReliabilityAnalysis(
+            detected_framework=detected_framework,
+            framework_confidence=framework_detection['confidence'],
+            auto_detection_successful=framework_detection['auto_detection_successful'],
+            framework_performance=framework_performance,
+            workflow_metrics=workflow_metrics,
+            tool_call_summary=tool_call_summary,
+            validation_results=tool_call_summary.get('validation_details', []),
+            reliability_dashboard=reliability_dashboard,
+            insights_summary=insights_summary,
+            next_steps=next_steps,
+            analysis_confidence=analysis_confidence,
+            evidence_quality=evidence_quality,
+            sample_size=sample_size
+        )
+    
+    def _create_empty_analysis(self) -> ComprehensiveReliabilityAnalysis:
+        """Create empty analysis for zero inputs."""
+        empty_metrics = WorkflowReliabilityMetrics(
+            workflow_success_rate=0.0,
+            tool_chain_reliability=0.0,
+            decision_consistency_score=0.0,
+            multi_step_completion_rate=0.0,
+            average_workflow_time=0.0,
+            error_recovery_rate=0.0,
+            timeout_rate=0.0,
+            framework_compatibility_score=0.0,
+            tool_usage_efficiency=0.0,
+            schema_mismatch_rate=0.0,
+            prompt_tool_alignment_score=0.0,
+            reliability_trend="unknown",
+            critical_failure_points=[]
+        )
+        
+        return ComprehensiveReliabilityAnalysis(
+            detected_framework=None,
+            framework_confidence=0.0,
+            auto_detection_successful=False,
+            framework_performance=None,
+            workflow_metrics=empty_metrics,
+            tool_call_summary={'error': 'No agent outputs provided'},
+            validation_results=[],
+            reliability_dashboard="❌ No data available for analysis",
+            insights_summary=["No agent outputs provided for analysis"],
+            next_steps=["Provide agent output data for analysis"],
+            analysis_confidence=0.0,
+            evidence_quality="none",
+            sample_size=0
+        )
+    
+    def _find_consistently_missing_tools(self, validations: List[Dict[str, Any]]) -> List[str]:
+        """Find tools that are consistently missing across validations."""
+        all_missing = []
+        for validation in validations:
+            all_missing.extend(validation.get('missing_tools', []))
+        
+        missing_counter = Counter(all_missing)
+        # Consider a tool "consistently missing" if it's missing in >50% of validations
+        threshold = len(validations) * 0.5
+        return [tool for tool, count in missing_counter.items() if count >= threshold]
+    
+    def _calculate_workflow_metrics(
+        self, 
+        agent_outputs: List[Any], 
+        framework: Optional[str],
+        framework_performance: Optional[FrameworkPerformanceAnalysis]
+    ) -> WorkflowReliabilityMetrics:
+        """Calculate comprehensive workflow reliability metrics."""
+        
+        # Extract success indicators
+        success_indicators = [self._analyze_success_patterns(output)['success_rate'] for output in agent_outputs]
+        workflow_success_rate = sum(success_indicators) / len(success_indicators) if success_indicators else 0.0
+        
+        # Tool chain reliability
+        tool_failures = []
+        for output in agent_outputs:
+            tool_failures.extend(self._detect_tool_call_failures(output))
+        tool_chain_reliability = 1.0 - (len(tool_failures) / len(agent_outputs)) if agent_outputs else 0.0
+        
+        # Error recovery and timeout analysis
+        error_recovery_count = 0
+        timeout_count = 0
+        
+        for output in agent_outputs:
+            output_str = str(output)
+            error_recovery = self.detect_error_recovery(output_str)
+            if any(error_recovery.values()):
+                error_recovery_count += 1
+            if self._detect_timeout_patterns(output):
+                timeout_count += 1
+        
+        error_recovery_rate = error_recovery_count / len(agent_outputs) if agent_outputs else 0.0
+        timeout_rate = timeout_count / len(agent_outputs) if agent_outputs else 0.0
+        
+        # Framework compatibility (based on detection success)
+        framework_compatibility_score = 1.0 if framework else 0.5
+        
+        # Average timing if available
+        timing_data = [self._extract_timing_data(output) for output in agent_outputs]
+        valid_timings = [t['duration'] for t in timing_data if t]
+        average_workflow_time = sum(valid_timings) / len(valid_timings) if valid_timings else 0.0
+        
+        # Calculate other metrics based on available data
+        decision_consistency_score = min(workflow_success_rate + 0.1, 1.0)  # Approximation
+        multi_step_completion_rate = workflow_success_rate  # Approximation
+        tool_usage_efficiency = tool_chain_reliability
+        
+        # Schema mismatch detection
+        schema_mismatches = sum(1 for f in tool_failures if 'schema' in f.get('type', '').lower())
+        schema_mismatch_rate = schema_mismatches / len(agent_outputs) if agent_outputs else 0.0
+        
+        prompt_tool_alignment_score = 1.0 - schema_mismatch_rate
+        
+        # Determine reliability trend
+        if workflow_success_rate >= 0.8:
+            reliability_trend = "stable"
+        elif workflow_success_rate >= 0.6:
+            reliability_trend = "improving"
+        else:
+            reliability_trend = "degrading"
+        
+        # Identify critical failure points
+        critical_failure_points = []
+        if timeout_rate > 0.2:
+            critical_failure_points.append("High timeout rate")
+        if tool_chain_reliability < 0.7:
+            critical_failure_points.append("Tool call failures")
+        if schema_mismatch_rate > 0.1:
+            critical_failure_points.append("Schema mismatches")
+        
+        return WorkflowReliabilityMetrics(
+            workflow_success_rate=workflow_success_rate,
+            tool_chain_reliability=tool_chain_reliability,
+            decision_consistency_score=decision_consistency_score,
+            multi_step_completion_rate=multi_step_completion_rate,
+            average_workflow_time=average_workflow_time,
+            error_recovery_rate=error_recovery_rate,
+            timeout_rate=timeout_rate,
+            framework_compatibility_score=framework_compatibility_score,
+            tool_usage_efficiency=tool_usage_efficiency,
+            schema_mismatch_rate=schema_mismatch_rate,
+            prompt_tool_alignment_score=prompt_tool_alignment_score,
+            reliability_trend=reliability_trend,
+            critical_failure_points=critical_failure_points
+        )
+    
+    def _generate_reliability_dashboard(
+        self,
+        framework_detection: Dict[str, Any],
+        tool_call_summary: Dict[str, Any],
+        framework_performance: Optional[FrameworkPerformanceAnalysis],
+        workflow_metrics: WorkflowReliabilityMetrics,
+        sample_size: int
+    ) -> str:
+        """Generate Rich-formatted reliability dashboard."""
+        
+        dashboard_parts = []
+        
+        # Header
+        dashboard_parts.append("\n🔧 [bold cyan]Comprehensive Reliability Analysis[/bold cyan]")
+        dashboard_parts.append("═" * 70)
+        
+        # Framework Detection Summary
+        framework = framework_detection['detected_framework']
+        confidence = framework_detection['confidence']
+        
+        if framework:
+            dashboard_parts.append(f"\n🎯 [bold]Framework Detection:[/bold] [green]{framework.upper()}[/green] (confidence: {confidence:.1%})")
+        else:
+            dashboard_parts.append("\n🎯 [bold]Framework Detection:[/bold] [yellow]Auto-detection inconclusive[/yellow]")
+        
+        # Workflow Metrics Summary
+        dashboard_parts.append(f"\n📊 [bold]Workflow Reliability Metrics:[/bold]")
+        dashboard_parts.append(f"  • Success Rate: {workflow_metrics.workflow_success_rate:.1%}")
+        dashboard_parts.append(f"  • Tool Chain Reliability: {workflow_metrics.tool_chain_reliability:.1%}")
+        dashboard_parts.append(f"  • Error Recovery Rate: {workflow_metrics.error_recovery_rate:.1%}")
+        dashboard_parts.append(f"  • Timeout Rate: {workflow_metrics.timeout_rate:.1%}")
+        
+        if workflow_metrics.average_workflow_time > 0:
+            dashboard_parts.append(f"  • Average Workflow Time: {workflow_metrics.average_workflow_time:.1f}s")
+        
+        # Framework Performance (if available)
+        if framework_performance:
+            dashboard_parts.append(f"\n⚡ [bold]Framework Performance Analysis:[/bold]")
+            dashboard_parts.append(f"  • Sample Size: {framework_performance.sample_size} outputs")
+            dashboard_parts.append(f"  • Success Rate: {framework_performance.success_rate:.1%}")
+            dashboard_parts.append(f"  • Avg Response Time: {framework_performance.avg_response_time:.1f}s")
+            dashboard_parts.append(f"  • Tool Call Failure Rate: {framework_performance.tool_call_failure_rate:.1%}")
+            
+            if framework_performance.performance_bottlenecks:
+                dashboard_parts.append(f"\n⚠️ [bold]Performance Bottlenecks:[/bold]")
+                for bottleneck in framework_performance.performance_bottlenecks[:3]:  # Top 3
+                    severity_color = "red" if bottleneck.get('severity') == 'high' else "yellow"
+                    dashboard_parts.append(f"  • [{severity_color}]{bottleneck['type'].replace('_', ' ').title()}[/{severity_color}]: {bottleneck['evidence']}")
+        
+        # Tool Call Summary
+        dashboard_parts.append(f"\n🔧 [bold]Tool Call Analysis:[/bold]")
+        if 'total_validations' in tool_call_summary:
+            dashboard_parts.append(f"  • Validations: {tool_call_summary['total_validations']}")
+            dashboard_parts.append(f"  • Tool Accuracy: {tool_call_summary['avg_tool_accuracy']:.1%}")
+            if tool_call_summary.get('tools_consistently_missing'):
+                dashboard_parts.append(f"  • Consistently Missing: {', '.join(tool_call_summary['tools_consistently_missing'])}")
+        else:
+            dashboard_parts.append(f"  • Outputs Analyzed: {tool_call_summary.get('total_outputs_analyzed', 0)}")
+            dashboard_parts.append(f"  • Unique Tools Detected: {tool_call_summary.get('unique_tools_detected', 0)}")
+            most_common = tool_call_summary.get('most_common_tools', [])
+            if most_common:
+                top_tools = [f"{tool}({count})" for tool, count in most_common[:3]]
+                dashboard_parts.append(f"  • Most Common Tools: {', '.join(top_tools)}")
+        
+        # Critical Issues
+        if workflow_metrics.critical_failure_points:
+            dashboard_parts.append(f"\n🚨 [bold red]Critical Issues Detected:[/bold red]")
+            for issue in workflow_metrics.critical_failure_points:
+                dashboard_parts.append(f"  • {issue}")
+        
+        # Reliability Trend
+        trend_color = "green" if workflow_metrics.reliability_trend == "stable" else "yellow" if workflow_metrics.reliability_trend == "improving" else "red"
+        dashboard_parts.append(f"\n📈 [bold]Reliability Trend:[/bold] [{trend_color}]{workflow_metrics.reliability_trend.title()}[/{trend_color}]")
+        
+        return "\n".join(dashboard_parts)
+    
+    def _generate_insights(
+        self,
+        framework_detection: Dict[str, Any],
+        tool_call_summary: Dict[str, Any],
+        framework_performance: Optional[FrameworkPerformanceAnalysis],
+        workflow_metrics: WorkflowReliabilityMetrics
+    ) -> List[str]:
+        """Generate key insights from analysis."""
+        insights = []
+        
+        # Framework insights
+        if framework_detection['auto_detection_successful']:
+            insights.append(f"✅ Framework auto-detection successful: {framework_detection['detected_framework']}")
+        else:
+            insights.append("⚠️ Framework auto-detection inconclusive - consider specifying framework explicitly")
+        
+        # Performance insights
+        if workflow_metrics.workflow_success_rate >= 0.9:
+            insights.append("✅ Excellent workflow success rate - system performing well")
+        elif workflow_metrics.workflow_success_rate >= 0.7:
+            insights.append("🟡 Good workflow success rate - minor optimizations possible")
+        else:
+            insights.append("🔴 Low workflow success rate - significant issues need attention")
+        
+        # Tool insights
+        if workflow_metrics.tool_chain_reliability >= 0.9:
+            insights.append("✅ High tool chain reliability - tools working as expected")
+        elif workflow_metrics.tool_chain_reliability >= 0.7:
+            insights.append("🟡 Moderate tool reliability - some tool issues detected")
+        else:
+            insights.append("🔴 Poor tool reliability - tool call failures need investigation")
+        
+        # Framework-specific insights
+        if framework_performance:
+            if framework_performance.optimization_opportunities:
+                top_opportunity = framework_performance.optimization_opportunities[0]
+                insights.append(f"💡 Top optimization: {top_opportunity['description']}")
+        
+        return insights
+    
+    def _generate_next_steps(
+        self,
+        detected_framework: Optional[str],
+        framework_performance: Optional[FrameworkPerformanceAnalysis],
+        workflow_metrics: WorkflowReliabilityMetrics
+    ) -> List[str]:
+        """Generate recommended next steps."""
+        next_steps = []
+        
+        # Framework-specific recommendations
+        if detected_framework:
+            next_steps.append(f"1. Review {detected_framework} documentation for optimization best practices")
+        else:
+            next_steps.append("1. Specify framework explicitly for more targeted analysis")
+        
+        # Performance-based recommendations
+        if workflow_metrics.timeout_rate > 0.1:
+            next_steps.append("2. Investigate timeout issues - consider increasing timeout limits or optimizing slow operations")
+        
+        if workflow_metrics.tool_chain_reliability < 0.8:
+            next_steps.append("3. Review tool call implementations and parameter schemas")
+        
+        if workflow_metrics.schema_mismatch_rate > 0.05:
+            next_steps.append("4. Validate tool schemas match LLM output format expectations")
+        
+        # Framework performance recommendations
+        if framework_performance and framework_performance.framework_alternatives:
+            alternatives = ', '.join(framework_performance.framework_alternatives[:2])
+            next_steps.append(f"5. Consider framework alternatives: {alternatives}")
+        
+        # Always include compliance evaluation
+        next_steps.append("6. Run enterprise compliance evaluation for production readiness")
+        
+        return next_steps
+    
+    def _calculate_overall_confidence(
+        self,
+        framework_confidence: float,
+        sample_size: int,
+        framework_performance: Optional[FrameworkPerformanceAnalysis]
+    ) -> float:
+        """Calculate overall analysis confidence."""
+        
+        # Base confidence from sample size
+        size_confidence = min(sample_size / 50, 1.0)  # Full confidence at 50+ samples
+        
+        # Framework detection confidence
+        detection_confidence = framework_confidence
+        
+        # Performance analysis confidence
+        performance_confidence = 1.0
+        if framework_performance:
+            performance_confidence = framework_performance.analysis_confidence
+        
+        # Weighted average
+        overall_confidence = (
+            size_confidence * 0.4 +
+            detection_confidence * 0.3 +
+            performance_confidence * 0.3
+        )
+        
+        return overall_confidence
+    
+    def _determine_evidence_quality(self, confidence: float, sample_size: int) -> str:
+        """Determine evidence quality based on confidence and sample size."""
+        if confidence >= 0.8 and sample_size >= 20:
+            return "high"
+        elif confidence >= 0.6 and sample_size >= 10:
+            return "medium"
+        else:
+            return "low"

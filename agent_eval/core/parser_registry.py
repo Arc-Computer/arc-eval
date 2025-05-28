@@ -463,8 +463,8 @@ class ToolCallExtractor:
         content = str(data)
         
         # Use reliability validator patterns for generic tool extraction
-        from agent_eval.evaluation.reliability_validator import ReliabilityValidator
-        validator = ReliabilityValidator()
+        from agent_eval.evaluation.reliability_validator import ReliabilityAnalyzer
+        validator = ReliabilityAnalyzer()
         detected_tools = validator.extract_tool_calls(content)
         tools.extend(detected_tools)
         
@@ -519,8 +519,8 @@ def detect_and_extract_tools(data: Union[Dict[str, Any], List[Dict[str, Any]]]) 
     
     # Handle simple string inputs with generic tool extraction
     if isinstance(data, str):
-        from agent_eval.evaluation.reliability_validator import ReliabilityValidator
-        validator = ReliabilityValidator()
+        from agent_eval.evaluation.reliability_validator import ReliabilityAnalyzer
+        validator = ReliabilityAnalyzer()
         tools = validator.extract_tool_calls(data)
         return None, tools
     

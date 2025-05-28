@@ -18,7 +18,7 @@ from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskPr
 from .base import BaseCommandHandler
 from agent_eval.core.engine import EvaluationEngine
 from agent_eval.core.types import EvaluationResult, AgentOutput
-from agent_eval.evaluation.agent_judge import AgentJudge
+from agent_eval.evaluation.judges import AgentJudge
 from agent_eval.analysis.self_improvement import SelfImprovementEngine
 
 console = Console()
@@ -540,9 +540,9 @@ class ComplianceCommandHandler(BaseCommandHandler):
         reliability_metrics = None
         if reliability:
             try:
-                from agent_eval.evaluation.reliability_validator import ReliabilityValidator
+                from agent_eval.evaluation.reliability_validator import ReliabilityAnalyzer
                 
-                reliability_validator = ReliabilityValidator()
+                reliability_validator = ReliabilityAnalyzer()
                 
                 # Extract tool calls from agent outputs
                 validations = []
