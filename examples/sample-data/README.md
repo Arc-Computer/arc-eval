@@ -33,6 +33,12 @@ arc-eval --domain finance --input examples/sample-data/finance_improved.json --b
 - **Improved**: Bias-free evaluation, explainable AI, subgroup analysis, fair hiring, uncertainty quantification
 - **Expected Improvement**: ~70% pass rate increase
 
+### **MCP Security Sample**
+- **File**: `mcp_security_sample.json`
+- **Purpose**: Representative examples from each MCP security category for testing
+- **Categories**: Tool poisoning (ml_131, ml_132), obfuscation (ml_133), server attacks (ml_136), behavior modification (ml_140)
+- **Selection Criteria**: One scenario from each of the 5 MCP security categories to demonstrate evaluation workflow and AI-powered improvement plan generation
+
 ## Demonstration Strategy
 
 ### **Finance Domain Use Cases**
