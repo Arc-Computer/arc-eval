@@ -112,14 +112,16 @@ class InputValidator:
         has_framework_pattern = any(framework_patterns)
         
         if not has_output_field and not has_framework_pattern:
+            available_fields = list(data.keys()) if data.keys() else ["none"]
             suggestions = [
                 "Add an 'output' field with the agent's response",
                 "Supported fields: 'output', 'response', 'content', 'text'",
                 "Example: {\"output\": \"Transaction approved\"}",
                 "Or use a supported framework format (run 'arc-eval --help-input')",
-                f"Current fields in {context}: {list(data.keys())}"
+                f"Current fields in {context}: {', '.join(available_fields)}",
+                "💡 Tip: Use examples/sample-data/ for format references"
             ]
-            raise ValidationError(f"Missing output field in {context}", suggestions)
+            raise ValidationError(f"Missing valid output field in {context}", suggestions)
         
         # Warn about empty outputs
         output_fields = ["output", "response", "content", "text", "llm_output", "workflow_output"]
