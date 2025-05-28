@@ -5,7 +5,6 @@ Handles workflow reliability analysis, agent debugging, and unified debugging co
 Pure presentation layer - all core logic delegated to ReliabilityAnalyzer.
 """
 
-import sys
 from typing import Optional, List, Any
 from rich.console import Console
 
@@ -31,7 +30,11 @@ class ReliabilityCommandHandler(BaseCommandHandler):
             else:
                 self.logger.error("No reliability command specified")
                 return 1
-        except Exception as e:
+        except ImportError as e:
+            console.print(f"[red]Missing dependency:[/red] {e}")
+            self.logger.error(f"ImportError in reliability command: {e}")
+            return 1
+        except (FileNotFoundError, ValueError, KeyError) as e:
             console.print(f"[red]Error in reliability analysis:[/red] {e}")
             self.logger.error(f"Reliability command failed: {e}")
             return 1
@@ -231,38 +234,31 @@ class ReliabilityCommandHandler(BaseCommandHandler):
         return 0
     
     def _load_and_validate_inputs(self, **kwargs) -> tuple[Optional[List[Any]], Optional[str]]:
-        """Load and validate input data - consolidated input handling."""
+        """Load and validate input data using base class method for consistency."""
+        from pathlib import Path
+        
         input_file = kwargs.get('input_file')
         stdin = kwargs.get('stdin', False)
         verbose = kwargs.get('verbose', False)
-        
+
+        # Convert input_file to Path if it's a string
+        input_path = Path(input_file) if input_file else None
+
         try:
-            from agent_eval.evaluation.validators import InputValidator
+            # Use base class method for consistent input handling
+            agent_outputs = self._load_agent_outputs(input_path, stdin)
             
-            if input_file:
-                with open(input_file, 'r') as f:
-                    raw_data = f.read()
-                agent_outputs, validation_warnings = InputValidator.validate_json_input(raw_data, str(input_file))
-                
-                if verbose:
-                    console.print(f"\\n[dim]Loaded {len(agent_outputs)} outputs from {input_file}[/dim]")
-                    if validation_warnings:
-                        console.print(f"[dim]Validation warnings: {len(validation_warnings)}[/dim]")
-                
-                return agent_outputs, str(input_file)
-                
-            elif stdin:
-                console.print("[dim]Reading from stdin...[/dim]")
-                raw_data = sys.stdin.read()
-                agent_outputs, validation_warnings = InputValidator.validate_json_input(raw_data, "stdin")
-                return agent_outputs, "stdin"
-            else:
-                console.print("[red]Error:[/red] --input required for reliability analysis")
-                console.print("💡 Usage: arc-eval --debug-agent --input workflow_trace.json")
-                return None, None
-                
-        except Exception as e:
+            input_source = "stdin" if stdin else str(input_path) if input_path else "unknown"
+            
+            if verbose and agent_outputs:
+                console.print(f"\\n[dim]Loaded {len(agent_outputs)} outputs from {input_source}[/dim]")
+            
+            return agent_outputs, input_source
+
+        except (FileNotFoundError, ValueError) as e:
             console.print(f"[red]Error loading input:[/red] {e}")
+            if not input_file and not stdin:
+                console.print("💡 Usage: arc-eval --debug-agent --input workflow_trace.json")
             return None, None
     
     def _basic_framework_detection(self, agent_outputs: List[Any], specified_framework: Optional[str]) -> str:

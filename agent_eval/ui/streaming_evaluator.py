@@ -13,7 +13,6 @@ from rich.text import Text
 
 from agent_eval.core.types import EvaluationResult, EvaluationScenario, AgentOutput
 from agent_eval.core.engine import EvaluationEngine
-from agent_eval.evaluation.reliability_validator import ReliabilityAnalyzer
 
 
 console = Console()
@@ -302,7 +301,7 @@ class StreamingEvaluator:
         
         # Import reliability analysis tools
         try:
-            from agent_eval.evaluation.reliability_validator import ReliabilityAnalyzer, FrameworkPerformanceAnalysis
+            from agent_eval.evaluation.reliability_validator import ReliabilityAnalyzer
         except ImportError:
             return Panel("Reliability analysis unavailable - missing dependencies", title="⚠️ Error")
         
@@ -347,7 +346,7 @@ class StreamingEvaluator:
         
         return Panel(content, title=title, border_style=border_style)
     
-    def _analyze_workflow_reliability(self, agent_outputs: List[Any], validator: 'ReliabilityAnalyzer', framework: Optional[str]) -> Dict[str, Any]:
+    def _analyze_workflow_reliability(self, agent_outputs: List[Any], validator: Any, framework: Optional[str]) -> Dict[str, Any]:
         """Comprehensive reliability analysis to power dashboard."""
         
         analysis = {
