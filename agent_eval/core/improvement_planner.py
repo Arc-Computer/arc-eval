@@ -11,7 +11,7 @@ from dataclasses import dataclass
 
 from agent_eval.analysis.self_improvement import SelfImprovementEngine, TrainingExample
 from agent_eval.core.types import EvaluationResult
-from agent_eval.evaluation.agent_judge import AgentJudge
+from agent_eval.evaluation.judges import AgentJudge
 
 
 @dataclass

@@ -10,7 +10,9 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from agent_eval.core.types import AgentOutput, EvaluationScenario, VerificationSummary
-from agent_eval.evaluation.agent_judge import JudgmentResult, APIManager, _parse_json_response
+from agent_eval.evaluation.judges import JudgmentResult
+from agent_eval.evaluation.judges.api_manager import APIManager
+from agent_eval.evaluation.judges.base import _parse_json_response
 
 
 logger = logging.getLogger(__name__)

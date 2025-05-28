@@ -296,6 +296,315 @@ class StreamingEvaluator:
         
         return Panel(content, title="✅ ARC-Eval Demo Complete", border_style="green")
     
+    def create_reliability_dashboard(self, agent_outputs: List[Any], framework: Optional[str] = None) -> Panel:
+        """Create comprehensive reliability dashboard matching compliance interface quality."""
+        
+        # Import reliability analysis tools
+        try:
+            from agent_eval.evaluation.reliability_validator import ReliabilityAnalyzer
+        except ImportError:
+            return Panel("Reliability analysis unavailable - missing dependencies", title="⚠️ Error")
+        
+        validator = ReliabilityAnalyzer()
+        
+        # Analyze reliability metrics
+        reliability_analysis = self._analyze_workflow_reliability(agent_outputs, validator, framework)
+        
+        # Create dashboard sections
+        dashboard_sections = []
+        
+        # Header with key metrics (matching compliance interface style)
+        header_section = self._create_reliability_header(reliability_analysis)
+        dashboard_sections.append(header_section)
+        
+        # Framework performance analysis (if specified)
+        if framework:
+            framework_section = self._create_framework_performance_section(reliability_analysis, framework)
+            dashboard_sections.append(framework_section)
+        
+        # Detailed workflow issues table (matching compliance table style)
+        issues_section = self._create_workflow_issues_table(reliability_analysis)
+        dashboard_sections.append(issues_section)
+        
+        # Improvement recommendations (matching compliance recommendations)
+        recommendations_section = self._create_reliability_recommendations(reliability_analysis)
+        dashboard_sections.append(recommendations_section)
+        
+        content = "\n\n".join(dashboard_sections)
+        
+        # Dynamic title and styling based on reliability score
+        reliability_score = reliability_analysis.get('overall_reliability_score', 0)
+        if reliability_score >= 0.8:
+            title = "🔧 Agentic Workflow Reliability Analysis - High Reliability"
+            border_style = "green"
+        elif reliability_score >= 0.6:
+            title = "🔧 Agentic Workflow Reliability Analysis - Medium Reliability"
+            border_style = "yellow"
+        else:
+            title = "🔧 Agentic Workflow Reliability Analysis - Reliability Issues Detected"
+            border_style = "red"
+        
+        return Panel(content, title=title, border_style=border_style)
+    
+    def _analyze_workflow_reliability(self, agent_outputs: List[Any], validator: Any, framework: Optional[str]) -> Dict[str, Any]:
+        """Comprehensive reliability analysis to power dashboard."""
+        
+        analysis = {
+            'total_outputs': len(agent_outputs),
+            'framework': framework or 'auto-detected',
+            'issues_detected': [],
+            'performance_metrics': {},
+            'recommendations': [],
+            'overall_reliability_score': 0.0
+        }
+        
+        # Tool call success analysis
+        tool_call_issues = []
+        memory_issues = []
+        performance_issues = []
+        schema_issues = []
+        
+        success_count = 0
+        total_steps = 0
+        timeout_count = 0
+        error_count = 0
+        
+        for output in agent_outputs:
+            total_steps += 1
+            
+            # Analyze success patterns
+            success_indicators = validator._analyze_success_patterns(output)
+            if success_indicators['success_rate'] > 0.7:
+                success_count += 1
+            
+            # Detect tool call failures
+            tool_failures = validator._detect_tool_call_failures(output)
+            tool_call_issues.extend(tool_failures)
+            
+            # Detect timeouts
+            if validator._detect_timeout_patterns(output):
+                timeout_count += 1
+            
+            # Count errors
+            if isinstance(output, dict):
+                if 'error' in output or 'errors' in output:
+                    error_count += 1
+                    
+                # Memory continuity issues
+                if 'memory_issue' in output:
+                    memory_issues.append({
+                        'type': 'memory_gap',
+                        'description': output['memory_issue'],
+                        'severity': 'high'
+                    })
+                
+                # Schema validation issues
+                if 'tool_call' in output:
+                    tool_call = output['tool_call']
+                    if isinstance(tool_call, dict) and 'error' in tool_call:
+                        if 'parameter mismatch' in tool_call['error'].lower() or 'schema' in tool_call['error'].lower():
+                            schema_issues.append({
+                                'type': 'schema_mismatch',
+                                'tool_name': tool_call.get('name', 'unknown'),
+                                'description': tool_call['error'],
+                                'severity': 'high'
+                            })
+        
+        # Calculate performance metrics
+        tool_call_success_rate = success_count / total_steps if total_steps > 0 else 0
+        error_rate = error_count / total_steps if total_steps > 0 else 0
+        timeout_rate = timeout_count / total_steps if total_steps > 0 else 0
+        
+        # Framework-specific analysis
+        framework_analysis = None
+        if framework:
+            try:
+                framework_analysis = validator.analyze_framework_performance(agent_outputs, framework)
+            except Exception:
+                pass  # Fallback gracefully
+        
+        # Compile all issues
+        all_issues = tool_call_issues + memory_issues + schema_issues
+        
+        # Calculate overall reliability score
+        reliability_score = (
+            tool_call_success_rate * 0.4 +  # 40% weight on tool call success
+            (1 - error_rate) * 0.3 +         # 30% weight on error rate
+            (1 - timeout_rate) * 0.2 +       # 20% weight on timeout rate
+            (1 - min(len(all_issues) / total_steps, 1.0)) * 0.1  # 10% weight on issue density
+        )
+        
+        analysis.update({
+            'tool_call_success_rate': tool_call_success_rate,
+            'error_rate': error_rate,
+            'timeout_rate': timeout_rate,
+            'issues_detected': all_issues,
+            'framework_analysis': framework_analysis,
+            'overall_reliability_score': reliability_score,
+            'performance_metrics': {
+                'total_steps': total_steps,
+                'successful_steps': success_count,
+                'failed_steps': total_steps - success_count,
+                'timeout_count': timeout_count,
+                'error_count': error_count
+            }
+        })
+        
+        return analysis
+    
+    def _create_reliability_header(self, analysis: Dict[str, Any]) -> str:
+        """Create reliability dashboard header matching compliance interface style."""
+        
+        reliability_score = analysis['overall_reliability_score']
+        total_steps = analysis['performance_metrics']['total_steps']
+        successful_steps = analysis['performance_metrics']['successful_steps']
+        failed_steps = analysis['performance_metrics']['failed_steps']
+        issues_count = len(analysis['issues_detected'])
+        critical_issues = len([i for i in analysis['issues_detected'] if i.get('severity') == 'high'])
+        
+        # Header similar to compliance interface
+        content = f"[bold cyan]🔧 Agent Workflow Analysis[/bold cyan]\n"
+        content += "═" * 50 + "\n\n"
+        
+        # Key metrics in a structured format
+        score_color = "green" if reliability_score >= 0.8 else "yellow" if reliability_score >= 0.6 else "red"
+        content += f"[bold]🎯 Reliability Score: [{score_color}]{reliability_score:.1%}[/{score_color}]  "
+        
+        if critical_issues > 0:
+            content += f"⚠️ Issues Found: [red]{critical_issues} Critical[/red]\n"
+        else:
+            content += f"✅ No Critical Issues\n"
+        
+        # Tool call metrics
+        content += f"[green]✅ Successful Steps: {successful_steps}/{total_steps}[/green]  "
+        content += f"[red]❌ Failed Steps: {failed_steps}[/red]\n\n"
+        
+        # Framework info
+        if analysis.get('framework'):
+            content += f"[blue]🔧 Framework: {analysis['framework'].upper()}[/blue]  "
+            content += f"[dim]Sample Size: {total_steps} workflow components[/dim]\n"
+        
+        return content
+    
+    def _create_framework_performance_section(self, analysis: Dict[str, Any], framework: str) -> str:
+        """Create framework performance section with detailed metrics."""
+        
+        framework_analysis = analysis.get('framework_analysis')
+        if not framework_analysis:
+            return f"[yellow]⚠️ Framework analysis unavailable for {framework}[/yellow]"
+        
+        content = f"[bold blue]📊 {framework.upper()} Framework Performance Analysis[/bold blue]\n"
+        content += "─" * 40 + "\n\n"
+        
+        # Performance metrics
+        content += f"• [bold]Success Rate:[/bold] {framework_analysis.success_rate:.1%}\n"
+        content += f"• [bold]Avg Response Time:[/bold] {framework_analysis.avg_response_time:.1f}s\n"
+        content += f"• [bold]Tool Call Failures:[/bold] {framework_analysis.tool_call_failure_rate:.1%}\n"
+        content += f"• [bold]Timeout Rate:[/bold] {framework_analysis.timeout_frequency:.1%}\n\n"
+        
+        # Bottlenecks if detected
+        if framework_analysis.performance_bottlenecks:
+            content += "[bold red]⚠️ Performance Bottlenecks Detected:[/bold red]\n"
+            for bottleneck in framework_analysis.performance_bottlenecks[:3]:  # Show top 3
+                severity_color = "red" if bottleneck.get('severity') == 'high' else "yellow"
+                content += f"  • [{severity_color}]{bottleneck['type'].replace('_', ' ').title()}[/{severity_color}]: {bottleneck['evidence']}\n"
+        
+        return content
+    
+    def _create_workflow_issues_table(self, analysis: Dict[str, Any]) -> str:
+        """Create detailed workflow issues table matching compliance interface table style."""
+        
+        issues = analysis['issues_detected']
+        if not issues:
+            return "[green]✅ No workflow reliability issues detected[/green]"
+        
+        content = "[bold red]🛠️ Workflow Issues Detected:[/bold red]\n\n"
+        
+        # Create table header
+        content += "┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓\n"
+        content += "┃ Issue Type                 ┃ Description                                                         ┃\n"
+        content += "┡━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩\n"
+        
+        # Add issue rows
+        for issue in issues[:10]:  # Limit to top 10 issues
+            issue_type = issue.get('type', 'unknown').replace('_', ' ').title()
+            description = issue.get('description', 'No description available')
+            severity = issue.get('severity', 'medium')
+            
+            # Truncate description if too long
+            if len(description) > 67:
+                description = description[:64] + "..."
+            
+            # Color code by severity
+            if severity == 'high':
+                severity_icon = "🔴"
+            elif severity == 'medium':
+                severity_icon = "🟡"
+            else:
+                severity_icon = "🟢"
+            
+            # Format row
+            issue_type_padded = f"{severity_icon} {issue_type}".ljust(26)
+            description_padded = description.ljust(67)
+            
+            content += f"│ {issue_type_padded} │ {description_padded} │\n"
+        
+        content += "└────────────────────────────┴─────────────────────────────────────────────────────────────────────┘\n"
+        
+        return content
+    
+    def _create_reliability_recommendations(self, analysis: Dict[str, Any]) -> str:
+        """Create actionable reliability improvement recommendations."""
+        
+        content = "[bold green]💡 Reliability Improvement Recommendations:[/bold green]\n\n"
+        
+        issues = analysis['issues_detected']
+        framework_analysis = analysis.get('framework_analysis')
+        
+        recommendations = []
+        
+        # Generate specific recommendations based on detected issues
+        tool_call_failures = [i for i in issues if 'tool' in i.get('type', '')]
+        memory_issues = [i for i in issues if 'memory' in i.get('type', '')]
+        schema_issues = [i for i in issues if 'schema' in i.get('type', '')]
+        
+        if tool_call_failures:
+            recommendations.append("🔧 **Tool Call Optimization**: Review tool parameter schemas and implement retry logic for failed calls")
+        
+        if memory_issues:
+            recommendations.append("🧠 **Memory Management**: Implement explicit context passing between workflow steps to prevent memory gaps")
+        
+        if schema_issues:
+            recommendations.append("📋 **Schema Validation**: Update tool definitions to match LLM output format and add parameter validation")
+        
+        if analysis['timeout_rate'] > 0.1:
+            recommendations.append("⏱️ **Timeout Handling**: Add timeout detection and fallback mechanisms for long-running operations")
+        
+        # Framework-specific recommendations
+        if framework_analysis and framework_analysis.optimization_opportunities:
+            for opp in framework_analysis.optimization_opportunities[:2]:  # Top 2 opportunities
+                priority_icon = "🔴" if opp.get('priority') == 'high' else "🟡"
+                recommendations.append(f"{priority_icon} **{opp['type'].replace('_', ' ').title()}**: {opp['description']}")
+        
+        # Default recommendations if no specific issues
+        if not recommendations:
+            recommendations = [
+                "✅ **Maintain Current Performance**: Your workflow reliability is strong - continue monitoring",
+                "📊 **Performance Monitoring**: Set up regular reliability assessments to catch issues early",
+                "🔄 **Continuous Improvement**: Consider implementing additional error recovery patterns"
+            ]
+        
+        for i, rec in enumerate(recommendations[:5], 1):  # Limit to 5 recommendations
+            content += f"{i}. {rec}\n"
+        
+        # Add next steps
+        content += "\n[bold cyan]📋 Next Steps:[/bold cyan]\n"
+        content += "1. Generate detailed improvement plan: [green]arc-eval --continue[/green]\n"
+        content += "2. Run enterprise compliance audit: [green]arc-eval --domain finance --input data.json[/green]\n"
+        content += "3. Export reliability report: [green]arc-eval --workflow-reliability --export pdf[/green]\n"
+        
+        return content
+    
     def get_personalized_insights(self) -> Dict[str, Any]:
         """Generate personalized insights based on user context and results."""
         

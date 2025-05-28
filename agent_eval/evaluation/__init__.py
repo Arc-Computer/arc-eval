@@ -9,7 +9,7 @@ This module contains all evaluation-related functionality including:
 - Input validation
 """
 
-from .agent_judge import AgentJudge
+from .judges import AgentJudge
 from .verification_judge import VerificationJudge
 from .bias_detection import BasicBiasDetection
 from .confidence_calibrator import ConfidenceCalibrator
