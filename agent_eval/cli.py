@@ -1031,20 +1031,6 @@ def main(
             if verbose:
                 console.print(f"[cyan]Verbose:[/cyan] Export completed successfully")
         
-        # Track evaluation analytics
-        try:
-            from agent_eval.core.usage_analytics import track_evaluation
-            pass_rate = len([r for r in results if r.passed]) / len(results) if results else 0
-            track_evaluation(
-                domain=domain,
-                duration_seconds=evaluation_time,
-                scenario_count=len(results),
-                pass_rate=pass_rate,
-                success=True
-            )
-        except Exception as e:
-            if verbose:
-                console.print(f"[dim yellow]Analytics tracking failed: {e}[/dim yellow]")
         
         # Save evaluation results for future improvement plan generation
         evaluation_id = f"{domain}_evaluation_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
@@ -2527,18 +2513,6 @@ def _handle_improvement_plan_generation(from_evaluation: Optional[Path],
                 output_file=output_path
             )
             
-            # Track analytics
-            try:
-                from agent_eval.core.usage_analytics import track_improvement_plan
-                track_improvement_plan(
-                    domain=improvement_plan.domain,
-                    evaluation_file=str(from_evaluation),
-                    action_count=len(improvement_plan.actions),
-                    success=True
-                )
-            except Exception as e:
-                if verbose:
-                    console.print(f"[dim yellow]Analytics tracking failed: {e}[/dim yellow]")
         
         # Display summary
         console.print(f"\n[bold green]Improvement plan generated[/bold green]")
@@ -2615,21 +2589,6 @@ def _handle_baseline_comparison(current_evaluation_data: Dict[str, Any],
                 output_file=output_path
             )
             
-            # Track analytics
-            try:
-                from agent_eval.core.usage_analytics import track_comparison
-                net_improvement = comparison_report.summary.get("net_improvement", 0)
-                pass_rate_change = float(comparison_report.summary.get("pass_rate_change", "0%").replace("%", "").replace("+", ""))
-                track_comparison(
-                    domain=comparison_report.domain,
-                    baseline_file=str(baseline),
-                    net_improvement=net_improvement,
-                    pass_rate_change=pass_rate_change,
-                    success=True
-                )
-            except Exception as e:
-                if verbose:
-                    console.print(f"[dim yellow]Analytics tracking failed: {e}[/dim yellow]")
         
         # Display comparison results
         console.print(f"\n[bold green]Comparison complete[/bold green]")
