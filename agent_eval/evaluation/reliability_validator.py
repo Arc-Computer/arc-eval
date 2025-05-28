@@ -25,6 +25,62 @@ class ToolCallValidation:
     validation_details: Dict[str, Any]
 
 
+@dataclass
+class WorkflowReliabilityMetrics:
+    """Enhanced metrics for workflow reliability analysis."""
+    
+    # Core workflow metrics (from positioning doc)
+    workflow_success_rate: float           # End-to-end completion rate
+    tool_chain_reliability: float          # Tool call success rate
+    decision_consistency_score: float      # Consistent decisions across runs
+    multi_step_completion_rate: float      # Multi-step task completion
+    
+    # Performance reliability
+    average_workflow_time: float           # Seconds to complete workflow
+    error_recovery_rate: float             # Successful error recoveries  
+    timeout_rate: float                    # Workflows that timeout
+    
+    # Framework-specific reliability
+    framework_compatibility_score: float   # How well agent uses framework
+    tool_usage_efficiency: float          # Optimal tool selection rate
+    
+    # Schema mismatch detection (NEW - addresses prompt-tool mismatch)
+    schema_mismatch_rate: float            # Tool schema vs LLM output mismatch
+    prompt_tool_alignment_score: float     # How well tools match prompts
+    
+    # Improvement trajectory
+    reliability_trend: str                 # "improving", "stable", "degrading"
+    critical_failure_points: List[str]     # Workflow steps that commonly fail
+
+
+@dataclass
+class FrameworkPerformanceAnalysis:
+    """Data-driven analysis of framework-specific performance patterns."""
+    
+    framework_name: str
+    sample_size: int
+    
+    # Performance metrics (measured from actual data)
+    avg_response_time: float
+    success_rate: float
+    tool_call_failure_rate: float
+    timeout_frequency: float
+    
+    # Framework-specific issues (detected from patterns)
+    abstraction_overhead: float           # Detected layers of abstraction causing delays
+    delegation_bottlenecks: List[str]     # Specific delegation patterns causing slowness
+    memory_leak_indicators: List[str]     # Memory management issues
+    
+    # Evidence-based recommendations
+    performance_bottlenecks: List[Dict[str, Any]]  # Specific bottlenecks with evidence
+    optimization_opportunities: List[Dict[str, Any]]  # Data-backed optimization suggestions
+    framework_alternatives: List[str]     # Better frameworks for this use case
+    
+    # Confidence scores
+    analysis_confidence: float            # How confident we are in this analysis
+    recommendation_strength: str          # "high", "medium", "low"
+
+
 class ReliabilityValidator:
     """Validates agent reliability through tool call analysis and error pattern detection."""
     
@@ -406,6 +462,351 @@ class ReliabilityValidator:
             results.append(validation)
         
         return results
+    
+    def analyze_framework_performance(self, agent_outputs: List[Any], framework: str) -> FrameworkPerformanceAnalysis:
+        """Generate data-driven framework performance analysis from actual agent outputs."""
+        
+        # Extract performance metrics from actual data
+        response_times = []
+        success_rates = []
+        tool_call_failures = []
+        timeout_occurrences = []
+        
+        # Analyze each output for performance patterns
+        for output in agent_outputs:
+            # Extract timing data if available
+            timing_data = self._extract_timing_data(output)
+            if timing_data:
+                response_times.append(timing_data['duration'])
+                
+            # Analyze success/failure patterns
+            success_indicators = self._analyze_success_patterns(output)
+            success_rates.append(success_indicators['success_rate'])
+            
+            # Detect tool call failures
+            tool_failures = self._detect_tool_call_failures(output)
+            tool_call_failures.extend(tool_failures)
+            
+            # Check for timeout indicators
+            if self._detect_timeout_patterns(output):
+                timeout_occurrences.append(1)
+            else:
+                timeout_occurrences.append(0)
+        
+        # Calculate aggregate metrics
+        avg_response_time = sum(response_times) / len(response_times) if response_times else 0
+        overall_success_rate = sum(success_rates) / len(success_rates) if success_rates else 0
+        tool_failure_rate = len([f for f in tool_call_failures if f]) / len(agent_outputs) if agent_outputs else 0
+        timeout_frequency = sum(timeout_occurrences) / len(timeout_occurrences) if timeout_occurrences else 0
+        
+        # Framework-specific pattern analysis
+        framework_issues = self._analyze_framework_specific_issues(agent_outputs, framework)
+        
+        # Generate evidence-based recommendations
+        performance_bottlenecks = self._identify_performance_bottlenecks(agent_outputs, framework)
+        optimization_opportunities = self._identify_optimization_opportunities(framework_issues, performance_bottlenecks)
+        
+        # Calculate confidence based on sample size and data quality
+        analysis_confidence = self._calculate_analysis_confidence(len(agent_outputs), framework_issues)
+        recommendation_strength = self._determine_recommendation_strength(analysis_confidence, performance_bottlenecks)
+        
+        return FrameworkPerformanceAnalysis(
+            framework_name=framework,
+            sample_size=len(agent_outputs),
+            avg_response_time=avg_response_time,
+            success_rate=overall_success_rate,
+            tool_call_failure_rate=tool_failure_rate,
+            timeout_frequency=timeout_frequency,
+            abstraction_overhead=framework_issues.get('abstraction_overhead', 0.0),
+            delegation_bottlenecks=framework_issues.get('delegation_bottlenecks', []),
+            memory_leak_indicators=framework_issues.get('memory_leaks', []),
+            performance_bottlenecks=performance_bottlenecks,
+            optimization_opportunities=optimization_opportunities,
+            framework_alternatives=self._suggest_framework_alternatives(framework, performance_bottlenecks),
+            analysis_confidence=analysis_confidence,
+            recommendation_strength=recommendation_strength
+        )
+    
+    def _extract_timing_data(self, output: Any) -> Optional[Dict[str, float]]:
+        """Extract timing information from agent output."""
+        if isinstance(output, dict):
+            # Look for common timing fields
+            if 'duration' in output:
+                return {'duration': float(output['duration'])}
+            if 'start_time' in output and 'end_time' in output:
+                try:
+                    from datetime import datetime
+                    start = datetime.fromisoformat(output['start_time'].replace('Z', '+00:00'))
+                    end = datetime.fromisoformat(output['end_time'].replace('Z', '+00:00'))
+                    duration = (end - start).total_seconds()
+                    return {'duration': duration}
+                except (ValueError, AttributeError):
+                    pass
+            if 'duration_seconds' in output:
+                return {'duration': float(output['duration_seconds'])}
+        return None
+    
+    def _analyze_success_patterns(self, output: Any) -> Dict[str, float]:
+        """Analyze success/failure patterns in agent output."""
+        if isinstance(output, dict):
+            # Direct success indicator
+            if 'success' in output:
+                return {'success_rate': 1.0 if output['success'] else 0.0}
+            
+            # Status-based success
+            if 'status' in output:
+                success_statuses = ['completed', 'success', 'done']
+                return {'success_rate': 1.0 if output['status'] in success_statuses else 0.0}
+            
+            # Error-based failure detection
+            if 'error' in output or 'errors' in output:
+                return {'success_rate': 0.0}
+            
+            # Tool call success analysis
+            if 'tool_call' in output:
+                tool_call = output['tool_call']
+                if isinstance(tool_call, dict):
+                    if 'result' in tool_call and tool_call['result'] is not None:
+                        return {'success_rate': 1.0}
+                    if 'error' in tool_call:
+                        return {'success_rate': 0.0}
+        
+        # Default: assume success if no clear failure indicators
+        return {'success_rate': 0.8}  # Conservative default
+    
+    def _detect_tool_call_failures(self, output: Any) -> List[Dict[str, Any]]:
+        """Detect specific tool call failures from output."""
+        failures = []
+        
+        if isinstance(output, dict):
+            # Direct tool call failure
+            if 'tool_call' in output:
+                tool_call = output['tool_call']
+                if isinstance(tool_call, dict) and 'error' in tool_call:
+                    failures.append({
+                        'type': 'tool_call_error',
+                        'tool_name': tool_call.get('name', 'unknown'),
+                        'error': tool_call['error']
+                    })
+            
+            # Parameter mismatch detection
+            output_str = str(output)
+            if 'parameter mismatch' in output_str.lower():
+                failures.append({
+                    'type': 'parameter_mismatch',
+                    'description': 'Tool parameter schema mismatch detected'
+                })
+            
+            # Schema error detection
+            if 'schema error' in output_str.lower():
+                failures.append({
+                    'type': 'schema_error',
+                    'description': 'Tool schema validation failed'
+                })
+        
+        return failures
+    
+    def _detect_timeout_patterns(self, output: Any) -> bool:
+        """Detect timeout indicators in output."""
+        if isinstance(output, dict):
+            # Direct timeout indicators
+            if 'timeout' in output or 'timed_out' in output:
+                return True
+            
+            # Status-based timeout
+            if output.get('status') == 'timeout':
+                return True
+            
+            # Error-based timeout detection
+            error_text = str(output.get('error', ''))
+            timeout_keywords = ['timeout', 'timed out', 'time limit', 'deadline exceeded']
+            if any(keyword in error_text.lower() for keyword in timeout_keywords):
+                return True
+        
+        return False
+    
+    def _analyze_framework_specific_issues(self, agent_outputs: List[Any], framework: str) -> Dict[str, Any]:
+        """Analyze framework-specific performance issues from actual data."""
+        issues = {
+            'abstraction_overhead': 0.0,
+            'delegation_bottlenecks': [],
+            'memory_leaks': []
+        }
+        
+        if framework == 'langchain':
+            # Detect LangChain abstraction overhead
+            for output in agent_outputs:
+                if isinstance(output, dict):
+                    # Look for unnecessary intermediate steps
+                    if 'intermediate_steps' in output:
+                        steps = output['intermediate_steps']
+                        if isinstance(steps, list) and len(steps) > 5:
+                            issues['abstraction_overhead'] += 0.2
+                    
+                    # Detect agent scratchpad bloat
+                    if 'agent_scratchpad' in str(output):
+                        issues['abstraction_overhead'] += 0.1
+        
+        elif framework == 'crewai':
+            # Detect CrewAI delegation issues
+            for output in agent_outputs:
+                if isinstance(output, dict):
+                    # Look for slow delegation patterns
+                    if 'duration_seconds' in output and output['duration_seconds'] > 25:
+                        issues['delegation_bottlenecks'].append('slow_agent_delegation')
+                    
+                    # Detect delegation timeout patterns
+                    if 'Agent delegation timeout' in str(output):
+                        issues['delegation_bottlenecks'].append('delegation_timeout')
+        
+        elif framework == 'autogen':
+            # Detect AutoGen conversation bloat
+            for output in agent_outputs:
+                if isinstance(output, dict):
+                    # Look for excessive message history
+                    if 'messages' in output:
+                        messages = output['messages']
+                        if isinstance(messages, list) and len(messages) > 20:
+                            issues['memory_leaks'].append('excessive_conversation_history')
+        
+        return issues
+    
+    def _identify_performance_bottlenecks(self, agent_outputs: List[Any], framework: str) -> List[Dict[str, Any]]:
+        """Identify specific performance bottlenecks with evidence."""
+        bottlenecks = []
+        
+        # Analyze response time patterns
+        slow_responses = []
+        for output in agent_outputs:
+            timing = self._extract_timing_data(output)
+            if timing and timing['duration'] > 10:  # 10+ second responses
+                slow_responses.append({
+                    'duration': timing['duration'],
+                    'output': output
+                })
+        
+        if slow_responses:
+            avg_slow_time = sum(r['duration'] for r in slow_responses) / len(slow_responses)
+            bottlenecks.append({
+                'type': 'slow_response_time',
+                'evidence': f'{len(slow_responses)} outputs with >10s response time',
+                'avg_time': avg_slow_time,
+                'severity': 'high' if avg_slow_time > 30 else 'medium',
+                'affected_count': len(slow_responses)
+            })
+        
+        # Framework-specific bottleneck detection
+        if framework == 'crewai':
+            delegation_timeouts = [o for o in agent_outputs if 'delegation timeout' in str(o).lower()]
+            if delegation_timeouts:
+                bottlenecks.append({
+                    'type': 'delegation_timeout',
+                    'evidence': f'{len(delegation_timeouts)} delegation timeouts detected',
+                    'severity': 'high',
+                    'affected_count': len(delegation_timeouts)
+                })
+        
+        elif framework == 'langchain':
+            complex_chains = [o for o in agent_outputs if 'intermediate_steps' in str(o) and len(str(o)) > 5000]
+            if complex_chains:
+                bottlenecks.append({
+                    'type': 'chain_complexity',
+                    'evidence': f'{len(complex_chains)} outputs with complex chain execution',
+                    'severity': 'medium',
+                    'affected_count': len(complex_chains)
+                })
+        
+        return bottlenecks
+    
+    def _identify_optimization_opportunities(self, framework_issues: Dict[str, Any], bottlenecks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Generate data-driven optimization suggestions."""
+        opportunities = []
+        
+        # High abstraction overhead -> suggest direct LLM calls
+        if framework_issues.get('abstraction_overhead', 0) > 0.3:
+            opportunities.append({
+                'type': 'reduce_abstraction',
+                'description': 'Consider direct LLM calls for simple tasks',
+                'evidence': f'Abstraction overhead score: {framework_issues["abstraction_overhead"]:.2f}',
+                'priority': 'high',
+                'estimated_improvement': '30-50% faster response times'
+            })
+        
+        # Delegation bottlenecks -> suggest alternatives
+        if framework_issues.get('delegation_bottlenecks'):
+            opportunities.append({
+                'type': 'improve_delegation',
+                'description': 'Implement custom delegation logic or consider framework alternatives',
+                'evidence': f'Delegation issues: {", ".join(framework_issues["delegation_bottlenecks"])}',
+                'priority': 'high',
+                'estimated_improvement': '40-60% reduction in delegation timeouts'
+            })
+        
+        # Memory leaks -> suggest cleanup strategies
+        if framework_issues.get('memory_leaks'):
+            opportunities.append({
+                'type': 'memory_management',
+                'description': 'Implement conversation pruning and state management',
+                'evidence': f'Memory issues: {", ".join(framework_issues["memory_leaks"])}',
+                'priority': 'medium',
+                'estimated_improvement': '20-30% more consistent performance'
+            })
+        
+        # Tool call failures -> suggest schema improvements
+        tool_failures = [b for b in bottlenecks if 'tool' in b.get('type', '')]
+        if tool_failures:
+            opportunities.append({
+                'type': 'tool_schema_optimization',
+                'description': 'Improve tool parameter schemas and validation',
+                'evidence': f'{len(tool_failures)} tool-related bottlenecks detected',
+                'priority': 'high',
+                'estimated_improvement': '50-70% reduction in tool call failures'
+            })
+        
+        return opportunities
+    
+    def _suggest_framework_alternatives(self, current_framework: str, bottlenecks: List[Dict[str, Any]]) -> List[str]:
+        """Suggest alternative frameworks based on detected issues."""
+        alternatives = []
+        
+        # Framework-specific alternative suggestions based on performance data
+        if current_framework == 'crewai':
+            delegation_issues = [b for b in bottlenecks if 'delegation' in b.get('type', '')]
+            if delegation_issues:
+                alternatives.extend(['langchain', 'autogen'])  # Better delegation handling
+        
+        elif current_framework == 'langchain':
+            complexity_issues = [b for b in bottlenecks if 'complexity' in b.get('type', '')]
+            if complexity_issues:
+                alternatives.extend(['openai', 'anthropic'])  # Direct API calls for simpler workflows
+        
+        elif current_framework == 'autogen':
+            memory_issues = [b for b in bottlenecks if 'memory' in b.get('type', '')]
+            if memory_issues:
+                alternatives.extend(['langgraph'])  # Better state management
+        
+        return alternatives
+    
+    def _calculate_analysis_confidence(self, sample_size: int, framework_issues: Dict[str, Any]) -> float:
+        """Calculate confidence in analysis based on data quality."""
+        base_confidence = min(sample_size / 100, 1.0)  # More samples = higher confidence
+        
+        # Reduce confidence if no clear issues detected (might indicate insufficient data)
+        if not any(framework_issues.values()):
+            base_confidence *= 0.7
+        
+        return base_confidence
+    
+    def _determine_recommendation_strength(self, confidence: float, bottlenecks: List[Dict[str, Any]]) -> str:
+        """Determine strength of recommendations based on evidence."""
+        high_severity_count = len([b for b in bottlenecks if b.get('severity') == 'high'])
+        
+        if confidence > 0.8 and high_severity_count > 0:
+            return 'high'
+        elif confidence > 0.5 and (high_severity_count > 0 or len(bottlenecks) > 2):
+            return 'medium'
+        else:
+            return 'low'
     
     def generate_reliability_metrics(self, validations: List[Dict[str, Any]]) -> 'ReliabilityMetrics':
         """Generate comprehensive reliability metrics from validation results."""

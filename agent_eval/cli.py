@@ -3050,19 +3050,28 @@ def _handle_unified_debugging(
     dev: bool, 
     verbose: bool
 ) -> None:
-    """Handle unified debugging workflow."""
+    """Handle unified debugging workflow using the new reliability dashboard."""
     console.print("🔧 [bold cyan]Agentic Workflow Reliability Platform[/bold cyan]")
     console.print("Debug agent failures with unified visibility across the entire stack\n")
     
     # Load agent outputs
     try:
         from agent_eval.evaluation.validators import InputValidator
-        from agent_eval.core.parser_registry import detect_and_extract, detect_and_extract_tools
+        from agent_eval.core.parser_registry import detect_and_extract
         
         if input_file:
             with open(input_file, 'r') as f:
                 raw_data = f.read()
-                agent_outputs, warnings = InputValidator.validate_json_input(raw_data, str(input_file))
+                agent_outputs, validation_warnings = InputValidator.validate_json_input(raw_data, str(input_file))
+                
+                if verbose:
+                    console.print(f"\n[dim]Loaded {len(agent_outputs)} outputs from {input_file}[/dim]")
+                    if validation_warnings:
+                        console.print(f"[dim]Validation warnings: {len(validation_warnings)}[/dim]")
+        elif stdin:
+            console.print("[dim]Reading from stdin...[/dim]")
+            raw_data = sys.stdin.read()
+            agent_outputs, validation_warnings = InputValidator.validate_json_input(raw_data, "stdin")
         else:
             console.print("[red]Error:[/red] --input required for debugging mode")
             console.print("💡 Usage: arc-eval --debug-agent --input workflow_trace.json")
@@ -3072,168 +3081,78 @@ def _handle_unified_debugging(
         console.print(f"[red]Error loading input:[/red] {e}")
         sys.exit(1)
     
+    # Framework auto-detection if not specified
+    active_framework = framework
+    if not framework:
+        console.print("🔍 Auto-detecting framework from workflow data...")
+        detected_frameworks = set()
+        for output in agent_outputs:
+            detected_framework, _ = detect_and_extract(output)
+            if detected_framework:
+                detected_frameworks.add(detected_framework)
+        
+        if detected_frameworks:
+            # Use the most common framework
+            active_framework = list(detected_frameworks)[0]
+            console.print(f"✅ Framework detected: [cyan]{active_framework.upper()}[/cyan]")
+        else:
+            console.print("⚠️ Framework auto-detection inconclusive - using generic analysis")
+    
     console.print(f"🔧 Starting unified debugging session...")
-    console.print(f"📊 Analyzing {len(agent_outputs)} workflow steps...")
+    console.print(f"📊 Analyzing {len(agent_outputs)} workflow components...")
     
-    # Automatic framework detection
-    detected_frameworks = set()
-    tool_call_analysis = []
-    memory_issues = []
-    
-    for i, output in enumerate(agent_outputs):
-        # Detect framework for each output
-        detected_framework, extracted_text = detect_and_extract(output)
-        framework_tools, tool_calls = detect_and_extract_tools(output)
+    # Generate comprehensive reliability dashboard
+    try:
+        from agent_eval.ui.streaming_evaluator import StreamingEvaluator
+        from agent_eval.core.engine import EvaluationEngine
         
-        if detected_framework:
-            detected_frameworks.add(detected_framework)
+        # Create evaluator (dummy domain for engine initialization)
+        engine = EvaluationEngine("finance")
+        evaluator = StreamingEvaluator(engine)
         
-        # Analyze tool calls
-        tool_call_analysis.append({
-            "step": i + 1,
-            "framework": detected_framework or "unknown",
-            "tools_called": tool_calls,
-            "output_text": extracted_text[:100] + "..." if len(extracted_text) > 100 else extracted_text,
-            "has_error": any(keyword in extracted_text.lower() for keyword in ['error', 'failed', 'timeout'])
-        })
+        # Generate and display comprehensive reliability dashboard
+        reliability_dashboard = evaluator.create_reliability_dashboard(agent_outputs, active_framework)
+        console.print(reliability_dashboard)
         
-        # Check for memory continuity issues
-        if i > 0 and isinstance(output, dict) and isinstance(agent_outputs[i-1], dict):
-            prev_context = str(agent_outputs[i-1]).lower()
-            curr_context = str(output).lower()
-            if 'context' in prev_context and 'context' not in curr_context:
-                memory_issues.append(f"Step {i+1}: Potential memory gap - context lost")
-    
-    # Display framework detection results
-    if detected_frameworks:
-        frameworks_str = ", ".join(f.upper() for f in detected_frameworks)
-        console.print(f"🎯 Framework(s) detected: [cyan]{frameworks_str}[/cyan]")
-        if framework and framework not in detected_frameworks:
-            console.print(f"⚠️ Manual framework ([yellow]{framework.upper()}[/yellow]) differs from detected")
-    elif framework:
-        console.print(f"🎯 Framework specified: [cyan]{framework.upper()}[/cyan] (manual override)")
-    else:
-        console.print("🔍 Framework: [yellow]Auto-detection inconclusive[/yellow] - using generic analysis")
-    
-    # Enhanced reliability dashboard
-    console.print("\n" + "="*80)
-    console.print("🔧 [bold]Unified Agent Workflow Analysis[/bold]")
-    console.print("="*80)
-    
-    # Calculate advanced metrics
-    total_steps = len(agent_outputs)
-    successful_steps = sum(1 for analysis in tool_call_analysis if not analysis["has_error"])
-    total_tools_called = sum(len(analysis["tools_called"]) for analysis in tool_call_analysis)
-    unique_tools = set()
-    for analysis in tool_call_analysis:
-        unique_tools.update(analysis["tools_called"])
-    
-    reliability_score = (successful_steps / total_steps * 100) if total_steps > 0 else 0
-    tool_diversity = len(unique_tools)
-    error_count = total_steps - successful_steps
-    
-    console.print(f"🎯 Overall Reliability Score: [bold cyan]{reliability_score:.1f}%[/bold cyan]")
-    console.print(f"✅ Successful Steps: [green]{successful_steps}[/green]/{total_steps}")
-    console.print(f"🛠️ Tool Calls Made: [blue]{total_tools_called}[/blue] ({tool_diversity} unique tools)")
-    console.print(f"❌ Issues Found: [bold red]{error_count}[/bold red] Critical")
-    console.print(f"🧠 Memory Continuity: [yellow]{len(memory_issues)} gaps detected[/yellow]")
-    
-    # Step-by-step analysis table
-    console.print(f"\n📋 [bold]Step-by-Step Workflow Analysis:[/bold]")
-    from rich.table import Table
-    
-    table = Table(show_header=True, header_style="bold magenta")
-    table.add_column("Step", style="cyan", width=6)
-    table.add_column("Framework", style="blue", width=12)
-    table.add_column("Tools Called", style="green", width=20)
-    table.add_column("Status", style="white", width=10)
-    table.add_column("Output Preview", style="dim", width=30)
-    
-    for analysis in tool_call_analysis:
-        status = "✅ Success" if not analysis["has_error"] else "❌ Error"
-        tools_str = ", ".join(analysis["tools_called"][:3])  # Show first 3 tools
-        if len(analysis["tools_called"]) > 3:
-            tools_str += f" +{len(analysis['tools_called'])-3} more"
+    except ImportError as e:
+        console.print(f"[yellow]⚠️ Advanced reliability dashboard unavailable: {e}[/yellow]")
+        console.print("💡 Falling back to basic debugging analysis...")
         
-        table.add_row(
-            str(analysis["step"]),
-            analysis["framework"].replace("_", " ").title(),
-            tools_str or "None",
-            status,
-            analysis["output_text"]
-        )
+        # Basic fallback analysis
+        console.print(f"\n🎯 [bold]Basic Debugging Results:[/bold]")
+        console.print(f"✅ Total Components: {len(agent_outputs)}")
+        console.print(f"🔧 Framework: {active_framework if active_framework else 'Generic'}")
+        console.print(f"📋 Debug Mode: {'Agent Debugging' if debug_agent else 'Unified Debug'}")
     
-    console.print(table)
+    # Add contextual help based on mode
+    if debug_agent:
+        console.print(f"\n💡 [bold cyan]Debug Agent Mode Insights:[/bold cyan]")
+        console.print("• Focus on step-by-step failure analysis")
+        console.print("• Identify root causes of agent failures")
+        console.print("• Get framework-specific optimization suggestions")
+    elif unified_debug:
+        console.print(f"\n💡 [bold cyan]Unified Debug Mode Insights:[/bold cyan]")
+        console.print("• Single view of tool calls, prompts, memory, timeouts")
+        console.print("• Cross-stack visibility for production debugging")
+        console.print("• Comprehensive workflow reliability assessment")
     
-    # Memory and state analysis
-    if memory_issues:
-        console.print(f"\n🧠 [bold red]Memory & State Issues Detected:[/bold red]")
-        for issue in memory_issues:
-            console.print(f"  🔴 {issue}")
+    # Show next steps
+    console.print(f"\n📋 [bold]Next Steps:[/bold]")
+    console.print("1. Review specific issues and implement suggested fixes")
+    console.print("2. Generate detailed improvement plan: [green]arc-eval --continue[/green]")
+    console.print("3. Run enterprise compliance audit: [green]arc-eval --domain finance --input data.json[/green]")
     
-    # Framework-specific recommendations
-    if detected_frameworks or framework:
-        active_framework = framework or list(detected_frameworks)[0] if detected_frameworks else "generic"
-        console.print(f"\n🎯 [bold]{active_framework.upper()} Framework-Specific Analysis:[/bold]")
-        
-        framework_recommendations = {
-            "langchain": [
-                "⚡ Performance: Consider direct LLM calls for simple tasks",
-                "🔧 Architecture: Use LangGraph for complex state management",
-                "🛠️ Tools: Implement custom tools for better control"
-            ],
-            "langgraph": [
-                "📊 State Management: Review graph state transitions",
-                "🔄 Flow Control: Optimize node connections and conditions",
-                "💾 Persistence: Ensure checkpointing for long workflows"
-            ],
-            "crewai": [
-                "⏱️ Performance: Monitor 30s+ response times in delegation",
-                "🤖 Agents: Review agent role definitions and capabilities",
-                "🔧 Delegation: Consider custom delegation logic for speed"
-            ],
-            "autogen": [
-                "💬 Conversations: Optimize message patterns for efficiency",
-                "🔄 State: Implement proper multi-turn state management",
-                "📍 Checkpoints: Add conversation checkpoints for recovery"
-            ],
-            "google_adk": [
-                "🔧 Parts: Ensure proper content.parts structure",
-                "🛠️ Function Calls: Validate functionCall parameter format",
-                "📊 Content: Review content block organization"
-            ],
-            "nvidia_aiq": [
-                "🔄 Workflow: Monitor workflow_output consistency",
-                "🤖 Agent State: Review agent_state transitions",
-                "⚡ Performance: Optimize workflow execution paths"
-            ],
-            "agno": [
-                "🛠️ Tools: Validate tools_used tracking accuracy",
-                "📊 Structure: Review structured_output format",
-                "🔧 Integration: Ensure proper agent_run_id handling"
-            ]
-        }
-        
-        recommendations = framework_recommendations.get(active_framework, [
-            "🔍 Analysis: Framework-specific optimizations available",
-            "🛠️ Tools: Review tool call patterns and success rates",
-            "📊 Performance: Monitor response times and error rates"
-        ])
-        
-        for rec in recommendations:
-            console.print(f"  {rec}")
-    
-    console.print("\n💡 [bold]Next Steps:[/bold]")
-    console.print("1. Generate reliability improvement plan: [green]arc-eval --continue[/green]")
-    console.print("2. Run enterprise compliance audit: [green]arc-eval --domain finance --input data.json[/green]")
-    console.print("3. Export compliance report: [green]arc-eval --domain finance --input data.json --export pdf[/green]")
+    if endpoint:
+        console.print(f"\n[dim]Custom endpoint configured: {endpoint}[/dim]")
     
     console.print("\n📋 [bold cyan]Enterprise Compliance Ready[/bold cyan] (Bonus Value)")
     console.print("✅ 355 compliance scenarios available across finance, security, ML")
-    console.print("💼 Export audit reports: [green]arc-eval --domain <domain> --export pdf[/green]")
     
     if dev:
-        console.print(f"\n[dim]Debug: Processed {len(agent_outputs)} outputs, detected frameworks: {list(detected_frameworks)}[/dim]")
+        console.print(f"\n[dim]Debug: Framework={active_framework}, DebugAgent={debug_agent}, UnifiedDebug={unified_debug}, Outputs={len(agent_outputs)}[/dim]")
+
+
+# Removed orphaned function - correct implementation exists below
 
 
 def _handle_workflow_reliability_analysis(
@@ -3260,7 +3179,16 @@ def _handle_workflow_reliability_analysis(
         if input_file:
             with open(input_file, 'r') as f:
                 raw_data = f.read()
-                agent_outputs, warnings = InputValidator.validate_json_input(raw_data, str(input_file))
+                agent_outputs, validation_warnings = InputValidator.validate_json_input(raw_data, str(input_file))
+                
+                if verbose:
+                    console.print(f"\n[dim]Loaded {len(agent_outputs)} outputs from {input_file}[/dim]")
+                    if validation_warnings:
+                        console.print(f"[dim]Validation warnings: {len(validation_warnings)}[/dim]")
+        elif stdin:
+            console.print("[dim]Reading from stdin...[/dim]")
+            raw_data = sys.stdin.read()
+            agent_outputs, validation_warnings = InputValidator.validate_json_input(raw_data, "stdin")
         else:
             console.print("[red]Error:[/red] --input required for workflow reliability analysis")
             console.print("💡 Usage: arc-eval --workflow-reliability --framework langchain --input outputs.json")
@@ -3272,83 +3200,98 @@ def _handle_workflow_reliability_analysis(
     
     console.print(f"\n🔍 Analyzing {len(agent_outputs)} workflow components...")
     
-    # Framework-specific analysis
+    # Data-driven framework analysis
     if framework:
-        console.print(f"\n📋 [bold]{framework.upper()} Framework-Specific Recommendations:[/bold]")
+        console.print(f"\n📋 [bold]{framework.upper()} Framework Analysis (Data-Driven):[/bold]")
         
-        framework_recommendations = {
-            "langchain": [
-                "Reduce abstraction layers - consider direct LLM calls for simple tasks",
-                "Use LangGraph for complex workflows requiring state management", 
-                "Implement custom tools instead of generic LangChain tools for better control"
-            ],
-            "langgraph": [
-                "Review graph state transitions and node connections",
-                "Optimize condition logic for better flow control",
-                "Implement proper checkpointing for long-running workflows"
-            ],
-            "crewai": [
-                "Monitor response times - CrewAI can be slow for complex multi-agent workflows",
-                "Implement custom delegation logic for better performance",
-                "Consider framework alternatives for latency-critical applications"
-            ],
-            "autogen": [
-                "Optimize conversation patterns to reduce token usage",
-                "Implement proper state management for multi-turn conversations",
-                "Add conversation checkpoints for long-running workflows"
-            ],
-            "google_adk": [
-                "Ensure proper content.parts structure for function calls",
-                "Validate functionCall parameter format consistency",
-                "Review content block organization for optimal performance"
-            ],
-            "nvidia_aiq": [
-                "Monitor workflow_output consistency across iterations",
-                "Review agent_state transitions for efficiency",
-                "Optimize workflow execution paths for reduced latency"
-            ],
-            "agno": [
-                "Validate tools_used tracking accuracy",
-                "Review structured_output format consistency",
-                "Ensure proper agent_run_id handling for debugging"
-            ],
-            "openai": [
-                "Optimize tool_calls format for function calling",
-                "Review message structure for multi-turn conversations",
-                "Monitor token usage and response time patterns"
-            ],
-            "anthropic": [
-                "Optimize tool_use content blocks structure",
-                "Review content array organization for complex outputs",
-                "Monitor stop_reason patterns for workflow completion"
-            ]
-        }
-        
-        recommendations = framework_recommendations.get(framework, [
-            "Framework-specific optimizations available",
-            "Tool call consistency patterns analyzed", 
-            "Error recovery patterns evaluated"
-        ])
-        
-        for rec in recommendations:
-            console.print(f"  • {rec}")
+        try:
+            from agent_eval.evaluation.reliability_validator import ReliabilityValidator
+            
+            validator = ReliabilityValidator()
+            framework_analysis = validator.analyze_framework_performance(agent_outputs, framework)
+            
+            # Display performance metrics
+            console.print(f"📊 [bold]Performance Analysis (Sample: {framework_analysis.sample_size} outputs):[/bold]")
+            console.print(f"  • Success Rate: {framework_analysis.success_rate:.1%}")
+            console.print(f"  • Avg Response Time: {framework_analysis.avg_response_time:.1f}s")
+            console.print(f"  • Tool Call Failures: {framework_analysis.tool_call_failure_rate:.1%}")
+            console.print(f"  • Timeout Rate: {framework_analysis.timeout_frequency:.1%}")
+            
+            # Display evidence-based bottlenecks
+            if framework_analysis.performance_bottlenecks:
+                console.print(f"\n⚠️ [bold]Performance Bottlenecks Detected:[/bold]")
+                for bottleneck in framework_analysis.performance_bottlenecks:
+                    severity_color = "red" if bottleneck['severity'] == 'high' else "yellow"
+                    console.print(f"  • [{severity_color}]{bottleneck['type'].replace('_', ' ').title()}[/{severity_color}]")
+                    console.print(f"    Evidence: {bottleneck['evidence']}")
+                    if 'avg_time' in bottleneck:
+                        console.print(f"    Average time: {bottleneck['avg_time']:.1f}s")
+            
+            # Display data-driven optimization opportunities
+            if framework_analysis.optimization_opportunities:
+                console.print(f"\n💡 [bold]Evidence-Based Optimization Opportunities:[/bold]")
+                for opportunity in framework_analysis.optimization_opportunities:
+                    priority_color = "red" if opportunity['priority'] == 'high' else "yellow"
+                    console.print(f"  • [{priority_color}]{opportunity['description']}[/{priority_color}]")
+                    console.print(f"    Evidence: {opportunity['evidence']}")
+                    console.print(f"    Expected improvement: {opportunity['estimated_improvement']}")
+            
+            # Display framework alternatives if recommended
+            if framework_analysis.framework_alternatives:
+                console.print(f"\n🔄 [bold]Alternative Frameworks (Based on Issues):[/bold]")
+                for alternative in framework_analysis.framework_alternatives:
+                    console.print(f"  • {alternative}")
+            
+            # Display confidence and recommendation strength
+            console.print(f"\n🎯 [bold]Analysis Confidence:[/bold] {framework_analysis.analysis_confidence:.1%}")
+            console.print(f"📈 [bold]Recommendation Strength:[/bold] {framework_analysis.recommendation_strength}")
+            
+        except ImportError as e:
+            console.print(f"[yellow]⚠️ Data-driven analysis unavailable: {e}[/yellow]")
+            console.print("💡 Falling back to general framework guidance...")
+            # Minimal fallback recommendations
+            console.print(f"  • Monitor {framework} performance patterns in your workflows")
+            console.print(f"  • Analyze tool call success rates and response times")
+            console.print(f"  • Consider framework alternatives if performance issues persist")
     
-    # Basic reliability metrics
-    console.print(f"\n🎯 [bold]Reliability Metrics:[/bold]")
-    console.print(f"✅ Total Components: {len(agent_outputs)}")
-    console.print(f"🔄 Framework Compatibility: [cyan]Analyzing...[/cyan]")
-    console.print(f"⚡ Performance Score: [cyan]Calculating...[/cyan]")
+    # Display comprehensive reliability dashboard
+    console.print(f"\n🔍 Generating comprehensive reliability analysis...")
+    try:
+        from agent_eval.ui.streaming_evaluator import StreamingEvaluator
+        from agent_eval.core.engine import EvaluationEngine
+        
+        # Create evaluator with dummy engine (we're only using dashboard functionality)
+        engine = EvaluationEngine("finance")  # Dummy domain for engine initialization
+        evaluator = StreamingEvaluator(engine)
+        
+        # Generate and display reliability dashboard
+        reliability_dashboard = evaluator.create_reliability_dashboard(agent_outputs, framework)
+        console.print(reliability_dashboard)
+        
+    except ImportError as e:
+        console.print(f"[yellow]⚠️ Advanced reliability dashboard unavailable: {e}[/yellow]")
+        # Fallback to basic metrics
+        console.print(f"\n🎯 [bold]Basic Reliability Metrics:[/bold]")
+        console.print(f"✅ Total Components: {len(agent_outputs)}")
+        console.print(f"🔄 Framework: {framework if framework else 'Auto-detected'}")
+        console.print(f"⚡ Analysis: Framework-specific insights generated")
     
     console.print(f"\n💡 [bold]Next Steps:[/bold]")
-    console.print("1. Run full evaluation: [green]arc-eval --domain workflow_reliability --input data.json[/green]")
+    if domain:
+        console.print(f"1. Run full evaluation: [green]arc-eval --domain {domain} --input data.json[/green]")
+    else:
+        console.print("1. Run full evaluation: [green]arc-eval --domain workflow_reliability --input data.json[/green]")
     console.print("2. Generate improvement plan: [green]arc-eval --continue[/green]")
     console.print("3. Compare with baseline: [green]arc-eval --baseline previous_evaluation.json[/green]")
+    
+    if endpoint:
+        console.print(f"\n[dim]Custom endpoint configured: {endpoint}[/dim]")
     
     console.print("\n📋 [bold cyan]Enterprise Compliance Ready[/bold cyan] (Bonus Value)")
     console.print("✅ 355 compliance scenarios available across finance, security, ML")
     
     if dev:
-        console.print(f"\n[dim]Debug: Framework={framework}, Domain={domain}, Outputs={len(agent_outputs)}[/dim]")
+        console.print(f"\n[dim]Debug: Framework={framework}, Domain={domain}, Endpoint={endpoint}, Outputs={len(agent_outputs)}[/dim]")
 
 
 if __name__ == "__main__":
