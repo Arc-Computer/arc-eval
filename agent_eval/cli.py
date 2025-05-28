@@ -18,8 +18,9 @@ import json
 import time
 import yaml
 import logging
+from datetime import datetime
 from pathlib import Path
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from contextlib import nullcontext
 
 import click
@@ -264,6 +265,22 @@ def _get_domain_info() -> dict:
     is_flag=True,
     help="Skip interactive Q&A session after evaluation results",
 )
+@click.option(
+    "--improvement-plan",
+    is_flag=True,
+    help="Generate actionable improvement plan from evaluation results",
+)
+@click.option(
+    "--from",
+    "from_evaluation",
+    type=click.Path(exists=True, path_type=Path),
+    help="Source evaluation file for improvement plan generation",
+)
+@click.option(
+    "--baseline",
+    type=click.Path(exists=True, path_type=Path),
+    help="Baseline evaluation file for before/after comparison",
+)
 @click.version_option(version="0.2.3", prog_name="arc-eval")
 def main(
     domain: Optional[str],
@@ -295,6 +312,9 @@ def main(
     confidence_calibration: bool,
     compare_judges: Optional[Path],
     no_interaction: bool,
+    improvement_plan: bool,
+    from_evaluation: Optional[Path],
+    baseline: Optional[Path],
 ) -> None:
     """
     ARC-Eval: Enterprise-grade compliance evaluation for AI agents and LLMs.
@@ -448,8 +468,14 @@ def main(
             format_template, summary_only, verify, no_interaction
         )
     
+    # Handle improvement plan generation
+    if improvement_plan:
+        return _handle_improvement_plan_generation(
+            from_evaluation, output_dir, dev, verbose
+        )
+    
     # Validate domain requirement for CLI mode
-    if not list_domains and not help_input and domain is None:
+    if not list_domains and not help_input and domain is None and not improvement_plan:
         console.print("[red]Error:[/red] --domain is required")
         console.print("Use --list-domains to see available options")
         sys.exit(2)
@@ -979,6 +1005,60 @@ def main(
             _export_results(results, export_format=export, domain=domain, output_dir=output_dir, format_template=format_template, summary_only=summary_only)
             if verbose:
                 console.print(f"[cyan]Verbose:[/cyan] Export completed successfully")
+        
+        # Save evaluation results for future improvement plan generation
+        evaluation_id = f"{domain}_evaluation_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        current_evaluation_data = {
+            "evaluation_id": evaluation_id,
+            "agent_id": f"agent_{domain}_{int(time.time())}",
+            "domain": domain,
+            "timestamp": datetime.now().isoformat(),
+            "results": [
+                {
+                    "scenario_id": r.scenario_id,
+                    "passed": r.passed,
+                    "score": r.confidence if hasattr(r, 'confidence') else None,
+                    "reward_signals": {"overall": r.confidence} if hasattr(r, 'confidence') else {},
+                    "improvement_recommendations": [r.remediation] if r.remediation else [],
+                    "severity": r.severity,
+                    "description": r.description
+                }
+                for r in results
+            ]
+        }
+        
+        # Save evaluation to file for future use
+        evaluation_output_dir = output_dir or Path.cwd()
+        evaluation_file = evaluation_output_dir / f"{evaluation_id}.json"
+        try:
+            with open(evaluation_file, 'w') as f:
+                json.dump(current_evaluation_data, f, indent=2)
+            
+            if verbose:
+                console.print(f"[cyan]Verbose:[/cyan] Saved evaluation results to: {evaluation_file}")
+            
+            # Show core loop next steps
+            console.print(f"\n[bold blue]🔄 Core Loop Next Steps:[/bold blue]")
+            console.print(f"1. Generate improvement plan: [green]arc-eval --improvement-plan --from {evaluation_file}[/green]")
+            console.print(f"2. After implementing fixes, compare: [green]arc-eval --domain {domain} --input improved_outputs.json --baseline {evaluation_file}[/green]")
+            
+        except Exception as e:
+            if verbose:
+                console.print(f"[yellow]Warning:[/yellow] Could not save evaluation results: {e}")
+        
+        # Handle baseline comparison if requested
+        if baseline:
+            if verbose:
+                console.print(f"[cyan]Verbose:[/cyan] Running baseline comparison")
+            
+            _handle_baseline_comparison(
+                current_evaluation_data=current_evaluation_data,
+                baseline=baseline,
+                domain=domain,
+                output_dir=output_dir,
+                dev=dev,
+                verbose=verbose
+            )
         
         # Set exit code based on critical failures
         critical_failures = sum(1 for r in results if r.severity == "critical" and not r.passed)
@@ -2368,6 +2448,147 @@ def _handle_judge_comparison(compare_judges_config: Path, agent_outputs: List[Ag
         console.print("• Ensure ANTHROPIC_API_KEY is set")
         console.print("• Try with --dev flag for detailed error info")
         console.print("• Use provided template: config/judge_comparison_templates.yaml")
+        
+        sys.exit(1)
+
+
+def _handle_improvement_plan_generation(from_evaluation: Optional[Path], 
+                                       output_dir: Optional[Path],
+                                       dev: bool,
+                                       verbose: bool) -> None:
+    """Handle improvement plan generation workflow."""
+    
+    if not from_evaluation:
+        console.print("[red]Error:[/red] --from is required when using --improvement-plan")
+        console.print("Specify the evaluation JSON file to generate improvement plan from")
+        console.print("Example: [green]arc-eval --improvement-plan --from baseline_evaluation.json[/green]")
+        sys.exit(1)
+    
+    try:
+        from agent_eval.core.improvement_planner import ImprovementPlanner
+        
+        if verbose:
+            console.print(f"[cyan]Verbose:[/cyan] Generating improvement plan from: {from_evaluation}")
+        
+        # Initialize improvement planner
+        planner = ImprovementPlanner()
+        
+        # Generate output filename
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        output_filename = f"improvement_plan_{timestamp}.md"
+        output_path = (output_dir or Path.cwd()) / output_filename
+        
+        console.print(f"🔄 Generating improvement plan from {from_evaluation.name}...")
+        
+        with console.status("[bold green]Analyzing evaluation results..."):
+            # Generate improvement plan
+            improvement_plan = planner.generate_plan_from_evaluation(
+                evaluation_file=from_evaluation,
+                output_file=output_path
+            )
+        
+        # Display summary
+        console.print(f"\n[bold green]✅ Improvement Plan Generated![/bold green]")
+        console.print(f"📄 Plan saved to: [cyan]{output_path}[/cyan]")
+        
+        # Show summary
+        console.print(f"\n[bold blue]📊 Plan Summary:[/bold blue]")
+        console.print(f"• Agent: {improvement_plan.agent_id}")
+        console.print(f"• Domain: {improvement_plan.domain}")
+        console.print(f"• Total Actions: {len(improvement_plan.actions)}")
+        console.print(f"• Estimated Time: {improvement_plan.summary.get('estimated_total_time', 'Unknown')}")
+        
+        # Show priority breakdown
+        priority_counts = improvement_plan.summary.get('priority_breakdown', {})
+        if priority_counts:
+            console.print(f"• Priority Breakdown:")
+            for priority, count in priority_counts.items():
+                emoji = {"CRITICAL": "🔴", "HIGH": "🟠", "MEDIUM": "🟡", "LOW": "🟢"}.get(priority, "⚪")
+                console.print(f"  {emoji} {priority}: {count}")
+        
+        # Show next steps
+        console.print(f"\n[bold blue]🎯 Next Steps:[/bold blue]")
+        console.print(f"1. Review improvement plan: [green]cat {output_path}[/green]")
+        console.print(f"2. Implement the suggested actions")
+        console.print(f"3. Re-evaluate with comparison: [green]arc-eval --domain {{domain}} --input improved_outputs.json --baseline {from_evaluation}[/green]")
+        
+        if dev:
+            console.print(f"\n[dim]Debug: Generated {len(improvement_plan.actions)} actions from {improvement_plan.summary['failed_scenarios']} failed scenarios[/dim]")
+        
+    except Exception as e:
+        console.print(f"\n[red]❌ Improvement Plan Generation Failed[/red]")
+        console.print(f"[bold]Error: [yellow]{e}[/yellow][/bold]\n")
+        
+        console.print("[bold blue]💡 Troubleshooting:[/bold blue]")
+        console.print("• Check that the evaluation file exists and is valid JSON")
+        console.print("• Ensure the evaluation file contains 'results' field")
+        console.print("• Try with --dev flag for detailed error info")
+        
+        if dev:
+            console.print_exception()
+        
+        sys.exit(1)
+
+
+def _handle_baseline_comparison(current_evaluation_data: Dict[str, Any],
+                              baseline: Path,
+                              domain: str,
+                              output_dir: Optional[Path],
+                              dev: bool,
+                              verbose: bool) -> None:
+    """Handle baseline comparison workflow."""
+    
+    try:
+        from agent_eval.core.comparison_engine import ComparisonEngine
+        
+        if verbose:
+            console.print(f"[cyan]Verbose:[/cyan] Comparing with baseline: {baseline}")
+        
+        # Initialize comparison engine
+        comparison_engine = ComparisonEngine()
+        
+        # Generate output filename
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        output_filename = f"comparison_report_{timestamp}.json"
+        output_path = (output_dir or Path.cwd()) / output_filename
+        
+        console.print(f"📊 Comparing current evaluation with baseline...")
+        
+        with console.status("[bold green]Analyzing improvements..."):
+            # Generate comparison report
+            comparison_report = comparison_engine.compare_evaluations(
+                current_evaluation_data=current_evaluation_data,
+                baseline_file=baseline,
+                output_file=output_path
+            )
+        
+        # Display comparison results
+        console.print(f"\n[bold green]✅ Comparison Complete![/bold green]")
+        console.print(f"📄 Report saved to: [cyan]{output_path}[/cyan]")
+        
+        # Display summary in console
+        comparison_engine.display_comparison_summary(comparison_report)
+        
+        # Show next steps
+        console.print(f"\n[bold blue]🎯 Next Steps:[/bold blue]")
+        console.print(f"1. Review detailed report: [green]cat {output_path}[/green]")
+        console.print(f"2. Address any degraded scenarios if needed")
+        console.print(f"3. Generate new improvement plan if pass rate is still low")
+        
+        if dev:
+            console.print(f"\n[dim]Debug: Compared {len(comparison_report.scenario_comparisons)} scenarios[/dim]")
+        
+    except Exception as e:
+        console.print(f"\n[red]❌ Baseline Comparison Failed[/red]")
+        console.print(f"[bold]Error: [yellow]{e}[/yellow][/bold]\n")
+        
+        console.print("[bold blue]💡 Troubleshooting:[/bold blue]")
+        console.print("• Check that the baseline file exists and is valid JSON")
+        console.print("• Ensure both evaluations have the same domain")
+        console.print("• Try with --dev flag for detailed error info")
+        
+        if dev:
+            console.print_exception()
         
         sys.exit(1)
 
