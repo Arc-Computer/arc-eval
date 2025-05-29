@@ -91,7 +91,7 @@ class SmartInputDetector:
             return input_path
 
     
-    def _is_agent_config(self, data: Dict) -> bool:
+    def _is_agent_config(self, data: Any) -> bool:
         """Check if data is an agent configuration."""
         if not isinstance(data, dict):
             return False
@@ -118,7 +118,7 @@ class SmartInputDetector:
         
         return False
     
-    def _is_failed_trace(self, data: Dict) -> bool:
+    def _is_failed_trace(self, data: Any) -> bool:
         """Check if data is a failed execution trace."""
         if not isinstance(data, dict):
             return False
@@ -145,7 +145,7 @@ class SmartInputDetector:
         
         return False
     
-    def _is_agent_output(self, data: Dict) -> bool:
+    def _is_agent_output(self, data: Any) -> bool:
         """Check if data is standard agent output for evaluation."""
         if not isinstance(data, dict):
             return False
@@ -164,8 +164,11 @@ class SmartInputDetector:
         
         return False
     
-    def get_detected_domain(self, input_data: Dict) -> Optional[str]:
+    def get_detected_domain(self, input_data: Any) -> Optional[str]:
         """Auto-detect domain from input data."""
+        if not isinstance(input_data, dict):
+            return None
+            
         # Check for explicit domain
         if "domain" in input_data:
             return input_data["domain"]
