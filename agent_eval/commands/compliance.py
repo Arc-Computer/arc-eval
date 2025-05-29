@@ -44,7 +44,7 @@ class ComplianceCommandHandler(BaseCommandHandler):
         stdin = kwargs.get('stdin', False)
         quick_start = kwargs.get('quick_start', False)
         agent_judge = kwargs.get('agent_judge', False)
-        judge_model = kwargs.get('judge_model', 'claude-3-sonnet-20240229')
+        judge_model = kwargs.get('judge_model', 'claude-3-5-haiku-latest')
         verify = kwargs.get('verify', False)
         confidence_calibration = kwargs.get('confidence_calibration', False)
         performance = kwargs.get('performance', False)
@@ -60,6 +60,10 @@ class ComplianceCommandHandler(BaseCommandHandler):
         dev = kwargs.get('dev', False)
         verbose = kwargs.get('verbose', False)
         config = kwargs.get('config')
+        
+        # Auto-disable interaction when exporting to avoid EOF errors
+        if export and not kwargs.get('no_interaction'):
+            no_interaction = True
         
         # Validate required parameters
         self._validate_required_params(['domain'], **kwargs)

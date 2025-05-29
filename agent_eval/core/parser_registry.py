@@ -93,6 +93,11 @@ class FrameworkDetector:
         # Generic output detection
         if "output" in data:
             return "generic"
+        elif "scenario_id" in data and "output" in data:
+            return "generic"
+        elif "metadata" in data and isinstance(data.get("metadata"), dict):
+            # Check if this looks like a simple agent output with metadata
+            return "generic"
         
         logger.debug(f"No framework detected for data keys: {list(data.keys())}")
         return None
@@ -267,7 +272,17 @@ class OutputExtractor:
             return str(data["content"])
         elif "response" in data:
             return str(data["response"])
+        elif "result" in data:
+            return str(data["result"])
+        elif "answer" in data:
+            return str(data["answer"])
         else:
+            # If no standard fields found, check for a scenario/metadata pattern
+            if "scenario_id" in data and "metadata" in data:
+                # Look for any field that might contain the output
+                for key, value in data.items():
+                    if key not in ["scenario_id", "metadata", "timestamp", "agent_id"]:
+                        return str(value)
             return str(data)
 
 

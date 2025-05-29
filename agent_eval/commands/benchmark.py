@@ -54,7 +54,7 @@ class BenchmarkCommandHandler(BaseCommandHandler):
         limit = kwargs.get('limit', 20)
         domain = kwargs.get('domain')
         agent_judge = kwargs.get('agent_judge', False)
-        judge_model = kwargs.get('judge_model', 'claude-3-sonnet-20240229')
+        judge_model = kwargs.get('judge_model', 'claude-3-5-haiku-latest')
         export = kwargs.get('export')
         output = kwargs.get('output', 'table')
         dev = kwargs.get('dev', False)

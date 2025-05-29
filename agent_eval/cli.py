@@ -371,6 +371,17 @@ def improve(evaluation_file: Optional[Path], baseline: Optional[Path], current: 
                     evaluation_files.sort(key=lambda f: f.stat().st_mtime, reverse=True)
                     evaluation_file = evaluation_files[0]
                     console.print(f"[green]Using latest evaluation:[/green] {evaluation_file}")
+                else:
+                    # No evaluation files found - provide helpful error
+                    console.print("[red]Error:[/red] No evaluation files found!")
+                    console.print("\n[yellow]To use the improve workflow, you need to run a compliance evaluation first:[/yellow]")
+                    console.print("\nExample commands:")
+                    console.print("  arc-eval compliance --domain finance --quick-start")
+                    console.print("  arc-eval compliance --domain security --input agent_outputs.json")
+                    console.print("\nThen run improve with:")
+                    console.print("  arc-eval improve --auto-detect")
+                    console.print("  arc-eval improve --from-evaluation finance_evaluation_*.json")
+                    return 1
         
         # Use WorkflowCommandHandler
         handler = WorkflowCommandHandler()
@@ -386,6 +397,11 @@ def improve(evaluation_file: Optional[Path], baseline: Optional[Path], current: 
             )
         else:
             # Improvement plan generation
+            if not evaluation_file:
+                console.print("[red]Error:[/red] No evaluation file specified or found!")
+                console.print("\nPlease run a compliance evaluation first or specify an evaluation file.")
+                return 1
+                
             exit_code = handler.execute(
                 improvement_plan=True,
                 from_evaluation=evaluation_file,
