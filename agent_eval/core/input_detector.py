@@ -84,10 +84,12 @@ class SmartInputDetector:
         
 
         # Try parsing as JSON string
+
         try:
             return json.loads(input_path)
-        except:
+        except json.JSONDecodeError:
             return input_path
+
     
     def _is_agent_config(self, data: Dict) -> bool:
         """Check if data is an agent configuration."""
