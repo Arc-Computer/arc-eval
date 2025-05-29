@@ -31,6 +31,14 @@ class FrameworkDetector:
         if not isinstance(data, dict):
             return None
         
+        # Direct framework field detection (highest priority)
+        if "framework" in data:
+            framework = str(data["framework"]).lower()
+            # Normalize common framework names
+            if framework in ["langchain", "langgraph", "crewai", "autogen", "openai", 
+                           "anthropic", "agno", "google_adk", "nvidia_aiq"]:
+                return framework
+        
         # AutoGen detection - Microsoft's multi-agent framework
         if "messages" in data and "summary" in data:
             if isinstance(data["messages"], list) and len(data["messages"]) > 0:
@@ -83,6 +91,10 @@ class FrameworkDetector:
             return "langchain"
         elif "agent_scratchpad" in data or "tool_calls" in data:
             return "langchain"
+        elif "tool_call" in data and isinstance(data.get("tool_call"), dict):
+            # LangChain workflow trace format
+            if "name" in data["tool_call"] and "parameters" in data["tool_call"]:
+                return "langchain"
         
         # CrewAI detection
         if "crew_output" in data or "task_results" in data:
