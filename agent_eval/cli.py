@@ -4,6 +4,9 @@ ARC-Eval CLI - Lightweight command router.
 
 Provides domain-specific evaluation and compliance reporting for LLMs and AI agents.
 Routes commands to specialized handlers for better maintainability.
+
+NOTE: This CLI interface is being transitioned to a simpler workflow-based structure.
+For the new unified interface, use: arc-eval [debug|compliance|improve]
 """
 
 # Load environment variables from .env file early
@@ -33,12 +36,14 @@ console = Console()
 
 def _get_domain_info() -> dict:
     """Get centralized domain information to avoid duplication."""
+    from agent_eval.core.constants import DOMAIN_SCENARIO_COUNTS
+    
     return {
         "finance": {
             "name": "Financial Services Compliance",
             "description": "Enterprise-grade evaluations for financial AI systems",
             "frameworks": ["SOX", "KYC", "AML", "PCI-DSS", "GDPR", "FFIEC", "DORA", "OFAC", "CFPB", "EU-AI-ACT"],
-            "scenarios": 110,
+            "scenarios": DOMAIN_SCENARIO_COUNTS["finance"],
             "use_cases": "Banking, Fintech, Payment Processing, Insurance, Investment",
             "examples": "Transaction approval, KYC verification, Fraud detection, Credit scoring"
         },
@@ -46,7 +51,7 @@ def _get_domain_info() -> dict:
             "name": "Cybersecurity & AI Agent Security", 
             "description": "AI safety evaluations for security-critical applications",
             "frameworks": ["OWASP-LLM-TOP-10", "NIST-AI-RMF", "ISO-27001", "SOC2-TYPE-II", "MITRE-ATTACK"],
-            "scenarios": 120,
+            "scenarios": DOMAIN_SCENARIO_COUNTS["security"],
             "use_cases": "AI Agents, Chatbots, Code Generation, Security Tools",
             "examples": "Prompt injection, Data leakage, Code security, Access control"
         },
@@ -54,7 +59,7 @@ def _get_domain_info() -> dict:
             "name": "ML Infrastructure & Safety",
             "description": "ML ops, safety, and bias evaluation for AI systems",
             "frameworks": ["NIST-AI-RMF", "IEEE-2857", "ISO-23053", "GDPR-AI", "EU-AI-ACT"],
-            "scenarios": 148,
+            "scenarios": DOMAIN_SCENARIO_COUNTS["ml"],
             "use_cases": "ML Models, AI Pipelines, Model Serving, Training",
             "examples": "Bias detection, Model safety, Explainability, Performance"
         }
@@ -161,8 +166,9 @@ def _display_help_input() -> None:
 @click.option("--workflow-reliability", is_flag=True, help="Focus evaluation on workflow reliability metrics")
 @click.option("--unified-debug", is_flag=True, help="Single view of tool calls, prompts, memory, timeouts, hallucinations")
 @click.option("--framework", type=click.Choice(["langchain", "langgraph", "crewai", "autogen", "openai", "anthropic", "google_adk", "nvidia_aiq", "agno", "generic"]), help="Optimize analysis for specific agent framework (auto-detected if not specified)")
+@click.option("--schema-validation", is_flag=True, help="Detect prompt-tool mismatch and auto-generate LLM-friendly schemas")
 @click.version_option(version="0.2.5", prog_name="arc-eval")
-def main(
+def legacy_main(
     domain: Optional[str],
     input_file: Optional[Path],
     stdin: bool,
@@ -203,6 +209,7 @@ def main(
     workflow_reliability: bool,
     unified_debug: bool,
     framework: Optional[str],
+    schema_validation: bool,
 ) -> None:
     """
     ARC-Eval: Agentic Workflow Reliability Platform + Enterprise Compliance.
@@ -240,22 +247,31 @@ def main(
     
     # Handle judge comparison mode (special case)
     if compare_judges:
-        from agent_eval.analysis.judge_comparison import JudgeComparison, JudgeConfig
+        from agent_eval.analysis.judge_comparison import JudgeComparison
         
         # Load agent outputs for comparison
         try:
             from agent_eval.evaluation.validators import InputValidator
+            from agent_eval.core.types import AgentOutput
             
             if input_file:
                 with open(input_file, 'r') as f:
                     raw_data = f.read()
-                agent_outputs, _ = InputValidator.validate_json_input(raw_data, str(input_file))
+                parsed_data, _ = InputValidator.validate_json_input(raw_data, str(input_file))
             elif stdin:
                 raw_data = sys.stdin.read()
-                agent_outputs, _ = InputValidator.validate_json_input(raw_data, "stdin")
+                parsed_data, _ = InputValidator.validate_json_input(raw_data, "stdin")
             else:
                 console.print("[red]Error:[/red] --input or --stdin required for judge comparison")
                 sys.exit(1)
+            
+            # Convert to AgentOutput objects
+            agent_outputs = []
+            if isinstance(parsed_data, list):
+                for item in parsed_data:
+                    agent_outputs.append(AgentOutput.from_raw(item))
+            else:
+                agent_outputs.append(AgentOutput.from_raw(parsed_data))
                 
             # Run judge comparison
             comparison = JudgeComparison(compare_judges, default_domain=domain)
@@ -319,11 +335,12 @@ def main(
     
     try:
         # Reliability commands (highest priority)
-        if debug_agent or unified_debug or workflow_reliability:
+        if debug_agent or unified_debug or workflow_reliability or schema_validation:
             handler_kwargs.update({
                 'debug_agent': debug_agent,
                 'unified_debug': unified_debug,
-                'workflow_reliability': workflow_reliability
+                'workflow_reliability': workflow_reliability,
+                'schema_validation': schema_validation
             })
             handler = ReliabilityCommandHandler()
             exit_code = handler.execute(**handler_kwargs)
@@ -412,6 +429,34 @@ def main(
                 console.print_exception()
     
     sys.exit(exit_code)
+
+
+def main():
+    """
+    Main entry point that checks for new CLI structure.
+    """
+    import os
+    
+    # Check if running new unified commands
+    if len(sys.argv) > 1 and sys.argv[1] in ['debug', 'compliance', 'improve', '--version']:
+        # Use new unified CLI
+        from agent_eval.cli_unified import main as unified_main
+        unified_main()
+    elif len(sys.argv) == 1:
+        # No arguments - show unified interface
+        from agent_eval.cli_unified import main as unified_main
+        unified_main()
+    else:
+        # Legacy mode - show deprecation warning
+        console.print("[yellow]⚠️  You are using the legacy CLI interface.[/yellow]")
+        console.print("[yellow]   Please migrate to the new unified commands:[/yellow]")
+        console.print("[green]   • arc-eval debug --input <file>[/green]")
+        console.print("[green]   • arc-eval compliance --domain <domain> --input <file>[/green]")
+        console.print("[green]   • arc-eval improve --from-evaluation <file>[/green]")
+        console.print()
+        
+        # Continue with legacy interface
+        legacy_main()
 
 
 if __name__ == "__main__":

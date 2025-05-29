@@ -18,14 +18,13 @@ The platform addresses two core problems: debugging agent failures in production
 pip install arc-eval
 export ANTHROPIC_API_KEY="your-key-here"
 
-# Debug agent failures
-arc-eval --debug-agent --input agent_outputs.json
+# Three simple workflows:
+arc-eval debug --input agent_trace.json        # Why is it failing?
+arc-eval compliance --domain finance --input outputs.json  # Does it meet requirements?
+arc-eval improve --from-evaluation latest      # How do I fix it?
 
-# Run domain evaluations
-arc-eval --domain finance --input outputs.json --agent-judge
-
-# Try demo
-arc-eval --quick-start --domain security
+# Or run interactively:
+arc-eval
 ```
 
 ---
@@ -180,42 +179,81 @@ This concrete example demonstrates the loop in action: PII exposure eliminated, 
 
 ---
 
-## CLI Usage
+## Unified Workflows
 
-### Reliability Analysis
+ARC-Eval provides three simple commands for the complete agent improvement lifecycle:
+
+### 🔍 Debug Workflow
+**Purpose:** Why is my agent failing?
+
 ```bash
-# Debug agent failures with framework detection
-arc-eval --debug-agent --input agent_outputs.json
-
-# Unified debugging dashboard
-arc-eval --unified-debug --input workflow_trace.json
-
-# Framework-specific analysis
-arc-eval --workflow-reliability --framework langchain --input outputs.json
+arc-eval debug --input agent_trace.json
 ```
 
-### Domain Evaluation
-```bash
-# Run compliance scenarios
-arc-eval --domain finance --input outputs.json --agent-judge
+Automatically:
+- Detects your agent framework (LangChain, CrewAI, etc.)
+- Identifies failure patterns and root causes
+- Provides specific fixes with code examples
+- Analyzes tool calls, memory usage, and performance
 
-# Export reports
-arc-eval --domain security --input outputs.json --agent-judge --export pdf
+### ✅ Compliance Workflow  
+**Purpose:** Does my agent meet requirements?
+
+```bash
+arc-eval compliance --domain finance --input outputs.json
 ```
 
-### Improvement Workflows
+Features:
+- 378 domain-specific scenarios across finance, security, and ML
+- Automated compliance scoring with Agent-as-a-Judge
+- PDF audit reports generated automatically
+- Regulatory framework mapping (SOX, OWASP, EU AI Act, etc.)
+
+### 📈 Improve Workflow
+**Purpose:** How do I make my agent better?
+
 ```bash
-# Generate improvement plans
-arc-eval --improvement-plan --from-evaluation results.json
-
-# Compare judge configurations
-arc-eval --compare-judges config/judge_comparison_templates.yaml --input outputs.json
-
-# Full automation cycle
-arc-eval --full-workflow --domain finance --input baseline.json
+arc-eval improve --from-evaluation latest
 ```
 
-Interactive analysis starts automatically after evaluations unless `--no-interaction` is specified.
+Provides:
+- Prioritized improvement plans with timelines
+- Expected improvement projections
+- Before/after comparison tracking
+- Automated retraining curriculum generation
+
+## Workflow Example
+
+```bash
+# Step 1: Debug your failing agent
+arc-eval debug --input agent_trace.json
+# Output: 3 failures found, root causes identified
+
+# Step 2: Check compliance
+arc-eval compliance --domain finance --input outputs.json  
+# Output: 40% compliance, critical PII exposure issues
+
+# Step 3: Generate improvement plan
+arc-eval improve --from-evaluation finance_evaluation_20250527.json
+# Output: 3-phase plan to reach 90% compliance
+
+# Step 4: Implement fixes and compare
+arc-eval improve --baseline original.json --current improved.json
+# Output: 45% improvement achieved
+```
+
+## Legacy CLI Usage
+
+The original CLI with 20+ flags is still available for backward compatibility:
+
+```bash
+# Legacy commands (being deprecated)
+arc-eval --domain finance --input outputs.json --agent-judge --export pdf
+arc-eval --debug-agent --unified-debug --workflow-reliability --input trace.json
+arc-eval --improvement-plan --from-evaluation results.json --baseline previous.json
+```
+
+We recommend migrating to the new unified workflows for a simpler experience.
 
 ---
 

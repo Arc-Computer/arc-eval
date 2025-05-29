@@ -100,3 +100,42 @@ ml_governance_comparison:
       domain: "ml"
       enable_confidence_calibration: true
       description: "Enhanced ML evaluation with uncertainty quantification"
+
+# Week 2 Strategy: Framework-Specific Schema Validation Templates
+schema_validation_frameworks:
+  judges:
+    - name: "langchain_schema_judge"
+      domain: "workflow_reliability"
+      framework: "langchain"
+      enable_confidence_calibration: true
+      focus_areas: ["abstraction_overhead", "tool_call_patterns", "memory_management"]
+      description: "LangChain-specific schema validation and optimization"
+    
+    - name: "crewai_schema_judge"
+      domain: "workflow_reliability"
+      framework: "crewai"
+      enable_confidence_calibration: true
+      focus_areas: ["response_time", "multi_agent_coordination", "tool_efficiency"]
+      description: "CrewAI-specific performance and schema validation"
+    
+    - name: "autogen_schema_judge"
+      domain: "workflow_reliability"
+      framework: "autogen"
+      enable_confidence_calibration: true
+      focus_areas: ["enterprise_reliability", "conversation_patterns", "error_handling"]
+      description: "AutoGen enterprise reliability and schema validation"
+
+# Framework Optimization Templates (Week 2 Focus)
+framework_optimization_comparison:
+  judges:
+    - name: "baseline_reliability"
+      domain: "workflow_reliability"
+      enable_confidence_calibration: false
+      framework: "generic"
+      description: "Framework-agnostic reliability baseline"
+    
+    - name: "framework_optimized"
+      domain: "workflow_reliability"
+      enable_confidence_calibration: true
+      framework: "auto_detect"
+      description: "Framework-specific optimized reliability evaluation"
