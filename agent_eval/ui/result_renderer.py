@@ -612,7 +612,7 @@ class ResultRenderer:
         
         # Overall reliability assessment
         risk_color = "red" if results.risk_level == "HIGH" else "yellow" if results.risk_level == "MEDIUM" else "green"
-        risk_text = "HIGH RISK for production" if results.risk_level == "HIGH" else "MEDIUM RISK" if results.risk_level == "MEDIUM" else "LOW RISK"
+        risk_text = "HIGH RISK" if results.risk_level == "HIGH" else "MEDIUM RISK" if results.risk_level == "MEDIUM" else "LOW RISK"
         
         console.print(f"\nOverall Reliability: [{risk_color}]{results.overall_pass_rate:.0%}[/{risk_color}] ([{risk_color}]{risk_text}[/{risk_color}])")
         

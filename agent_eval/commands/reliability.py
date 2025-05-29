@@ -49,7 +49,7 @@ class ReliabilityCommandHandler(BaseCommandHandler):
         console.print("Debug agent failures with unified visibility across the entire stack\\n")
         
         # Load and validate inputs
-        agent_outputs, input_source = self._load_and_validate_inputs(**kwargs)
+        agent_outputs, _ = self._load_and_validate_inputs(**kwargs)
         if agent_outputs is None:
             return 1
         
@@ -70,7 +70,9 @@ class ReliabilityCommandHandler(BaseCommandHandler):
             
             # Detect input type
             input_type = detector.detect_input_type(agent_outputs)
-            detected_domain = detector.get_detected_domain(agent_outputs[0] if agent_outputs else {})
+            # Safely get first element for domain detection
+            first_output = agent_outputs[0] if isinstance(agent_outputs, list) and len(agent_outputs) > 0 else agent_outputs if isinstance(agent_outputs, dict) else {}
+            detected_domain = detector.get_detected_domain(first_output)
             
             # Run test harness if config detected
             if input_type == 'config':
