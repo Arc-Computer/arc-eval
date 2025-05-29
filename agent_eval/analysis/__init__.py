@@ -1,5 +1,5 @@
 """
-Analysis and comparison components for ARC-Eval.
+Analysis components for ARC-Eval.
 
 This module contains analysis functionality including:
 - Judge comparison and A/B testing
@@ -12,6 +12,6 @@ from .self_improvement import SelfImprovementEngine
 
 __all__ = [
     "JudgeComparison",
-    "JudgeConfig", 
+    "JudgeConfig",
     "SelfImprovementEngine"
 ]

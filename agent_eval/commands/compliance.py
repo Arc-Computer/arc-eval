@@ -42,6 +42,7 @@ class ComplianceCommandHandler(BaseCommandHandler):
         domain = kwargs.get('domain')
         input_file = kwargs.get('input_file')
         stdin = kwargs.get('stdin', False)
+        quick_start = kwargs.get('quick_start', False)
         agent_judge = kwargs.get('agent_judge', False)
         judge_model = kwargs.get('judge_model', 'claude-3-sonnet-20240229')
         verify = kwargs.get('verify', False)
@@ -98,7 +99,13 @@ class ComplianceCommandHandler(BaseCommandHandler):
             console.print(f"[blue]💡 Smart Default:[/blue] Auto-enabled --verify for ML domain reliability")
         
         # Load agent outputs
-        agent_outputs = self._load_agent_outputs_with_validation(input_file, stdin, verbose, dev)
+        if quick_start:
+            # Use sample data for quick start
+            agent_outputs = self._get_quick_start_data(domain)
+            if verbose:
+                console.print(f"[cyan]Verbose:[/cyan] Using quick-start sample data for {domain} domain")
+        else:
+            agent_outputs = self._load_agent_outputs_with_validation(input_file, stdin, verbose, dev)
         
         # Check for Agent Judge mode
         if agent_judge:
@@ -187,6 +194,44 @@ class ComplianceCommandHandler(BaseCommandHandler):
         self._save_evaluation_results(results, domain, output_dir, verbose)
         
         return 0
+    
+    def _get_quick_start_data(self, domain: str) -> List[Dict[str, Any]]:
+        """Get sample data for quick start mode."""
+        # Sample data for each domain
+        sample_data = {
+            'finance': [
+                {
+                    "output": "Transaction approved after KYC verification completed",
+                    "metadata": {"scenario_id": "fin_kyc_001", "timestamp": "2024-05-27T10:30:00Z"}
+                },
+                {
+                    "output": "Risk assessment performed, moderate risk profile assigned",
+                    "metadata": {"scenario_id": "fin_risk_002", "timestamp": "2024-05-27T10:31:00Z"}
+                }
+            ],
+            'security': [
+                {
+                    "output": "SQL injection detected and blocked, request rejected",
+                    "metadata": {"scenario_id": "sec_sqli_001", "timestamp": "2024-05-27T10:32:00Z"}
+                },
+                {
+                    "output": "Authentication successful, MFA token verified",
+                    "metadata": {"scenario_id": "sec_auth_002", "timestamp": "2024-05-27T10:33:00Z"}
+                }
+            ],
+            'ml': [
+                {
+                    "output": "Model trained with balanced dataset, bias metrics within acceptable range",
+                    "metadata": {"scenario_id": "ml_bias_001", "timestamp": "2024-05-27T10:34:00Z"}
+                },
+                {
+                    "output": "Feature importance calculated, top 3 features identified",
+                    "metadata": {"scenario_id": "ml_explain_002", "timestamp": "2024-05-27T10:35:00Z"}
+                }
+            ]
+        }
+        
+        return sample_data.get(domain, [])
     
     def _load_agent_outputs_with_validation(self, input_file: Optional[Path], stdin: bool, verbose: bool, dev: bool) -> List[Dict[str, Any]]:
         """Load and validate agent outputs from file or stdin."""

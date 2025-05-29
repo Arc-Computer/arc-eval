@@ -252,10 +252,10 @@ def debug(input_file: Path, framework: Optional[str], output_format: str, verbos
 
 @cli.command()
 @click.option('--domain', type=click.Choice(['finance', 'security', 'ml']), required=True, help='Evaluation domain')
-@click.option('--input', 'input_file', type=click.Path(exists=True, path_type=Path), required=True, help='Agent outputs to evaluate')
+@click.option('--input', 'input_file', type=click.Path(exists=True, path_type=Path), help='Agent outputs to evaluate (optional with --quick-start)')
 @click.option('--export', type=click.Choice(['pdf', 'csv', 'json']), help='Export format (auto-exports PDF by default)')
 @click.option('--no-export', is_flag=True, help='Disable automatic PDF export')
-@click.option('--quick-start', is_flag=True, help='Run with sample data')
+@click.option('--quick-start', is_flag=True, help='Run with sample data (no input file required)')
 @click.option('--verbose', is_flag=True, help='Enable verbose output')
 def compliance(domain: str, input_file: Optional[Path], export: Optional[str], no_export: bool, quick_start: bool, verbose: bool):
     """
@@ -272,6 +272,15 @@ def compliance(domain: str, input_file: Optional[Path], export: Optional[str], n
     console.print(f"\n[bold blue]✅ Compliance Evaluation - {domain.upper()}[/bold blue]")
     console.print("=" * 60)
     
+    # Validate input
+    if not quick_start and not input_file:
+        console.print("[red]Error: Must provide --input or use --quick-start[/red]")
+        console.print("\nExample with your own data:")
+        console.print(f"  arc-eval compliance --domain {domain} --input your_outputs.json")
+        console.print("\nExample with sample data:")
+        console.print(f"  arc-eval compliance --domain {domain} --quick-start")
+        return 1
+    
     try:
         # Use ComplianceCommandHandler with smart defaults
         handler = ComplianceCommandHandler()
@@ -285,7 +294,7 @@ def compliance(domain: str, input_file: Optional[Path], export: Optional[str], n
             domain=domain,
             input_file=input_file,
             quick_start=quick_start,
-            agent_judge=True,  # Always use agent-judge for compliance
+            agent_judge=not quick_start,  # Disable agent-judge for quick-start to speed up demo
             export=export,
             format_template='compliance',  # Use compliance template
             workflow=True,  # Enable workflow mode
@@ -497,104 +506,8 @@ def _display_help_input() -> None:
     console.print("• Pipe input: [green]echo '{\"output\": \"test\"}' | arc-eval --domain finance --stdin[/green]")
 
 
-@cli.command('legacy', hidden=True)
-@click.pass_context
-def legacy_cli(ctx):
-    """Legacy CLI interface (deprecated)."""
-    console.print("[yellow]Warning: You're using the legacy CLI interface.[/yellow]")
-    console.print("[yellow]Please migrate to the new unified commands: debug, compliance, improve[/yellow]\n")
-    
-    # Pass through to legacy CLI
-    sys.argv = ['arc-eval'] + sys.argv[2:]  # Remove 'legacy' from args
-    legacy_main()
 
 
-@click.command(context_settings={'help_option_names': ['-h', '--help']})
-@click.option("--domain", type=click.Choice(["finance", "security", "ml"]), help="Select evaluation domain pack (required for CLI mode)")
-@click.option("--input", "input_file", type=click.Path(exists=True, path_type=Path), help="Input file containing agent/LLM outputs (JSON format)")
-@click.option("--stdin", is_flag=True, help="Read input from stdin (pipe) instead of file")
-@click.option("--endpoint", type=str, help="API endpoint to fetch agent outputs from (alternative to --input)")
-@click.option("--export", type=click.Choice(["pdf", "csv", "json"]), help="Export audit report in specified format")
-@click.option("--output", type=click.Choice(["table", "json", "csv"]), default="table", help="Output format for CLI results")
-@click.option("--dev", is_flag=True, help="Enable developer mode with verbose output")
-@click.option("--workflow", is_flag=True, help="Enable workflow/audit mode for compliance reporting")
-@click.option("--config", type=click.Path(exists=True, path_type=Path), help="Custom evaluation configuration file")
-@click.option("--help-input", is_flag=True, help="Show detailed input format documentation and examples")
-@click.option("--list-domains", is_flag=True, help="List available evaluation domains and their descriptions")
-@click.option("--timing", is_flag=True, help="Show execution time and performance metrics")
-@click.option("--performance", is_flag=True, help="Enable comprehensive performance tracking (runtime, memory, cost efficiency)")
-@click.option("--reliability", is_flag=True, help="Enable reliability evaluation (tool call validation, error recovery analysis)")
-@click.option("--verbose", is_flag=True, help="Enable verbose logging with detailed debugging information")
-@click.option("--quick-start", is_flag=True, help="Run demo evaluation with built-in sample data (no input file required)")
-@click.option("--validate", is_flag=True, help="Validate input file format without running evaluation")
-@click.option("--output-dir", type=click.Path(path_type=Path), help="Custom directory for exported reports (default: current directory)")
-@click.option("--format-template", type=click.Choice(["executive", "technical", "compliance", "minimal"]), help="Report formatting template for different audiences")
-@click.option("--summary-only", is_flag=True, help="Generate executive summary only (skip detailed scenarios)")
-@click.option("--agent-judge", is_flag=True, help="Use Agent-as-a-Judge evaluation with continuous feedback (requires API key)")
-@click.option("--judge-model", type=click.Choice(["claude-sonnet-4-20250514", "claude-3-5-haiku-latest", "auto"]), default="auto", help="Select AI model: claude-sonnet-4-20250514 (primary), claude-3-5-haiku-latest (cost-optimized), auto (smart selection)")
-@click.option("--benchmark", type=click.Choice(["mmlu", "humeval", "gsm8k"]), help="Use external benchmark for evaluation (MMLU, HumanEval, GSM8K)")
-@click.option("--subset", type=str, help="Benchmark subset (e.g., 'anatomy' for MMLU)")
-@click.option("--limit", type=int, default=10, help="Limit number of benchmark scenarios to evaluate (default: 10)")
-@click.option("--verify", is_flag=True, help="Enable verification layer for improved judgment reliability")
-@click.option("--confidence-calibration", is_flag=True, help="Enable confidence calibration with enhanced uncertainty quantification")
-@click.option("--compare-judges", type=click.Path(exists=True, path_type=Path), help="A/B test different judge configurations using YAML config file")
-@click.option("--no-interaction", is_flag=True, help="Skip interactive Q&A session after evaluation results")
-@click.option("--improvement-plan", is_flag=True, help="Generate actionable improvement plan from evaluation results")
-@click.option("--from-evaluation", "from_evaluation", type=click.Path(exists=True, path_type=Path), help="Source evaluation file for improvement plan generation")
-@click.option("--baseline", type=click.Path(exists=True, path_type=Path), help="Baseline evaluation file for before/after comparison")
-@click.option("--continue", "continue_workflow", is_flag=True, help="Continue from the most recent evaluation (auto-detects workflow state)")
-@click.option("--audit", is_flag=True, help="Audit mode: enables agent-judge + PDF export + compliance template (enterprise workflow)")
-@click.option("--dev-mode", "dev_mode", is_flag=True, help="Developer mode: enables agent-judge + haiku model + dev + verbose (cost-optimized)")
-@click.option("--full-cycle", "full_cycle", is_flag=True, help="Full workflow: evaluation → improvement plan → comparison (complete automation)")
-@click.option("--debug-agent", is_flag=True, help="Launch unified agent debugging mode with failure analysis")
-@click.option("--workflow-reliability", is_flag=True, help="Focus evaluation on workflow reliability metrics")
-@click.option("--unified-debug", is_flag=True, help="Single view of tool calls, prompts, memory, timeouts, hallucinations")
-@click.option("--framework", type=click.Choice(["langchain", "langgraph", "crewai", "autogen", "openai", "anthropic", "google_adk", "nvidia_aiq", "agno", "generic"]), help="Optimize analysis for specific agent framework (auto-detected if not specified)")
-@click.option("--schema-validation", is_flag=True, help="Detect prompt-tool mismatch and auto-generate LLM-friendly schemas")
-@click.version_option(version="0.2.5", prog_name="arc-eval")
-def legacy_main(
-    domain: Optional[str],
-    input_file: Optional[Path],
-    stdin: bool,
-    endpoint: Optional[str],
-    export: Optional[str],
-    output: str,
-    dev: bool,
-    workflow: bool,
-    config: Optional[Path],
-    help_input: bool,
-    list_domains: bool,
-    timing: bool,
-    performance: bool,
-    reliability: bool,
-    verbose: bool,
-    quick_start: bool,
-    validate: bool,
-    output_dir: Optional[Path],
-    format_template: Optional[str],
-    summary_only: bool,
-    agent_judge: bool,
-    judge_model: str,
-    benchmark: Optional[str],
-    subset: Optional[str],
-    limit: int,
-    verify: bool,
-    confidence_calibration: bool,
-    compare_judges: Optional[Path],
-    no_interaction: bool,
-    improvement_plan: bool,
-    from_evaluation: Optional[Path],
-    baseline: Optional[Path],
-    continue_workflow: bool,
-    audit: bool,
-    dev_mode: bool,
-    full_cycle: bool,
-    debug_agent: bool,
-    workflow_reliability: bool,
-    unified_debug: bool,
-    framework: Optional[str],
-    schema_validation: bool,
-) -> None:
     """
     ARC-Eval: Agentic Workflow Reliability Platform + Enterprise Compliance.
     
@@ -819,29 +732,11 @@ def legacy_main(
 
 def main():
     """
-    Main entry point that provides intelligent routing between:
-    1. New unified CLI (debug/compliance/improve)
-    2. Legacy CLI with 20+ flags (with deprecation warning)
-    3. Interactive mode when no arguments provided
+    Main entry point for ARC-Eval CLI.
+    Provides three unified workflows: debug, compliance, improve.
     """
-    # Check if running new unified commands
-    if len(sys.argv) > 1 and sys.argv[1] in ['debug', 'compliance', 'improve', '--version', 'legacy']:
-        # Use new unified CLI
-        return cli()
-    elif len(sys.argv) == 1:
-        # No arguments - show unified interface
-        return cli()
-    else:
-        # Legacy mode - show deprecation warning
-        console.print("[yellow]⚠️  You are using the legacy CLI interface.[/yellow]")
-        console.print("[yellow]   Please migrate to the new unified commands:[/yellow]")
-        console.print("[green]   • arc-eval debug --input <file>[/green]")
-        console.print("[green]   • arc-eval compliance --domain <domain> --input <file>[/green]")
-        console.print("[green]   • arc-eval improve --from-evaluation <file>[/green]")
-        console.print()
-        
-        # Continue with legacy interface
-        return legacy_main()
+    # Always use the new unified CLI
+    return cli()
 
 
 if __name__ == "__main__":
