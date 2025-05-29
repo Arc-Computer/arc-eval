@@ -119,7 +119,7 @@ class InputValidator:
                 "Example: {\"output\": \"Transaction approved\"}",
                 "Or use a supported framework format (run 'arc-eval --help-input')",
                 f"Current fields in {context}: {', '.join(available_fields)}",
-                "💡 Tip: Use examples/sample-data/ for format references"
+                "💡 Tip: Use examples/complete-datasets/ for format references"
             ]
             raise ValidationError(f"Missing valid output field in {context}", suggestions)
         

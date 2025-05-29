@@ -1,9 +1,10 @@
-#!/usr/bin/env python3
 """
-Main entry point for arc-eval when run as a module.
-This prevents the reimport warning.
+ARC-Eval package entry point for module execution.
+
+Allows running the package with: python -m agent_eval
 """
 
+from agent_eval.cli import cli
+
 if __name__ == "__main__":
-    from agent_eval.cli import main
-    main()
+    cli()

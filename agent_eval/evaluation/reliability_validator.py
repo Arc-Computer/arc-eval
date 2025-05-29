@@ -231,6 +231,34 @@ class ReliabilityAnalyzer:
     def detect_framework_comprehensive(self, agent_outputs: List[Any]) -> Dict[str, Any]:
         """Comprehensive framework detection with confidence scoring and auto-detection."""
         
+        # First try using the parser_registry's detect_framework for more accurate detection
+        from agent_eval.core.parser_registry import detect_and_extract
+        
+        framework_counts = {}
+        for output in agent_outputs:
+            try:
+                # Try to detect framework using parser_registry
+                framework, _ = detect_and_extract(output)
+                if framework:
+                    framework_counts[framework] = framework_counts.get(framework, 0) + 1
+            except Exception:
+                # Silently skip outputs that can't be parsed
+                pass
+        
+        # If we got reliable detection from parser_registry
+        if framework_counts:
+            # Find most common framework
+            detected_framework = max(framework_counts, key=framework_counts.get)
+            confidence = framework_counts[detected_framework] / len(agent_outputs)
+            
+            return {
+                'detected_framework': detected_framework,
+                'confidence': confidence,
+                'auto_detection_successful': True,
+                'framework_scores': framework_counts
+            }
+        
+        # Fallback to pattern-based detection if parser_registry didn't work
         # Framework detection should look for structural indicators, not tool patterns
         framework_indicators = {
             "openai": [

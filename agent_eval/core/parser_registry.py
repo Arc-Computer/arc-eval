@@ -31,6 +31,14 @@ class FrameworkDetector:
         if not isinstance(data, dict):
             return None
         
+        # Direct framework field detection (highest priority)
+        if "framework" in data:
+            framework = str(data["framework"]).lower()
+            # Normalize common framework names
+            if framework in ["langchain", "langgraph", "crewai", "autogen", "openai", 
+                           "anthropic", "agno", "google_adk", "nvidia_aiq"]:
+                return framework
+        
         # AutoGen detection - Microsoft's multi-agent framework
         if "messages" in data and "summary" in data:
             if isinstance(data["messages"], list) and len(data["messages"]) > 0:
@@ -83,6 +91,10 @@ class FrameworkDetector:
             return "langchain"
         elif "agent_scratchpad" in data or "tool_calls" in data:
             return "langchain"
+        elif "tool_call" in data and isinstance(data.get("tool_call"), dict):
+            # LangChain workflow trace format
+            if "name" in data["tool_call"] and "parameters" in data["tool_call"]:
+                return "langchain"
         
         # CrewAI detection
         if "crew_output" in data or "task_results" in data:
@@ -92,6 +104,11 @@ class FrameworkDetector:
         
         # Generic output detection
         if "output" in data:
+            return "generic"
+        elif "scenario_id" in data and "output" in data:
+            return "generic"
+        elif "metadata" in data and isinstance(data.get("metadata"), dict):
+            # Check if this looks like a simple agent output with metadata
             return "generic"
         
         logger.debug(f"No framework detected for data keys: {list(data.keys())}")
@@ -267,7 +284,17 @@ class OutputExtractor:
             return str(data["content"])
         elif "response" in data:
             return str(data["response"])
+        elif "result" in data:
+            return str(data["result"])
+        elif "answer" in data:
+            return str(data["answer"])
         else:
+            # If no standard fields found, check for a scenario/metadata pattern
+            if "scenario_id" in data and "metadata" in data:
+                # Look for any field that might contain the output
+                for key, value in data.items():
+                    if key not in ["scenario_id", "metadata", "timestamp", "agent_id"]:
+                        return str(value)
             return str(data)
 
 
