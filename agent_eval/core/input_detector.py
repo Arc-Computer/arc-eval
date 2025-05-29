@@ -69,14 +69,20 @@ class SmartInputDetector:
     
     def _load_input(self, input_path: str) -> Any:
         """Load input from file path."""
+
         try:
             path = Path(input_path)
             if path.exists():
                 with open(path, 'r') as f:
                     return json.load(f)
-        except:
+        except (FileNotFoundError, PermissionError) as e:
+            # Log file access error
+            pass
+        except json.JSONDecodeError as e:
+            # Log JSON parsing error
             pass
         
+
         # Try parsing as JSON string
         try:
             return json.loads(input_path)
