@@ -2,6 +2,8 @@
 
 import time
 import statistics
+import yaml
+from pathlib import Path
 from typing import List, Dict, Any, Optional
 from dataclasses import dataclass
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -56,8 +58,124 @@ class ComparisonReport:
 class JudgeComparison:
     """A/B test different judge configurations for optimization."""
     
-    def __init__(self):
+    def __init__(self, config_file: Optional[str] = None, default_domain: Optional[str] = None):
         self.judges: Dict[str, AgentJudge] = {}
+        self.config_file = config_file
+        self.default_domain = default_domain
+        self.config_data = self._load_config() if config_file else None
+    
+    def _load_config(self) -> Optional[Dict[str, Any]]:
+        """Load judge comparison configuration from YAML file."""
+        if not self.config_file:
+            return None
+        
+        try:
+            config_path = Path(self.config_file)
+            if not config_path.exists():
+                logger.error(f"Config file not found: {self.config_file}")
+                return None
+            
+            with open(config_path, 'r') as f:
+                config_data = yaml.safe_load(f)
+            logger.info(f"Loaded judge comparison config from {self.config_file}")
+            return config_data
+        except Exception as e:
+            logger.error(f"Failed to load config file {self.config_file}: {e}")
+            return None
+    
+    def run_comparison(self, agent_outputs: List[AgentOutput]) -> None:
+        """Run judge comparison using loaded configuration and agent outputs."""
+        if not self.config_data:
+            logger.error("No configuration loaded for judge comparison")
+            return
+        
+        # Use default comparison if no specific comparison specified
+        comparison_key = "default_comparison"
+        if comparison_key not in self.config_data:
+            logger.error(f"Default comparison '{comparison_key}' not found in config")
+            return
+        
+        comparison_config = self.config_data[comparison_key]
+        judge_configs = []
+        
+        # Load judge configurations from YAML
+        for judge_data in comparison_config.get("judges", []):
+            judge_config = JudgeConfig(
+                name=judge_data.get("name", "unnamed"),
+                domain=judge_data.get("domain", self.default_domain or "security"),
+                enable_confidence_calibration=judge_data.get("enable_confidence_calibration", False),
+                enable_verification=judge_data.get("enable_verification", False),
+                description=judge_data.get("description", "")
+            )
+            judge_configs.append(judge_config)
+        
+        if not judge_configs:
+            logger.error("No valid judge configurations found in config file")
+            return
+        
+        # Create dummy scenarios for comparison (simplified for demo)
+        scenarios = []
+        for i, _ in enumerate(agent_outputs):
+            scenario = EvaluationScenario(
+                id=f"scenario_{i}",
+                name=f"Judge Comparison Scenario {i}",
+                description=f"Evaluation scenario {i} for judge comparison testing",
+                severity="medium",
+                test_type="positive",
+                category="general",
+                input_template="Agent output for evaluation",
+                expected_behavior="valid_output",
+                remediation="Address any identified issues in agent output",
+                failure_indicators=["invalid", "error"]
+            )
+            scenarios.append(scenario)
+        
+        # Run comparison
+        logger.info(f"Running comparison with {len(judge_configs)} judges on {len(agent_outputs)} outputs")
+        report = self.compare_judges(judge_configs, scenarios, agent_outputs)
+        
+        # Display results
+        self._display_comparison_results(report)
+    
+    def _display_comparison_results(self, report: ComparisonReport) -> None:
+        """Display comparison results in a formatted way."""
+        from rich.console import Console
+        from rich.table import Table
+        from rich.panel import Panel
+        
+        console = Console()
+        
+        # Judge Agreement Table
+        table = Table(title="Judge Comparison Results")
+        table.add_column("Judge", style="cyan")
+        table.add_column("Agreement Score", style="green")
+        table.add_column("Avg Time (s)", style="yellow")
+        table.add_column("Consistency", style="blue")
+        
+        for judge_name, agreement in report.judge_agreements.items():
+            metrics = report.performance_metrics.get(judge_name)
+            if metrics:
+                table.add_row(
+                    judge_name,
+                    f"{agreement:.2f}",
+                    f"{metrics.avg_evaluation_time:.1f}",
+                    f"{metrics.consistency_score:.2f}"
+                )
+        
+        console.print(table)
+        
+        # Recommendations Panel
+        recommendations_text = "\n".join([f"• {rec}" for rec in report.recommendations])
+        recommendations_panel = Panel(
+            recommendations_text,
+            title="📊 Recommendations",
+            border_style="blue"
+        )
+        console.print(recommendations_panel)
+        
+        # Best Judge
+        console.print(f"\n[bold green]🏆 Best Judge Configuration:[/bold green] {report.best_judge_config}")
+        console.print(f"[dim]Execution Time: {report.execution_time:.1f}s[/dim]")
         
     def add_judge_config(self, config: JudgeConfig) -> None:
         """Add a judge configuration to compare."""
@@ -362,4 +480,4 @@ class JudgeComparison:
         results: Dict[str, List[JudgmentResult]]
     ) -> ComparisonReport:
         """Generate comparison report from existing results."""
-        return self._generate_comparison_report(results, [], 0.0)
+        return self._generate_comparison_report(results, [], 0.0, None)

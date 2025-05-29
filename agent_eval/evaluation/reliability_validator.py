@@ -939,6 +939,297 @@ class ReliabilityAnalyzer:
         
         return dict(framework_counts)
     
+    def detect_schema_mismatches(self, agent_outputs: List[Any]) -> List[Dict[str, Any]]:
+        """Detect when LLM output doesn't match expected tool schema."""
+        
+        schema_issues = []
+        for output in agent_outputs:
+            # Extract tool calls from output
+            output_str = str(output)
+            
+            # Look for schema mismatch indicators in the output
+            if isinstance(output, dict):
+                # Direct schema mismatch detection from structured data
+                if 'tool_definition' in output and 'llm_output' in output:
+                    mismatch = self._validate_tool_schema_structured(output)
+                    if mismatch:
+                        schema_issues.append(mismatch)
+                
+                # Detect from tool call failures
+                if 'tool_call' in output:
+                    tool_call = output['tool_call']
+                    if isinstance(tool_call, dict) and 'error' in tool_call:
+                        error_text = str(tool_call['error']).lower()
+                        if any(keyword in error_text for keyword in ['parameter mismatch', 'schema error', 'invalid parameter']):
+                            schema_issues.append({
+                                "tool_name": tool_call.get('name', 'unknown'),
+                                "error_type": "parameter_mismatch",
+                                "error_message": tool_call['error'],
+                                "suggested_fix": self._generate_schema_fix_from_error(tool_call['error'])
+                            })
+            
+            # Text-based schema mismatch detection
+            schema_error_patterns = [
+                r'schema mismatch.*?(\w+).*?expects.*?[\'"]([^\'"]+)[\'"].*?got.*?[\'"]([^\'"]+)[\'"]',
+                r'parameter mismatch.*?(\w+).*?expected.*?[\'"]([^\'"]+)[\'"].*?received.*?[\'"]([^\'"]+)[\'"]',
+                r'invalid parameter.*?(\w+).*?[\'"]([^\'"]+)[\'"].*?not.*?[\'"]([^\'"]+)[\'"]'
+            ]
+            
+            for pattern in schema_error_patterns:
+                matches = re.findall(pattern, output_str, re.IGNORECASE)
+                for match in matches:
+                    if len(match) >= 3:
+                        tool_name, expected, actual = match[0], match[1], match[2]
+                        schema_issues.append({
+                            "tool_name": tool_name,
+                            "expected_parameter": expected,
+                            "actual_parameter": actual,
+                            "mismatch_type": "parameter_name_mismatch",
+                            "suggested_fix": f"Use '{expected}' instead of '{actual}'"
+                        })
+        
+        return schema_issues
+    
+    def _validate_tool_schema_structured(self, output: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """Validate against structured tool definition and LLM output."""
+        tool_def = output.get('tool_definition', {})
+        llm_output = output.get('llm_output', {})
+        
+        if not tool_def or not llm_output:
+            return None
+        
+        tool_name = tool_def.get('name', 'unknown')
+        expected_params = tool_def.get('parameters', {})
+        actual_params = llm_output.get('parameters', {})
+        
+        # Check parameter name mismatches
+        expected_names = set(expected_params.keys())
+        actual_names = set(actual_params.keys())
+        
+        if expected_names != actual_names:
+            return {
+                "tool_name": tool_name,
+                "expected_parameters": list(expected_names),
+                "actual_parameters": list(actual_names),
+                "missing_parameters": list(expected_names - actual_names),
+                "unexpected_parameters": list(actual_names - expected_names),
+                "mismatch_type": output.get('mismatch_type', 'parameter_structure_mismatch'),
+                "suggested_fix": output.get('expected_fix', self._generate_schema_fix(expected_names, actual_names))
+            }
+        
+        return None
+    
+    def _generate_schema_fix(self, expected_params: set, actual_params: set) -> str:
+        """Generate specific fix for schema mismatch."""
+        missing = expected_params - actual_params
+        unexpected = actual_params - expected_params
+        
+        fixes = []
+        if missing:
+            fixes.append(f"Add missing parameters: {', '.join(missing)}")
+        if unexpected:
+            fixes.append(f"Remove unexpected parameters: {', '.join(unexpected)}")
+        
+        return "; ".join(fixes) if fixes else "Align parameter structure with tool definition"
+    
+    def _generate_schema_fix_from_error(self, error_message: str) -> str:
+        """Generate fix suggestion from error message."""
+        error_lower = error_message.lower()
+        
+        if 'parameter mismatch' in error_lower:
+            return "Check tool parameter names match exactly with tool definition"
+        elif 'schema error' in error_lower:
+            return "Validate tool parameter types and structure"
+        elif 'invalid parameter' in error_lower:
+            return "Remove invalid parameters and use only defined parameters"
+        else:
+            return "Review tool definition and ensure LLM output matches expected schema"
+    
+    def generate_llm_friendly_schemas(self, tool_definitions: List[Dict]) -> Dict[str, Dict[str, Any]]:
+        """Automatic generation of LLM-friendly tool descriptions."""
+        
+        friendly_schemas = {}
+        
+        for tool in tool_definitions:
+            tool_name = tool.get('name', 'unknown_tool')
+            
+            # Convert technical schema to LLM-friendly format
+            friendly_description = self._convert_to_llm_format(tool)
+            
+            # Add usage examples
+            examples = self._generate_usage_examples(tool)
+            
+            # Create clear parameter descriptions
+            param_descriptions = self._create_parameter_descriptions(tool.get("parameters", {}))
+            
+            # Identify common mistakes for this tool type
+            common_mistakes = self._identify_common_mistakes(tool)
+            
+            friendly_schemas[tool_name] = {
+                "description": friendly_description,
+                "examples": examples,
+                "parameters": param_descriptions,
+                "common_mistakes": common_mistakes,
+                "llm_prompt_template": self._generate_llm_prompt_template(tool)
+            }
+        
+        return friendly_schemas
+    
+    def _convert_to_llm_format(self, tool: Dict) -> str:
+        """Convert technical tool definition to LLM-friendly description."""
+        
+        name = tool.get("name", "unknown_tool")
+        description = tool.get("description", "")
+        parameters = tool.get("parameters", {})
+        
+        # Create simple, clear description
+        llm_description = f"""
+Tool: {name}
+Purpose: {description}
+When to use: {self._generate_usage_guidance(tool)}
+
+Required parameters:
+"""
+        
+        for param_name, param_info in parameters.items():
+            param_type = param_info.get('type', 'string')
+            param_desc = param_info.get('description', 'No description')
+            required = param_info.get('required', True)
+            
+            llm_description += f"- {param_name} ({param_type}): {param_desc}"
+            if not required:
+                llm_description += " [optional]"
+            llm_description += "\n"
+        
+        return llm_description.strip()
+    
+    def _generate_usage_guidance(self, tool: Dict) -> str:
+        """Generate when-to-use guidance for tool."""
+        tool_name = tool.get('name', '').lower()
+        
+        guidance_map = {
+            'search': 'When you need to find information or lookup data',
+            'calculate': 'When you need to perform mathematical operations or computations',
+            'analyze': 'When you need to process or examine data for insights',
+            'generate': 'When you need to create new content or outputs',
+            'validate': 'When you need to check or verify information',
+            'api': 'When you need to call external services or APIs',
+            'database': 'When you need to query or update database records',
+            'file': 'When you need to read, write, or manipulate files'
+        }
+        
+        for keyword, guidance in guidance_map.items():
+            if keyword in tool_name:
+                return guidance
+        
+        return f"When you need to use {tool.get('name', 'this tool')} functionality"
+    
+    def _generate_usage_examples(self, tool: Dict) -> List[str]:
+        """Generate usage examples for tool."""
+        tool_name = tool.get('name', 'tool')
+        parameters = tool.get('parameters', {})
+        
+        examples = []
+        
+        # Generate basic example
+        if parameters:
+            param_example = {}
+            for param_name, param_info in parameters.items():
+                param_type = param_info.get('type', 'string')
+                if param_type == 'string':
+                    param_example[param_name] = f"example_{param_name}"
+                elif param_type == 'integer':
+                    param_example[param_name] = 10
+                elif param_type == 'boolean':
+                    param_example[param_name] = True
+                elif param_type == 'array':
+                    param_example[param_name] = ["item1", "item2"]
+                else:
+                    param_example[param_name] = f"example_{param_name}"
+            
+            examples.append(f'{{"tool": "{tool_name}", "parameters": {param_example}}}')
+        
+        return examples
+    
+    def _create_parameter_descriptions(self, parameters: Dict) -> Dict[str, str]:
+        """Create clear parameter descriptions."""
+        descriptions = {}
+        
+        for param_name, param_info in parameters.items():
+            param_type = param_info.get('type', 'string')
+            param_desc = param_info.get('description', 'No description provided')
+            required = param_info.get('required', True)
+            
+            clear_desc = f"{param_desc} (Type: {param_type}"
+            if not required:
+                clear_desc += ", Optional"
+            clear_desc += ")"
+            
+            descriptions[param_name] = clear_desc
+        
+        return descriptions
+    
+    def _identify_common_mistakes(self, tool: Dict) -> List[str]:
+        """Identify common mistakes for this tool type."""
+        tool_name = tool.get('name', '').lower()
+        parameters = tool.get('parameters', {})
+        
+        mistakes = []
+        
+        # Common parameter naming mistakes
+        param_names = list(parameters.keys())
+        if 'query' in param_names:
+            mistakes.append("Don't use 'search_term' or 'q' - use 'query'")
+        if 'limit' in param_names:
+            mistakes.append("Don't use 'max_results' or 'count' - use 'limit'")
+        if 'format' in param_names:
+            mistakes.append("Don't use 'output_format' or 'type' - use 'format'")
+        
+        # Tool-specific mistakes
+        if 'search' in tool_name:
+            mistakes.append("Always provide a query parameter, never leave it empty")
+        elif 'calculate' in tool_name:
+            mistakes.append("Use mathematical expressions as strings, not separate numbers and operations")
+        elif 'api' in tool_name:
+            mistakes.append("Include all required headers and authentication parameters")
+        
+        return mistakes if mistakes else ["Follow the exact parameter names and types specified"]
+    
+    def _generate_llm_prompt_template(self, tool: Dict) -> str:
+        """Generate an LLM prompt template for using this tool."""
+        tool_name = tool.get('name', 'tool')
+        parameters = tool.get('parameters', {})
+        
+        template = f"To use {tool_name}:\n\n"
+        template += f'{{"tool": "{tool_name}", "parameters": {{\n'
+        
+        for i, (param_name, param_info) in enumerate(parameters.items()):
+            param_type = param_info.get('type', 'string')
+            param_desc = param_info.get('description', '')
+            
+            if param_type == 'string':
+                example_value = f'"your_{param_name}_here"'
+            elif param_type == 'integer':
+                example_value = '10'
+            elif param_type == 'boolean':
+                example_value = 'true'
+            elif param_type == 'array':
+                example_value = '["item1", "item2"]'
+            else:
+                example_value = f'"your_{param_name}_here"'
+            
+            template += f'  "{param_name}": {example_value}'
+            if param_desc:
+                template += f'  // {param_desc}'
+            
+            if i < len(parameters) - 1:
+                template += ','
+            template += '\n'
+        
+        template += '}}'
+        
+        return template
+
     def generate_comprehensive_analysis(
         self, 
         agent_outputs: List[Any], 

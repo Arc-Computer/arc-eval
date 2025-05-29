@@ -29,8 +29,8 @@ class BaseCommandHandler(ABC):
         """
         pass
     
-    def _load_agent_outputs(self, input_file: Optional[Path], stdin: bool) -> List[AgentOutput]:
-        """Load agent outputs from file or stdin."""
+    def _load_raw_data(self, input_file: Optional[Path], stdin: bool) -> Any:
+        """Load raw JSON data from file or stdin without conversion."""
         import sys
         import json
         
@@ -54,6 +54,12 @@ class BaseCommandHandler(ABC):
             except json.JSONDecodeError as e:
                 self.logger.error(f"Invalid JSON in file {input_file}: {e}")
                 raise
+        
+        return data
+    
+    def _load_agent_outputs(self, input_file: Optional[Path], stdin: bool) -> List[AgentOutput]:
+        """Load agent outputs from file or stdin and convert to AgentOutput objects."""
+        data = self._load_raw_data(input_file, stdin)
         
         # Convert to AgentOutput objects
         agent_outputs = []

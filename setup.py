@@ -9,10 +9,10 @@ with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
 setup(
-    name="agent-eval",
+    name="arc-eval",
     version="0.2.5",
-    author="AgentEval Team",
-    description="Domain-specific evaluation and compliance reporting for LLMs and AI agents",
+    author="ARC-Eval Team",
+    description="Agentic Workflow Reliability Platform - Debug, Comply, Improve",
     long_description=long_description,
     long_description_content_type="text/markdown",
     packages=find_packages(),
@@ -46,7 +46,8 @@ setup(
     },
     entry_points={
         "console_scripts": [
-            "agent-eval=agent_eval.cli:main",
+            "arc-eval=agent_eval.cli:main",
+            "agent-eval=agent_eval.cli:main",  # Legacy alias for backward compatibility
         ],
     },
     include_package_data=True,

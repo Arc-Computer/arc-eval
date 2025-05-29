@@ -495,6 +495,227 @@ Return JSON format:
         return f"""WHEN DONE → Re-run evaluation:
 arc-eval --domain {domain} --input improved_outputs.json --baseline {evaluation_id}.json"""
     
+    def suggest_framework_optimizations(self, framework: str, issues: List[Dict]) -> List[str]:
+        """
+        Generate objective, data-driven framework optimization suggestions.
+        
+        Replaces subjective opinions with statistical analysis and measured performance data.
+        """
+        try:
+            from agent_eval.evaluation.objective_analyzer import ObjectiveFrameworkAnalyzer
+            
+            # Extract performance data from issues for objective analysis
+            performance_data = self._extract_performance_data_from_issues(issues)
+            
+            # Use objective analyzer for data-driven recommendations
+            analyzer = ObjectiveFrameworkAnalyzer()
+            objective_recommendations = analyzer.analyze_framework_performance(framework, performance_data)
+            
+            # Convert objective recommendations to string format
+            suggestions = []
+            for rec in objective_recommendations:
+                if rec.strength.value != "insufficient":
+                    # Format: recommendation + evidence
+                    suggestion = f"{rec.recommendation_text} (Evidence: {rec.evidence_summary})"
+                    suggestions.append(suggestion)
+                    
+                    # Add framework alternatives if provided
+                    if rec.alternative_frameworks:
+                        alternatives = ", ".join(rec.alternative_frameworks)
+                        suggestions.append(f"Consider alternatives with better performance: {alternatives}")
+                else:
+                    # For insufficient data, provide generic guidance
+                    suggestions.append(rec.recommendation_text)
+            
+            # If no objective recommendations available, provide methodological guidance
+            if not suggestions:
+                suggestions = [
+                    "Insufficient performance data for evidence-based recommendations",
+                    "Collect metrics: response_time, success_rate, error_rate for objective analysis",
+                    f"Framework '{framework}' baseline: {self._get_framework_baseline_summary(framework)}",
+                    "Recommend minimum 20 samples for statistically significant analysis"
+                ]
+            
+            return suggestions[:6]  # Limit to most important recommendations
+            
+        except ImportError:
+            # Fallback to generic guidance if objective analyzer unavailable
+            return [
+                "Objective analysis unavailable - install required statistical dependencies",
+                "Monitor framework performance metrics: response time, success rate, error rate",
+                f"Compare against {framework} performance baselines",
+                "Collect sufficient data (n≥20) for statistical significance testing"
+            ]
+    
+    def _extract_performance_data_from_issues(self, issues: List[Dict]) -> List[Dict[str, Any]]:
+        """Extract performance metrics from issue data for objective analysis."""
+        performance_data = []
+        
+        for issue in issues:
+            # Extract any performance-related metrics from issue data
+            perf_entry = {}
+            
+            # Look for various performance indicators
+            if "response_time" in issue:
+                perf_entry["response_time"] = issue["response_time"]
+            if "avg_response_time" in issue:
+                perf_entry["response_time"] = issue["avg_response_time"]
+            if "success_rate" in issue:
+                perf_entry["success_rate"] = issue["success_rate"]
+            if "error_rate" in issue:
+                perf_entry["error_rate"] = issue["error_rate"]
+            if "failure_rate" in issue:
+                perf_entry["error_rate"] = issue["failure_rate"]
+            
+            # Include performance metrics from nested data
+            if "performance_metrics" in issue and isinstance(issue["performance_metrics"], dict):
+                perf_entry.update(issue["performance_metrics"])
+            
+            if perf_entry:  # Only add if we found performance data
+                performance_data.append(perf_entry)
+        
+        return performance_data
+    
+    def _get_framework_baseline_summary(self, framework: str) -> str:
+        """Get a summary of framework baseline expectations."""
+        try:
+            from agent_eval.core.constants import FRAMEWORK_EXPECTED_PERFORMANCE
+            baseline = FRAMEWORK_EXPECTED_PERFORMANCE.get(framework, {})
+            
+            if baseline:
+                response_time = baseline.get("avg_response_time", "N/A")
+                reliability = baseline.get("reliability_score", "N/A")
+                return f"Expected {response_time}s response time, {reliability:.0%} reliability"
+            else:
+                return "No established baseline available"
+        except ImportError:
+            return "Baseline data unavailable"
+    
+    def analyze_framework_performance_patterns(self, framework: str, performance_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Analyze framework-specific performance patterns and identify optimization opportunities."""
+        
+        analysis = {
+            "framework": framework,
+            "performance_issues": [],
+            "optimization_opportunities": [],
+            "severity_assessment": "low",
+            "recommended_actions": []
+        }
+        
+        # Framework-specific performance analysis
+        if framework == "crewai":
+            # Check for CrewAI-specific issues
+            avg_response_time = performance_data.get("avg_response_time", 0)
+            if avg_response_time > 25:  # 25+ seconds is problematic for CrewAI
+                analysis["performance_issues"].append({
+                    "type": "slow_delegation",
+                    "severity": "high",
+                    "description": f"Average response time {avg_response_time:.1f}s exceeds recommended threshold",
+                    "evidence": f"CrewAI delegation taking {avg_response_time:.1f}s on average"
+                })
+                analysis["optimization_opportunities"].append({
+                    "type": "framework_alternative",
+                    "description": "Consider LangChain or AutoGen for faster execution",
+                    "expected_improvement": "50-70% faster response times"
+                })
+                analysis["severity_assessment"] = "high"
+        
+        elif framework == "langchain":
+            # Check for LangChain abstraction overhead
+            abstraction_overhead = performance_data.get("abstraction_overhead", 0)
+            if abstraction_overhead > 0.3:
+                analysis["performance_issues"].append({
+                    "type": "abstraction_overhead",
+                    "severity": "medium",
+                    "description": f"High abstraction overhead detected ({abstraction_overhead:.2f})",
+                    "evidence": "Multiple intermediate steps and agent scratchpad usage"
+                })
+                analysis["optimization_opportunities"].append({
+                    "type": "direct_api_calls",
+                    "description": "Replace complex chains with direct LLM API calls for simple tasks",
+                    "expected_improvement": "30-50% reduction in response time"
+                })
+        
+        elif framework == "autogen":
+            # Check for conversation bloat
+            memory_leaks = performance_data.get("memory_leaks", [])
+            if "excessive_conversation_history" in memory_leaks:
+                analysis["performance_issues"].append({
+                    "type": "memory_bloat",
+                    "severity": "medium",
+                    "description": "Excessive conversation history causing memory issues",
+                    "evidence": "Long conversation threads without pruning"
+                })
+                analysis["optimization_opportunities"].append({
+                    "type": "conversation_management",
+                    "description": "Implement conversation summarization and history pruning",
+                    "expected_improvement": "20-40% better memory efficiency"
+                })
+        
+        # Add general recommendations based on issues found
+        if analysis["performance_issues"]:
+            analysis["recommended_actions"] = self.suggest_framework_optimizations(
+                framework, 
+                analysis["performance_issues"]
+            )
+        
+        return analysis
+    
+    def generate_framework_comparison_report(self, framework_analyses: Dict[str, Dict]) -> str:
+        """Generate a comparative analysis of different frameworks for the same workload."""
+        
+        if not framework_analyses:
+            return "No framework analyses available for comparison."
+        
+        report_lines = ["# Framework Performance Comparison\n"]
+        
+        # Summary table
+        report_lines.append("## Performance Summary\n")
+        report_lines.append("| Framework | Avg Response Time | Success Rate | Performance Issues | Recommendation |")
+        report_lines.append("|-----------|-------------------|--------------|-------------------|----------------|")
+        
+        for framework, analysis in framework_analyses.items():
+            avg_time = analysis.get("avg_response_time", 0)
+            success_rate = analysis.get("success_rate", 0)
+            issue_count = len(analysis.get("performance_issues", []))
+            severity = analysis.get("severity_assessment", "low")
+            
+            recommendation = "✅ Good" if severity == "low" else "⚠️ Issues" if severity == "medium" else "❌ Poor"
+            
+            report_lines.append(f"| {framework.title()} | {avg_time:.1f}s | {success_rate:.1%} | {issue_count} | {recommendation} |")
+        
+        # Detailed analysis for each framework
+        report_lines.append("\n## Detailed Analysis\n")
+        
+        for framework, analysis in framework_analyses.items():
+            report_lines.append(f"### {framework.title()}")
+            
+            # Performance issues
+            issues = analysis.get("performance_issues", [])
+            if issues:
+                report_lines.append("\n**Performance Issues:**")
+                for issue in issues:
+                    severity_emoji = "🔴" if issue["severity"] == "high" else "🟡" if issue["severity"] == "medium" else "🟢"
+                    report_lines.append(f"- {severity_emoji} {issue['type'].replace('_', ' ').title()}: {issue['description']}")
+            
+            # Optimization opportunities
+            opportunities = analysis.get("optimization_opportunities", [])
+            if opportunities:
+                report_lines.append("\n**Optimization Opportunities:**")
+                for opp in opportunities:
+                    report_lines.append(f"- {opp['description']} (Expected: {opp['expected_improvement']})")
+            
+            # Recommendations
+            recommendations = analysis.get("recommended_actions", [])
+            if recommendations:
+                report_lines.append("\n**Recommended Actions:**")
+                for i, rec in enumerate(recommendations[:5], 1):  # Top 5 recommendations
+                    report_lines.append(f"{i}. {rec}")
+            
+            report_lines.append("")  # Empty line between frameworks
+        
+        return "\n".join(report_lines)
+
     def _save_plan_to_markdown(self, plan: ImprovementPlan, output_file: Path) -> None:
         """Save improvement plan as formatted markdown."""
         

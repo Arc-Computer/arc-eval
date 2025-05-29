@@ -12,7 +12,29 @@ from pathlib import Path
 from unittest.mock import patch
 from click.testing import CliRunner
 
-from agent_eval.cli import main, find_latest_evaluation_file, improvement_plan_exists
+from agent_eval.cli import legacy_main as main
+
+# Helper functions for tests
+def find_latest_evaluation_file():
+    """Find the most recent evaluation file."""
+    evaluation_files = list(Path.cwd().glob("*_evaluation_*.json"))
+    if not evaluation_files:
+        return None
+    evaluation_files.sort(key=lambda f: f.stat().st_mtime, reverse=True)
+    return evaluation_files[0]
+
+def improvement_plan_exists(eval_file):
+    """Check if improvement plan exists for given evaluation file."""
+    # Extract timestamp from evaluation file
+    eval_timestamp = eval_file.stem.split('_')[-2:]
+    
+    # Look for improvement plans created after this evaluation
+    plan_files = list(Path.cwd().glob("improvement_plan_*.md"))
+    for plan in plan_files:
+        plan_timestamp = plan.stem.split('_')[-2:]
+        if plan_timestamp >= eval_timestamp:
+            return plan
+    return None
 
 
 class TestIntelligentWorkflow:

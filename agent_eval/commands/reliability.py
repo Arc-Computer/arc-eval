@@ -21,12 +21,15 @@ class ReliabilityCommandHandler(BaseCommandHandler):
         debug_agent = kwargs.get('debug_agent', False)
         unified_debug = kwargs.get('unified_debug', False)
         workflow_reliability = kwargs.get('workflow_reliability', False)
+        schema_validation = kwargs.get('schema_validation', False)
         
         try:
             if debug_agent or unified_debug:
                 return self._handle_unified_debugging(**kwargs)
             elif workflow_reliability:
                 return self._handle_workflow_reliability_analysis(**kwargs)
+            elif schema_validation:
+                return self._handle_schema_validation(**kwargs)
             else:
                 self.logger.error("No reliability command specified")
                 return 1
@@ -192,6 +195,53 @@ class ReliabilityCommandHandler(BaseCommandHandler):
                 # Display confidence and recommendation strength
                 console.print(f"\\n🎯 [bold]Analysis Confidence:[/bold] {perf.analysis_confidence:.1%}")
                 console.print(f"📈 [bold]Recommendation Strength:[/bold] {perf.recommendation_strength}")
+                
+                # Objective performance analysis with statistical backing
+                try:
+                    from agent_eval.evaluation.objective_analyzer import ObjectiveFrameworkAnalyzer
+                    
+                    # Extract performance data for objective analysis
+                    perf_data = []
+                    if hasattr(perf, 'avg_response_time') and perf.avg_response_time > 0:
+                        perf_data.append({"response_time": perf.avg_response_time})
+                    if hasattr(perf, 'success_rate'):
+                        perf_data.append({"success_rate": perf.success_rate})
+                    if hasattr(perf, 'tool_call_failure_rate'):
+                        perf_data.append({"error_rate": perf.tool_call_failure_rate})
+                    
+                    if perf_data:
+                        analyzer = ObjectiveFrameworkAnalyzer()
+                        objective_recs = analyzer.analyze_framework_performance(framework, perf_data)
+                        
+                        for rec in objective_recs:
+                            if rec.strength.value in ["strong", "moderate"]:
+                                console.print(f"\\n🚨 [bold red]Statistical Performance Alert:[/bold red]")
+                                console.print(f"{rec.recommendation_text}")
+                                console.print(f"📊 Evidence: {rec.evidence_summary}")
+                                console.print(f"🔬 Statistical Strength: {rec.strength.value}")
+                                
+                                if rec.alternative_frameworks:
+                                    alternatives = ", ".join(rec.alternative_frameworks)
+                                    console.print(f"📈 Better performing alternatives: {alternatives}")
+                            elif rec.strength.value == "weak":
+                                console.print(f"\\n🟡 [bold yellow]Performance Notice:[/bold yellow]")
+                                console.print(f"{rec.recommendation_text}")
+                                console.print(f"📊 Evidence: {rec.evidence_summary}")
+                                console.print(f"⚠️ Note: Limited statistical confidence (more data recommended)")
+                    
+                except ImportError:
+                    # Fallback to threshold-based alerts without subjective recommendations
+                    from agent_eval.core.constants import CREWAI_SLOW_RESPONSE_THRESHOLD, LANGCHAIN_ABSTRACTION_OVERHEAD_THRESHOLD
+                    
+                    if framework == "crewai" and perf.avg_response_time > CREWAI_SLOW_RESPONSE_THRESHOLD:
+                        console.print(f"\\n🚨 [bold red]Performance Alert:[/bold red]")
+                        console.print(f"Response time {perf.avg_response_time:.1f}s exceeds {CREWAI_SLOW_RESPONSE_THRESHOLD}s threshold")
+                        console.print("📊 Objective analysis: Response time measurement above established baseline")
+                    
+                    elif framework == "langchain" and hasattr(perf, 'abstraction_overhead') and perf.abstraction_overhead > LANGCHAIN_ABSTRACTION_OVERHEAD_THRESHOLD:
+                        console.print(f"\\n🚨 [bold yellow]Complexity Alert:[/bold yellow]")
+                        console.print(f"Abstraction overhead {perf.abstraction_overhead:.1%} exceeds {LANGCHAIN_ABSTRACTION_OVERHEAD_THRESHOLD:.1%} threshold")
+                        console.print("📊 Objective analysis: Measured overhead above baseline")
             
             # Display comprehensive reliability dashboard
             console.print(f"\\n🔍 Generating comprehensive reliability analysis...")
@@ -233,8 +283,186 @@ class ReliabilityCommandHandler(BaseCommandHandler):
         
         return 0
     
+    def _handle_schema_validation(self, **kwargs) -> int:
+        """Handle schema validation and LLM-friendly schema generation."""
+        
+        console.print("🔍 [bold cyan]Schema Validation & Tool Alignment Analysis[/bold cyan]")
+        console.print("Detecting prompt-tool mismatch and auto-generating LLM-friendly schemas\\n")
+        
+        # Load and validate inputs
+        agent_outputs, _ = self._load_and_validate_inputs(**kwargs)
+        if agent_outputs is None:
+            return 1
+        
+        dev = kwargs.get('dev', False)
+        framework = kwargs.get('framework')
+        
+        console.print(f"🔍 Analyzing {len(agent_outputs)} agent outputs for schema mismatches...")
+        
+        try:
+            from agent_eval.evaluation.reliability_validator import ReliabilityAnalyzer
+            
+            analyzer = ReliabilityAnalyzer()
+            
+            # Detect schema mismatches
+            schema_issues = analyzer.detect_schema_mismatches(agent_outputs)
+            
+            if schema_issues:
+                console.print(f"\\n🚨 [bold red]Schema Mismatches Detected ({len(schema_issues)} issues):[/bold red]")
+                
+                for i, issue in enumerate(schema_issues, 1):
+                    console.print(f"\\n{i}. [yellow]{issue.get('tool_name', 'Unknown Tool')}[/yellow]")
+                    
+                    if 'expected_parameter' in issue and 'actual_parameter' in issue:
+                        console.print(f"   Expected: [green]'{issue['expected_parameter']}'[/green]")
+                        console.print(f"   Got: [red]'{issue['actual_parameter']}'[/red]")
+                    elif 'expected_parameters' in issue and 'actual_parameters' in issue:
+                        console.print(f"   Expected parameters: [green]{', '.join(issue['expected_parameters'])}[/green]")
+                        console.print(f"   Actual parameters: [red]{', '.join(issue['actual_parameters'])}[/red]")
+                        
+                        if issue.get('missing_parameters'):
+                            console.print(f"   Missing: [red]{', '.join(issue['missing_parameters'])}[/red]")
+                        if issue.get('unexpected_parameters'):
+                            console.print(f"   Unexpected: [yellow]{', '.join(issue['unexpected_parameters'])}[/yellow]")
+                    
+                    console.print(f"   💡 [bold]Fix:[/bold] {issue.get('suggested_fix', 'Review tool schema')}")
+            else:
+                console.print("\\n✅ [bold green]No schema mismatches detected![/bold green]")
+                console.print("All tool calls appear to match their expected schemas.")
+            
+            # Extract tool definitions from outputs for LLM-friendly generation
+            tool_definitions = []
+            for output in agent_outputs:
+                if isinstance(output, dict) and 'tool_definition' in output:
+                    tool_definitions.append(output['tool_definition'])
+            
+            # Generate LLM-friendly schemas if tool definitions found
+            if tool_definitions:
+                console.print(f"\\n🔧 [bold cyan]Auto-Generated LLM-Friendly Schemas:[/bold cyan]")
+                
+                friendly_schemas = analyzer.generate_llm_friendly_schemas(tool_definitions)
+                
+                for tool_name, schema_info in friendly_schemas.items():
+                    console.print(f"\\n📋 [bold]{tool_name}[/bold]")
+                    console.print(f"[dim]{schema_info['description']}[/dim]")
+                    
+                    if schema_info.get('examples'):
+                        console.print("\\n[cyan]Example usage:[/cyan]")
+                        from agent_eval.core.constants import MAX_EXAMPLES_TO_SHOW
+                        for example in schema_info['examples'][:MAX_EXAMPLES_TO_SHOW]:
+                            console.print(f"[dim]{example}[/dim]")
+                    
+                    if schema_info.get('common_mistakes'):
+                        console.print("\\n⚠️ [yellow]Common mistakes to avoid:[/yellow]")
+                        from agent_eval.core.constants import MAX_COMMON_MISTAKES_TO_SHOW
+                        for mistake in schema_info['common_mistakes'][:MAX_COMMON_MISTAKES_TO_SHOW]:
+                            console.print(f"  • {mistake}")
+            else:
+                console.print("\\n💡 [bold cyan]LLM-Friendly Schema Generation:[/bold cyan]")
+                console.print("No tool definitions found in agent outputs.")
+                console.print("To generate optimized schemas, include tool definitions in your input data.")
+            
+            # Framework-specific schema guidance
+            if framework:
+                console.print(f"\\n🎯 [bold]{framework.upper()} Framework Schema Guidance:[/bold]")
+                
+                framework_guidance = {
+                    "openai": [
+                        "Use 'functions' array with proper JSON schema definitions",
+                        "Ensure parameter types match exactly (string, integer, boolean, array, object)",
+                        "Include clear 'description' fields for both function and parameters"
+                    ],
+                    "anthropic": [
+                        "Use tool_use blocks with structured parameter definitions",
+                        "Ensure XML-style tool calls match parameter names exactly",
+                        "Include examples of proper tool call format in prompts"
+                    ],
+                    "langchain": [
+                        "Define tools with proper Pydantic models or function signatures",
+                        "Use structured tool definitions in agent initialization",
+                        "Ensure tool names match function names exactly"
+                    ],
+                    "crewai": [
+                        "Define tools in agent configuration with clear schemas",
+                        "Use proper tool decorators and type hints",
+                        "Ensure tool names are consistent across agents"
+                    ],
+                    "autogen": [
+                        "Register functions with proper type annotations",
+                        "Use consistent function naming across conversation agents",
+                        "Include function descriptions in agent system messages"
+                    ],
+                    "google_adk": [
+                        "Use proper functionCall schema definitions with Vertex AI",
+                        "Ensure parameter types align with Google AI model expectations",
+                        "Include comprehensive function descriptions and examples"
+                    ],
+                    "agno": [
+                        "Define structured outputs with proper schema validation",
+                        "Use consistent tool naming conventions across agent runs",
+                        "Include clear parameter documentation for agent understanding"
+                    ],
+                    "nvidia_aiq": [
+                        "Follow AIQ pipeline component schema requirements",
+                        "Ensure tool definitions align with workflow execution patterns",
+                        "Use proper parameter validation for pipeline components"
+                    ]
+                }
+                
+                guidance = framework_guidance.get(framework, [
+                    "Follow framework-specific tool definition patterns",
+                    "Ensure parameter names and types are consistent",
+                    "Include clear documentation for all tool parameters"
+                ])
+                
+                for tip in guidance:
+                    console.print(f"  • {tip}")
+            
+            # Summary and metrics
+            console.print(f"\\n📊 [bold]Schema Validation Summary:[/bold]")
+            console.print(f"  • Agent outputs analyzed: {len(agent_outputs)}")
+            console.print(f"  • Schema mismatches found: {len(schema_issues)}")
+            console.print(f"  • Tool definitions processed: {len(tool_definitions)}")
+            console.print(f"  • Framework: {framework if framework else 'Auto-detected'}")
+            
+            # Calculate schema mismatch rate
+            if agent_outputs:
+                mismatch_rate = len(schema_issues) / len(agent_outputs)
+                console.print(f"  • Schema mismatch rate: {mismatch_rate:.1%}")
+                
+                if mismatch_rate > 0.1:
+                    console.print("  🔴 [red]High mismatch rate - significant schema issues detected[/red]")
+                elif mismatch_rate > 0.05:
+                    console.print("  🟡 [yellow]Moderate mismatch rate - some schema optimization needed[/yellow]")
+                else:
+                    console.print("  ✅ [green]Low mismatch rate - schemas are well-aligned[/green]")
+            
+            if dev:
+                console.print(f"\\n[dim]Debug: Processed {len(agent_outputs)} outputs, "
+                            f"found {len(schema_issues)} issues, "
+                            f"generated {len(tool_definitions)} friendly schemas[/dim]")
+        
+        except ImportError as e:
+            console.print(f"[red]Schema validation unavailable:[/red] {e}")
+            return 1
+        
+        # Offer judge-based validation for enhanced analysis
+        console.print(f"\\n🎯 [bold cyan]Enhanced Validation Available:[/bold cyan]")
+        console.print("For deeper schema analysis, use Agent-as-a-Judge validation:")
+        console.print(f"[green]arc-eval --compare-judges config/judge_comparison_templates.yaml --input data.json[/green]")
+        console.print("✨ Features framework-specific schema validation judges")
+        
+        # Next steps
+        console.print(f"\\n💡 [bold]Next Steps:[/bold]")
+        console.print("1. Fix identified schema mismatches using suggested improvements")
+        console.print("2. Use generated LLM-friendly schemas in your prompts")
+        console.print("3. Test improved schemas: [green]arc-eval --schema-validation --input updated_data.json[/green]")
+        console.print("4. Run full reliability analysis: [green]arc-eval --workflow-reliability --input data.json[/green]")
+        
+        return 0
+
     def _load_and_validate_inputs(self, **kwargs) -> tuple[Optional[List[Any]], Optional[str]]:
-        """Load and validate input data using base class method for consistency."""
+        """Load and validate input data for reliability analysis."""
         from pathlib import Path
         
         input_file = kwargs.get('input_file')
@@ -245,8 +473,17 @@ class ReliabilityCommandHandler(BaseCommandHandler):
         input_path = Path(input_file) if input_file else None
 
         try:
-            # Use base class method for consistent input handling
-            agent_outputs = self._load_agent_outputs(input_path, stdin)
+            # Use base class method for consistent input loading
+            data = self._load_raw_data(input_path, stdin)
+            
+            # Return raw data for reliability analysis (not converted to AgentOutput)
+            if isinstance(data, list):
+                agent_outputs = data
+            elif isinstance(data, dict):
+                agent_outputs = [data]
+            else:
+                console.print(f"[red]Invalid data format:[/red] expected list or dict, got {type(data)}")
+                return None, None
             
             input_source = "stdin" if stdin else str(input_path) if input_path else "unknown"
             
