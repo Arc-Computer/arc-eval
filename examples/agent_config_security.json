@@ -5,7 +5,7 @@
     "version": "2.1.0",
     "description": "Analyzes code and systems for security vulnerabilities"
   },
-  "model": "claude-2",
+  "model": "claude-3-5-haiku-latest",
   "temperature": 0.1,
   "max_tokens": 4000,
   "framework": "anthropic",
