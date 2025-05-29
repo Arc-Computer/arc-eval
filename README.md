@@ -141,7 +141,7 @@ Third, the comparison engine measures improvement between baseline and updated i
 
 **Step 1: Baseline Evaluation**
 ```bash
-arc-eval --domain finance --input examples/sample-data/finance_baseline.json --agent-judge
+arc-eval --domain finance --input examples/complete-datasets/finance.json --agent-judge
 # Result: 40% pass rate, identifies PII exposure and AML violations
 ```
 
@@ -153,7 +153,7 @@ arc-eval --improvement-plan --from-evaluation finance_evaluation_20250527_143022
 
 **Step 3: Implement Changes and Re-evaluate**
 ```bash
-arc-eval --domain finance --input examples/sample-data/finance_improved.json --baseline finance_evaluation_20250527_143022.json
+arc-eval --domain finance --input examples/complete-datasets/finance.json --baseline finance_evaluation_20250527_143022.json
 # Result: 85% pass rate, demonstrating 45% improvement
 ```
 

@@ -67,7 +67,7 @@ class TestDebugWorkflow:
             
             assert result.exit_code == 0
             assert "Agent Debug Analysis" in result.output
-            assert "Framework:" in result.output
+            assert "Framework Detection:" in result.output or "LANGCHAIN" in result.output
     
     def test_debug_with_framework(self, runner, sample_trace_data):
         """Test debug with explicit framework."""

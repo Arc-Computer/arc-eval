@@ -140,13 +140,13 @@ ls *evaluation*.json  # Check auto-generated files
 If your data has issues, use provided samples:
 ```bash
 # Finance demo
-arc-eval --domain finance --input examples/demo-data/finance.json --agent-judge
+arc-eval --domain finance --input examples/complete-datasets/finance.json --agent-judge
 
 # Security demo  
-arc-eval --domain security --input examples/demo-data/security.json --agent-judge
+arc-eval --domain security --input examples/complete-datasets/security.json --agent-judge
 
 # ML demo
-arc-eval --domain ml --input examples/demo-data/ml.json --agent-judge
+arc-eval --domain ml --input examples/complete-datasets/ml.json --agent-judge
 ```
 
 ## Success Metrics to Track

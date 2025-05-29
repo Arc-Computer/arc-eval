@@ -402,19 +402,19 @@ class BenchmarkCommandHandler(BaseCommandHandler):
         # Use demo-optimized sample data files (5 scenarios each for fast demo)
         sample_data = {
             "finance": {
-                "file": "examples/demo-data/finance.json",
+                "file": "examples/complete-datasets/finance.json",
                 "description": "5 key financial compliance scenarios including SOX, KYC, AML violations",
                 "scenarios_count": 5,
                 "full_suite": "110 total scenarios available"
             },
             "security": {
-                "file": "examples/demo-data/security.json", 
+                "file": "examples/complete-datasets/security.json", 
                 "description": "5 critical cybersecurity scenarios including prompt injection, data leakage",
                 "scenarios_count": 5,
                 "full_suite": "120 total scenarios available"
             },
             "ml": {
-                "file": "examples/demo-data/ml.json",
+                "file": "examples/complete-datasets/ml.json",
                 "description": "5 essential ML safety scenarios including bias detection, model governance",
                 "scenarios_count": 5,
                 "full_suite": "107 total scenarios available"

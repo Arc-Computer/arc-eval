@@ -4,13 +4,8 @@ This directory contains comprehensive examples, datasets, and integration guides
 
 ## 📁 Directory Structure
 
-### 🚀 [Demo Data](demo-data/)
-Quick demo datasets optimized for customer presentations (5 scenarios each)
-- **finance.json**: Financial compliance scenarios
-- **security.json**: Cybersecurity scenarios  
-- **ml.json**: ML safety scenarios
-
-Used automatically with: `arc-eval --quick-start --domain <domain>`
+### 🚀 Quick Start Data
+Quick demo data is automatically generated when using `arc-eval --quick-start --domain <domain>`
 
 ### 📊 [Complete Datasets](complete-datasets/)
 Full evaluation datasets for comprehensive testing

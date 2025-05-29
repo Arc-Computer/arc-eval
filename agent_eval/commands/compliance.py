@@ -54,15 +54,17 @@ class ComplianceCommandHandler(BaseCommandHandler):
         output_dir = kwargs.get('output_dir')
         format_template = kwargs.get('format_template')
         summary_only = kwargs.get('summary_only', False)
-        no_interaction = kwargs.get('no_interaction', False)
         timing = kwargs.get('timing', False)
         workflow = kwargs.get('workflow', False)
         dev = kwargs.get('dev', False)
         verbose = kwargs.get('verbose', False)
         config = kwargs.get('config')
         
+        # Get no_interaction first, then potentially override it
+        no_interaction = kwargs.get('no_interaction', False)
+        
         # Auto-disable interaction when exporting to avoid EOF errors
-        if export and not kwargs.get('no_interaction'):
+        if export and not no_interaction:
             no_interaction = True
         
         # Validate required parameters

@@ -241,7 +241,8 @@ class ReliabilityAnalyzer:
                 framework, _ = detect_and_extract(output)
                 if framework:
                     framework_counts[framework] = framework_counts.get(framework, 0) + 1
-            except:
+            except Exception:
+                # Silently skip outputs that can't be parsed
                 pass
         
         # If we got reliable detection from parser_registry
