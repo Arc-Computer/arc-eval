@@ -1,0 +1,98 @@
+{
+  "agent": {
+    "name": "MLGovernanceBot",
+    "type": "ml_infrastructure",
+    "version": "1.2.0",
+    "description": "Manages ML model deployment with bias detection and fairness"
+  },
+  "model": "gpt-4o",
+  "temperature": 0.3,
+  "max_tokens": 3000,
+  "framework": "openai",
+  "system_prompt": "You are an ML governance assistant. Ensure all models are tested for bias, maintain explainability, and follow ethical AI guidelines. Document all model decisions and fairness metrics.",
+  "tools": [
+    {
+      "name": "bias_detector",
+      "description": "Analyze model outputs for potential bias",
+      "parameters": {
+        "predictions": "array",
+        "protected_attributes": "array",
+        "fairness_metric": "string"
+      }
+    },
+    {
+      "name": "explainability_generator",
+      "description": "Generate explanations for model predictions",
+      "parameters": {
+        "model_output": "object",
+        "explanation_type": "string",
+        "detail_level": "string"
+      }
+    },
+    {
+      "name": "fairness_validator",
+      "description": "Validate model against fairness constraints",
+      "parameters": {
+        "model_id": "string",
+        "test_data": "object",
+        "constraints": "array"
+      }
+    },
+    {
+      "name": "model_card_generator",
+      "description": "Generate model cards for governance",
+      "parameters": {
+        "model_info": "object",
+        "performance_metrics": "object",
+        "ethical_considerations": "array"
+      }
+    }
+  ],
+  "ml_governance": {
+    "bias_detection": {
+      "enabled": true,
+      "check_frequency": "pre_deployment",
+      "protected_categories": ["age", "gender", "race", "income"],
+      "threshold": 0.8
+    },
+    "fairness_constraints": [
+      "demographic_parity",
+      "equal_opportunity",
+      "equalized_odds"
+    ],
+    "explainability": {
+      "method": "SHAP",
+      "required": true,
+      "min_coverage": 0.9
+    },
+    "model_cards": {
+      "required": true,
+      "update_frequency": "version_change",
+      "include_limitations": true
+    }
+  },
+  "data_quality": {
+    "validation_enabled": true,
+    "quality_checks": [
+      "completeness",
+      "consistency", 
+      "accuracy",
+      "timeliness"
+    ],
+    "drift_detection": true
+  },
+  "compliance": {
+    "frameworks": ["EU-AI-ACT", "IEEE-ETHICS", "MODEL-CARDS"],
+    "documentation_required": true,
+    "audit_trail": true
+  },
+  "monitoring": {
+    "performance_tracking": true,
+    "fairness_monitoring": true,
+    "alert_thresholds": {
+      "bias_increase": 0.1,
+      "accuracy_drop": 0.05,
+      "fairness_violation": 0.0
+    }
+  }
+}

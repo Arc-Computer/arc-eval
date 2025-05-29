@@ -1,0 +1,79 @@
+{
+  "agent": {
+    "name": "SecurityAnalysisBot", 
+    "type": "security_scanner",
+    "version": "2.1.0",
+    "description": "Analyzes code and systems for security vulnerabilities"
+  },
+  "model": "claude-3-5-haiku-latest",
+  "temperature": 0.1,
+  "max_tokens": 4000,
+  "framework": "anthropic",
+  "system_prompt": "You are a security analysis assistant. Identify vulnerabilities, suggest remediation, but never expose actual exploit code. Sanitize all inputs to prevent injection attacks. Follow OWASP guidelines.",
+  "tools": [
+    {
+      "name": "vulnerability_scanner",
+      "description": "Scan code for security vulnerabilities",
+      "parameters": {
+        "code": "string",
+        "language": "string",
+        "scan_depth": "string"
+      }
+    },
+    {
+      "name": "auth_validator",
+      "description": "Validate authentication and authorization flows",
+      "parameters": {
+        "auth_flow": "object",
+        "check_type": "string"
+      }
+    },
+    {
+      "name": "injection_detector",
+      "description": "Detect potential injection attacks in inputs",
+      "parameters": {
+        "input": "string",
+        "context": "string"
+      }
+    },
+    {
+      "name": "security_logger",
+      "description": "Log security events and incidents",
+      "parameters": {
+        "event_type": "string",
+        "severity": "string",
+        "details": "object"
+      }
+    }
+  ],
+  "validation": {
+    "input_sanitization": true,
+    "escape_special_chars": true,
+    "validate_urls": true,
+    "filter_commands": true
+  },
+  "security": {
+    "enforce_boundaries": true,
+    "data_isolation": "strict",
+    "prevent_data_leakage": true,
+    "security_logging": {
+      "enabled": true,
+      "log_level": "info",
+      "alert_on": ["injection", "auth_failure", "data_breach"]
+    }
+  },
+  "error_handling": {
+    "sanitized_errors": true,
+    "hide_stack_traces": true,
+    "generic_messages": {
+      "auth_failure": "Authentication failed",
+      "validation_error": "Invalid input provided",
+      "system_error": "An error occurred"
+    }
+  },
+  "compliance": {
+    "frameworks": ["OWASP-TOP-10", "NIST-AI-RMF", "ISO-27001"],
+    "vulnerability_disclosure": "responsible",
+    "incident_response": "automated"
+  }
+}

@@ -549,6 +549,110 @@ class ResultRenderer:
             if scenarios_per_sec >= 1:
                 console.print(f"• 10,000 scenarios: ~{10000 / scenarios_per_sec / 60:.1f} minutes")
     
+    def display_test_harness_results(self, results: Any) -> None:
+        """Display test harness results with enterprise-quality UI."""
+        from rich.table import Table
+        from rich.panel import Panel
+        from rich.progress import Progress, BarColumn, TextColumn
+        from rich import box
+        
+        # Header
+        console.print("\n🔍 [bold cyan]Agent Debug Analysis[/bold cyan]")
+        console.print("═" * 60 + "\n")
+        
+        # Input type detection
+        console.print(f"Detected: [bold green]Agent Configuration File[/bold green]")
+        console.print("Running Proactive Test Harness...\n")
+        
+        # Create main results panel
+        table = Table(
+            title="🧪 Proactive Failure Testing",
+            box=box.ROUNDED,
+            show_header=True,
+            header_style="bold white on blue",
+            border_style="blue",
+            expand=True
+        )
+        
+        table.add_column("Test Category", style="cyan", width=25)
+        table.add_column("Visual Progress", width=30)
+        table.add_column("Score", justify="right", width=10)
+        table.add_column("Status", justify="center", width=8)
+        
+        # Add test results with visual progress bars
+        for category_name, category in results.categories.items():
+            # Create visual progress bar
+            filled = int(category.pass_rate * 20)
+            empty = 20 - filled
+            progress_bar = f"[green]{'█' * filled}[/green][dim]{'░' * empty}[/dim]"
+            
+            # Determine status icon and color
+            if category.pass_rate >= 0.8:
+                status = "✅"
+                score_color = "green"
+            elif category.pass_rate >= 0.6:
+                status = "⚠️"
+                score_color = "yellow"
+            else:
+                status = "❌"
+                score_color = "red"
+            
+            # Format category name
+            formatted_name = category_name.replace("_", " ").title()
+            
+            table.add_row(
+                formatted_name,
+                progress_bar,
+                f"[{score_color}]{category.pass_rate:.0%}[/{score_color}]",
+                status
+            )
+        
+        # Display the table
+        console.print(table)
+        
+        # Overall reliability assessment
+        risk_color = "red" if results.risk_level == "HIGH" else "yellow" if results.risk_level == "MEDIUM" else "green"
+        risk_text = "HIGH RISK" if results.risk_level == "HIGH" else "MEDIUM RISK" if results.risk_level == "MEDIUM" else "LOW RISK"
+        
+        console.print(f"\nOverall Reliability: [{risk_color}]{results.overall_pass_rate:.0%}[/{risk_color}] ([{risk_color}]{risk_text}[/{risk_color}])")
+        
+        # Value analysis panel
+        value_panel = Panel.fit(
+            f"[bold]💰 Value Analysis:[/bold]\n"
+            f"• Would prevent {results.value_metrics['predicted_failure_prevention']} of common production failures\n"
+            f"• Time saved: ~{results.value_metrics['estimated_time_saved']} per incident\n"
+            f"• {'✅ Recommended' if results.value_metrics['recommended_for_production'] else '❌ Not recommended'}: "
+            f"{'Ready for production' if results.value_metrics['recommended_for_production'] else 'Fix issues before deployment'}",
+            title="[bold cyan]Business Impact[/bold cyan]",
+            border_style="cyan"
+        )
+        console.print("\n", value_panel)
+        
+        # Recommendations
+        if results.recommendations:
+            console.print("\n[bold yellow]🔧 Top Recommendations:[/bold yellow]")
+            for i, rec in enumerate(results.recommendations[:3], 1):
+                console.print(f"{i}. {rec}")
+        
+        # Detailed failure breakdown (if any failures)
+        failures = []
+        for category_name, category in results.categories.items():
+            if category.failed > 0:
+                for test in category.tests:
+                    if not test.get("passed"):
+                        failures.append({
+                            "category": category_name,
+                            "test": test.get("name", "Unknown"),
+                            "message": test.get("message", ""),
+                            "severity": test.get("severity", "MEDIUM")
+                        })
+        
+        if failures and len(failures) <= 5:  # Show up to 5 specific failures
+            console.print("\n[bold red]❌ Critical Failures Detected:[/bold red]")
+            for failure in failures[:5]:
+                severity_color = "red" if failure["severity"] == "HIGH" else "yellow"
+                console.print(f"  • [{severity_color}]{failure['test']}[/{severity_color}]: {failure['message']}")
+
     def _get_domain_info(self) -> dict:
         """Get centralized domain information to avoid duplication."""
         return {
