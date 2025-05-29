@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "arc-eval"
-version = "0.2.5"
+version = "0.2.6"
 description = "ARC-Eval: Agent Reliability & Compliance evaluation platform for LLMs and AI agents"
 readme = "README.md"
 license = "MIT"
