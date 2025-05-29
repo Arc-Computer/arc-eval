@@ -1,0 +1,45 @@
+{
+  "trace_id": "trace_12345",
+  "timestamp": "2024-01-15T10:30:00Z",
+  "agent": "FinancialTransactionBot",
+  "framework": "langchain",
+  "status": "failed",
+  "error": {
+    "type": "PII_EXPOSURE",
+    "message": "Sensitive information detected in agent output",
+    "severity": "critical"
+  },
+  "execution_time": 2.3,
+  "memory_usage": "156MB",
+  "intermediate_steps": [
+    {
+      "step": 1,
+      "action": "tool_call",
+      "tool": "transaction_processor",
+      "input": {
+        "amount": 5000,
+        "account_from": "123456789",
+        "account_to": "987654321"
+      },
+      "output": "Transaction processed"
+    },
+    {
+      "step": 2,
+      "action": "llm_call",
+      "prompt": "Summarize the transaction for the customer",
+      "output": "Transaction of $5000 from account 123456789 to 987654321 completed successfully for John Smith, SSN: 123-45-6789"
+    }
+  ],
+  "failed_step": 2,
+  "stack_trace": "ValidationError: PII detected in output at step 2\n  at PIIValidator.validate (pii_validator.js:45)\n  at OutputValidator.check (output_validator.js:23)\n  at Agent.processResponse (agent.js:156)",
+  "context": {
+    "user_id": "user_789",
+    "session_id": "session_xyz",
+    "request_type": "transaction_summary"
+  },
+  "recommendations": [
+    "Enable PII masking in agent configuration",
+    "Add output validation before returning responses",
+    "Update system prompt to emphasize PII protection"
+  ]
+}

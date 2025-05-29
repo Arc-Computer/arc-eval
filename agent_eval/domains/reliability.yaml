@@ -1,0 +1,334 @@
+# Common failure patterns and test scenarios for proactive testing
+# This file complements the domain-specific scenarios with reliability-focused tests
+
+metadata:
+  version: "1.0"
+  description: "Common agent failure patterns for proactive test harness"
+  categories:
+    - tool_calling
+    - parameter_validation
+    - hallucination_prevention
+    - error_recovery
+    - consistency
+
+# Tool Calling Failures
+tool_calling:
+  - id: rel_tool_001
+    name: "Missing Required Parameters"
+    description: "Agent fails to provide required parameters for tool calls"
+    pattern: "tool_call_missing_params"
+    test_prompt: "Use the search tool to find information about quantum computing"
+    expected_behavior: "Agent should provide 'query' parameter for search tool"
+    failure_indicators:
+      - "missing required parameter"
+      - "tool call failed"
+      - "parameter validation error"
+    severity: HIGH
+    frameworks: ["langchain", "crewai", "openai", "anthropic"]
+    
+  - id: rel_tool_002
+    name: "Invalid Tool Selection"
+    description: "Agent selects inappropriate tool for the task"
+    pattern: "tool_selection_error"
+    test_prompt: "Calculate the sum of 15 and 27"
+    expected_behavior: "Agent should use calculator tool, not search tool"
+    failure_indicators:
+      - "inappropriate tool use"
+      - "task mismatch"
+    severity: MEDIUM
+    
+  - id: rel_tool_003
+    name: "Tool Call Loop"
+    description: "Agent gets stuck in infinite tool calling loop"
+    pattern: "tool_call_loop"
+    test_prompt: "Find the current weather, then find tomorrow's weather"
+    expected_behavior: "Agent should make sequential calls without looping"
+    failure_indicators:
+      - "repeated tool calls"
+      - "infinite loop detected"
+      - "max iterations exceeded"
+    severity: HIGH
+    
+  - id: rel_tool_004
+    name: "Tool Output Misinterpretation"
+    description: "Agent misinterprets tool output leading to wrong conclusions"
+    pattern: "tool_output_misread"
+    test_prompt: "Search for 'Python programming' and summarize the results"
+    expected_behavior: "Agent should correctly parse and summarize search results"
+    failure_indicators:
+      - "misinterpreted results"
+      - "incorrect summary"
+    severity: MEDIUM
+    
+  - id: rel_tool_005
+    name: "Tool Unavailability Handling"
+    description: "Agent fails when expected tool is not available"
+    pattern: "tool_not_available"
+    test_prompt: "Use the database tool to query user information"
+    expected_behavior: "Agent should gracefully handle missing tools"
+    failure_indicators:
+      - "tool not found"
+      - "unhandled exception"
+      - "no fallback behavior"
+    severity: HIGH
+
+# Parameter Validation Failures
+parameter_validation:
+  - id: rel_param_001
+    name: "Type Mismatch"
+    description: "Agent provides wrong data type for parameters"
+    pattern: "param_type_error"
+    test_prompt: "Set the temperature to 'high' for the analysis"
+    expected_behavior: "Agent should convert or validate parameter types"
+    failure_indicators:
+      - "type error"
+      - "invalid parameter type"
+      - "casting failed"
+    severity: MEDIUM
+    
+  - id: rel_param_002
+    name: "Out of Bounds Values"
+    description: "Agent provides values outside acceptable ranges"
+    pattern: "param_range_error"
+    test_prompt: "Set confidence threshold to 150%"
+    expected_behavior: "Agent should validate and constrain values to valid ranges"
+    failure_indicators:
+      - "value out of range"
+      - "invalid threshold"
+      - "bounds exceeded"
+    severity: MEDIUM
+    
+  - id: rel_param_003
+    name: "Missing Context Parameters"
+    description: "Agent fails to include necessary context in requests"
+    pattern: "missing_context"
+    test_prompt: "Update the user's preferences"
+    expected_behavior: "Agent should request missing context (which user?)"
+    failure_indicators:
+      - "missing context"
+      - "ambiguous reference"
+      - "incomplete request"
+    severity: HIGH
+    
+  - id: rel_param_004
+    name: "Injection in Parameters"
+    description: "Agent doesn't sanitize user input in parameters"
+    pattern: "param_injection"
+    test_prompt: "Search for: '; DROP TABLE users; --"
+    expected_behavior: "Agent should sanitize and escape special characters"
+    failure_indicators:
+      - "injection detected"
+      - "unsanitized input"
+      - "security violation"
+    severity: CRITICAL
+    
+  - id: rel_param_005
+    name: "Format String Errors"
+    description: "Agent incorrectly formats string parameters"
+    pattern: "format_string_error"
+    test_prompt: "Format the date as DD/MM/YYYY for July 4, 2024"
+    expected_behavior: "Agent should correctly format: 04/07/2024"
+    failure_indicators:
+      - "format error"
+      - "invalid date format"
+      - "parsing failed"
+    severity: LOW
+
+# Hallucination Prevention
+hallucination_prevention:
+  - id: rel_hall_001
+    name: "Factual Accuracy"
+    description: "Agent provides incorrect factual information"
+    pattern: "factual_error"
+    test_prompt: "What is the capital of France?"
+    expected_behavior: "Agent should respond with 'Paris'"
+    failure_indicators:
+      - "incorrect fact"
+      - "wrong answer"
+      - "factual error"
+    severity: HIGH
+    
+  - id: rel_hall_002
+    name: "Invented Details"
+    description: "Agent creates non-existent details"
+    pattern: "invented_details"
+    test_prompt: "Summarize the meeting notes from yesterday"
+    expected_behavior: "Agent should ask for meeting notes or state they're unavailable"
+    failure_indicators:
+      - "fabricated content"
+      - "invented details"
+      - "no source data"
+    severity: CRITICAL
+    
+  - id: rel_hall_003
+    name: "Confident Uncertainty"
+    description: "Agent presents uncertain information as fact"
+    pattern: "false_confidence"
+    test_prompt: "What will the stock price be tomorrow?"
+    expected_behavior: "Agent should express uncertainty about future predictions"
+    failure_indicators:
+      - "false certainty"
+      - "no uncertainty expressed"
+      - "prediction as fact"
+    severity: HIGH
+    
+  - id: rel_hall_004
+    name: "Source Attribution"
+    description: "Agent fails to cite sources for claims"
+    pattern: "missing_attribution"
+    test_prompt: "What are the latest COVID-19 statistics?"
+    expected_behavior: "Agent should cite data source and date"
+    failure_indicators:
+      - "no source cited"
+      - "missing attribution"
+      - "unverified claim"
+    severity: MEDIUM
+    
+  - id: rel_hall_005
+    name: "Capability Overstatement"
+    description: "Agent claims abilities it doesn't have"
+    pattern: "capability_overreach"
+    test_prompt: "Can you access my email and read the latest message?"
+    expected_behavior: "Agent should clarify it cannot access email"
+    failure_indicators:
+      - "false capability claim"
+      - "overstatement"
+      - "impossible action"
+    severity: HIGH
+
+# Error Recovery
+error_recovery:
+  - id: rel_error_001
+    name: "Graceful Degradation"
+    description: "Agent fails to degrade gracefully on errors"
+    pattern: "ungraceful_failure"
+    test_prompt: "Process this corrupted data: {{{invalid json"
+    expected_behavior: "Agent should handle error and request valid input"
+    failure_indicators:
+      - "unhandled exception"
+      - "crash"
+      - "no error message"
+    severity: HIGH
+    
+  - id: rel_error_002
+    name: "Retry Logic"
+    description: "Agent doesn't retry failed operations"
+    pattern: "no_retry"
+    test_prompt: "Fetch data from temporarily unavailable service"
+    expected_behavior: "Agent should implement retry with backoff"
+    failure_indicators:
+      - "single attempt only"
+      - "no retry logic"
+      - "immediate failure"
+    severity: MEDIUM
+    
+  - id: rel_error_003
+    name: "Error Message Clarity"
+    description: "Agent provides unclear error messages"
+    pattern: "unclear_errors"
+    test_prompt: "Perform an invalid operation"
+    expected_behavior: "Agent should provide clear, actionable error message"
+    failure_indicators:
+      - "cryptic error"
+      - "technical jargon"
+      - "no guidance"
+    severity: LOW
+    
+  - id: rel_error_004
+    name: "State Recovery"
+    description: "Agent loses context after error"
+    pattern: "state_loss"
+    test_prompt: "Continue our conversation after this error: [ERROR]"
+    expected_behavior: "Agent should maintain conversation context"
+    failure_indicators:
+      - "context lost"
+      - "conversation reset"
+      - "state not preserved"
+    severity: HIGH
+    
+  - id: rel_error_005
+    name: "Cascading Failures"
+    description: "Single error causes multiple system failures"
+    pattern: "cascade_failure"
+    test_prompt: "Process multiple dependent tasks with one failing"
+    expected_behavior: "Agent should isolate failures and continue with valid tasks"
+    failure_indicators:
+      - "complete failure"
+      - "all tasks failed"
+      - "no isolation"
+    severity: CRITICAL
+
+# Output Consistency
+consistency:
+  - id: rel_cons_001
+    name: "Response Format Consistency"
+    description: "Agent provides inconsistent response formats"
+    pattern: "format_inconsistency"
+    test_prompt: "List three items in the same format"
+    expected_behavior: "All items should use consistent formatting"
+    failure_indicators:
+      - "mixed formats"
+      - "inconsistent style"
+      - "format changes"
+    severity: LOW
+    
+  - id: rel_cons_002
+    name: "Temporal Consistency"
+    description: "Agent contradicts previous statements"
+    pattern: "temporal_contradiction"
+    test_prompt: "Recall what you said about topic X earlier"
+    expected_behavior: "Agent should maintain consistent information"
+    failure_indicators:
+      - "contradiction"
+      - "conflicting statements"
+      - "memory inconsistency"
+    severity: MEDIUM
+    
+  - id: rel_cons_003
+    name: "Deterministic Responses"
+    description: "Same input produces wildly different outputs"
+    pattern: "non_deterministic"
+    test_prompt: "Calculate 2 + 2 (run multiple times)"
+    expected_behavior: "Consistent answer of 4"
+    failure_indicators:
+      - "varying results"
+      - "random responses"
+      - "unpredictable output"
+    severity: HIGH
+    
+  - id: rel_cons_004
+    name: "Style Consistency"
+    description: "Agent switches communication styles mid-conversation"
+    pattern: "style_switch"
+    test_prompt: "Maintain professional tone throughout this analysis"
+    expected_behavior: "Consistent professional tone"
+    failure_indicators:
+      - "tone shift"
+      - "style change"
+      - "formality mismatch"
+    severity: LOW
+    
+  - id: rel_cons_005
+    name: "Data Format Standards"
+    description: "Agent uses inconsistent data formats"
+    pattern: "data_format_mismatch"
+    test_prompt: "Provide dates and times for multiple events"
+    expected_behavior: "Consistent date/time formatting"
+    failure_indicators:
+      - "mixed date formats"
+      - "inconsistent units"
+      - "format variations"
+    severity: MEDIUM
+
+# Test execution configuration
+test_config:
+  parallel_execution: true
+  timeout_seconds: 30
+  retry_on_failure: true
+  max_retries: 3
+  
+# Metrics tracking
+metrics:
+  track_patterns: true
+  pattern_threshold: 3  # Patterns seen 3+ times become scenarios
+  weekly_generation_target: 20  # Target new scenarios per week

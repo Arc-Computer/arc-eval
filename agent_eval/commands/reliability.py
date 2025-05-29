@@ -49,7 +49,7 @@ class ReliabilityCommandHandler(BaseCommandHandler):
         console.print("Debug agent failures with unified visibility across the entire stack\\n")
         
         # Load and validate inputs
-        agent_outputs, _ = self._load_and_validate_inputs(**kwargs)
+        agent_outputs, input_source = self._load_and_validate_inputs(**kwargs)
         if agent_outputs is None:
             return 1
         
@@ -58,6 +58,51 @@ class ReliabilityCommandHandler(BaseCommandHandler):
         debug_agent = kwargs.get('debug_agent', False)
         unified_debug = kwargs.get('unified_debug', False)
         dev = kwargs.get('dev', False)
+        
+        # NEW: Smart input detection for test harness
+        try:
+            from agent_eval.core.input_detector import SmartInputDetector
+            from agent_eval.evaluation.test_harness import DomainAwareTestHarness
+            from agent_eval.ui.result_renderer import ResultRenderer
+            
+            detector = SmartInputDetector()
+            renderer = ResultRenderer()
+            
+            # Detect input type
+            input_type = detector.detect_input_type(agent_outputs)
+            detected_domain = detector.get_detected_domain(agent_outputs[0] if agent_outputs else {})
+            
+            # Run test harness if config detected
+            if input_type == 'config':
+                console.print("🧪 [bold green]Detected: Agent Configuration File[/bold green]")
+                console.print("Running Proactive Test Harness...\\n")
+                
+                # Prepare data for test harness
+                prepared_data = detector.prepare_for_test_harness(agent_outputs[0], input_type)
+                
+                # Run domain-aware test harness
+                test_harness = DomainAwareTestHarness(domain=detected_domain)
+                test_results = test_harness.test_agent_config(prepared_data['data'])
+                
+                # Display results using enhanced UI
+                renderer.display_test_harness_results(test_results)
+                
+                # Show next steps
+                console.print("\\n🔄 Next Step: Run [green]arc-eval compliance --domain " + 
+                            f"{detected_domain or 'finance'} --input outputs.json[/green]")
+                
+                return 0
+                
+            elif input_type == 'trace':
+                console.print("🔍 [bold yellow]Detected: Failed Execution Trace[/bold yellow]")
+                console.print("Running failure analysis + similar pattern testing...\\n")
+                
+                # First run standard analysis, then test for similar patterns
+                # (continues with existing flow below)
+                
+        except ImportError:
+            # Continue with standard debugging if test harness not available
+            pass
         
         console.print(f"🔧 Starting unified debugging session...")
         console.print(f"📊 Analyzing {len(agent_outputs)} workflow components...")
