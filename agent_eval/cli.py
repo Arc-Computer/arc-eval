@@ -435,17 +435,15 @@ def main():
     """
     Main entry point that checks for new CLI structure.
     """
-    import os
-    
     # Check if running new unified commands
     if len(sys.argv) > 1 and sys.argv[1] in ['debug', 'compliance', 'improve', '--version']:
         # Use new unified CLI
         from agent_eval.cli_unified import main as unified_main
-        unified_main()
+        return unified_main()
     elif len(sys.argv) == 1:
         # No arguments - show unified interface
         from agent_eval.cli_unified import main as unified_main
-        unified_main()
+        return unified_main()
     else:
         # Legacy mode - show deprecation warning
         console.print("[yellow]⚠️  You are using the legacy CLI interface.[/yellow]")
@@ -456,7 +454,7 @@ def main():
         console.print()
         
         # Continue with legacy interface
-        legacy_main()
+        return legacy_main()
 
 
 if __name__ == "__main__":

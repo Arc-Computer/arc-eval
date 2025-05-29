@@ -1,0 +1,14 @@
+{
+  "current_cycle": {
+    "started_at": "2025-05-28T20:37:25.913778",
+    "debug": {
+      "completed_at": "2025-05-28T20:37:25.963891",
+      "input_file": "/var/folders/db/b_7_hw4x1pgg4ntrggcdgzt80000gn/T/tmp7opjcbtv.json",
+      "framework": "langchain",
+      "timestamp": "2025-05-28T20:37:25.963854"
+    },
+    "compliance": null,
+    "improve": null
+  },
+  "history": []
+}
