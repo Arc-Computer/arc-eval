@@ -8,7 +8,7 @@ from pathlib import Path
 from click.testing import CliRunner
 import tempfile
 
-from agent_eval.cli_unified import cli
+from agent_eval.cli import cli
 
 
 @pytest.fixture
