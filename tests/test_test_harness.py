@@ -1,8 +1,9 @@
 """Tests for the domain-aware test harness functionality."""
 
-import pytest
-from unittest.mock import Mock, patch
+
 from datetime import datetime
+from unittest.mock import Mock, patch
+import pytest
 
 from agent_eval.core.input_detector import SmartInputDetector
 from agent_eval.evaluation.test_harness import (
