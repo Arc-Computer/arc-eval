@@ -338,6 +338,6 @@ class BaseJudge(ABC):
             if "sonnet" in model:
                 logger.info("Falling back to Haiku model")
                 client, _ = self.api_manager.get_client(prefer_primary=False)
-                return self.evaluate(agent_output, scenario)
+                return self.evaluate(output, scenario)
             else:
                 raise
