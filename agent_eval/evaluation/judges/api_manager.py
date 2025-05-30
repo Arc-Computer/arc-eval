@@ -358,8 +358,8 @@ class APIManager:
         
         telemetry = {
             "total_evaluations": len(prompts),
-            "haiku_evaluations": 0,
-            "sonnet_evaluations": 0,
+            "fallback_evaluations": 0,
+            "primary_evaluations": 0,
             "total_cost": 0.0,
             "cost_savings": 0.0,
             "start_time": datetime.now()
@@ -409,7 +409,7 @@ class APIManager:
                         "prompt_data": prompt_data
                     })
             
-            telemetry["haiku_evaluations"] = len(prompts)  # Keep for backward compatibility
+            telemetry["fallback_evaluations"] = len(prompts)
             
             # Phase 2: Identify low-confidence results
             low_confidence_prompts = []
@@ -472,7 +472,7 @@ class APIManager:
                     except Exception as e:
                         logger.error(f"Sonnet evaluation failed: {e}")
                 
-                telemetry["sonnet_evaluations"] = len(low_confidence_prompts)
+                telemetry["primary_evaluations"] = len(low_confidence_prompts)
             
             # Calculate telemetry
             telemetry["end_time"] = datetime.now()
