@@ -685,8 +685,6 @@ except TimeoutError:
 4. **Implement Improvements**: Use `arc-eval improve` to get specific fixes
 5. **Set Up Monitoring**: Add to CI/CD pipeline for continuous validation
 
-## Enterprise Support & Advanced Features
-
 ### Self-Service Resources
 ```bash
 # Comprehensive enterprise help system
@@ -719,36 +717,14 @@ wait
 arc-eval compliance --domain finance --input outputs.json --export pdf  # Verified flag
 ```
 
-### Advanced Enterprise Features
-
-| **Feature** | **Description** | **Use Case** |
-|-------------|----------------|--------------|
-| **Framework Agnostic** | Auto-detects 9+ frameworks including custom | Works with any existing agent infrastructure |
-| **Multi-Domain Evaluation** | 378 scenarios across finance, security, ML | Complete regulatory compliance assessment |
-| **Executive Reporting** | C-suite ready PDF reports with ROI analysis | Board-level compliance documentation |
-| **Real-Time Monitoring** | Background compliance checking with alerting | Production safety monitoring |
-| **CI/CD Integration** | Quality gates with domain-specific thresholds | Automated compliance validation |
-| **Enterprise Analytics** | Tableau/PowerBI/DataDog integration | Executive dashboard metrics |
-| **Custom Domain Packs** | Industry-specific scenario development | Healthcare, legal, manufacturing compliance |
-| **Audit Trail Management** | Complete evaluation history tracking | Regulatory audit documentation |
-
-### Getting Started Checklist for Fortune 500
+### Getting Started Checklist
 - [ ] **Install & Setup** (5 minutes) - `pip install arc-eval && export ANTHROPIC_API_KEY=key`
 - [ ] **Framework Verification** - `arc-eval detect --input your_existing_outputs.json`
 - [ ] **Quick Assessment** - `arc-eval --quick-start --domain [finance|security|ml]`
-- [ ] **Production Integration** - Add to existing agent endpoints (zero code changes)
+- [ ] **Production Integration** - Add to existing agent endpoints
 - [ ] **CI/CD Compliance Gates** - Enterprise quality thresholds in pipeline
 - [ ] **Executive Reporting** - Schedule daily compliance dashboards
-- [ ] **Team Training** - Share this guide with development and compliance teams
-
-### Enterprise Support Escalation
-- **Technical Integration**: GitHub Issues with `[enterprise]` tag for framework-specific support
-- **Compliance Questions**: Domain-specific guidance for SOX, GDPR, OWASP requirements  
-- **Performance Optimization**: Large-scale deployment and cost optimization strategies
-- **Custom Development**: Industry-specific domain packs and compliance frameworks
 
 ---
 
-**Ready for Enterprise Deployment:** ARC-Eval's framework-agnostic design means it works with your existing agent infrastructure immediately. The system learns from your specific usage patterns, becoming more accurate and relevant for your domain and compliance requirements over time.
-
-**Next Steps:** See `/examples/integration/` for additional CI/CD templates and `/examples/enterprise/` for Fortune 500 deployment patterns.
+ARC-Eval's framework-agnostic design means it works with your existing agent infrastructure immediately. The system learns from your specific usage patterns, becoming more accurate and relevant for your domain and compliance requirements over time.
