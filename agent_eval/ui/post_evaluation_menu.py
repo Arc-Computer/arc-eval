@@ -71,7 +71,7 @@ class PostEvaluationMenu:
             )
             table.add_row(
                 "[4]", 
-                "Submit failure pattern for scenario generation", 
+                "View learning dashboard & submit patterns", 
                 "(Improve ARC-Eval)"
             )
             
@@ -100,7 +100,7 @@ class PostEvaluationMenu:
             )
             table.add_row(
                 "[4]", 
-                "Share anonymized results to improve ARC-Eval", 
+                "View learning dashboard & share results", 
                 "(Contribute)"
             )
             
@@ -123,7 +123,7 @@ class PostEvaluationMenu:
             )
             table.add_row(
                 "[4]", 
-                "Track this pattern for future scenarios", 
+                "View learning dashboard & track patterns", 
                 "(Improve ARC-Eval)"
             )
         
@@ -288,13 +288,9 @@ class PostEvaluationMenu:
         """Display the learning dashboard."""
         from agent_eval.ui.learning_dashboard import LearningDashboard
         
-        dashboard = LearningDashboard(
-            domain=self.domain,
-            learning_metrics=self.learning_metrics,
-            evaluation_results=self.evaluation_results
-        )
+        dashboard = LearningDashboard()
         
-        dashboard.display()
+        dashboard.display_overview()
         
         # Offer to continue
         self._offer_continuation()
@@ -376,8 +372,12 @@ class PostEvaluationMenu:
     
     def _handle_submit_pattern(self) -> None:
         """Handle failure pattern submission for scenario generation."""
-        console.print("\n[bold cyan]🔄 Contributing to Scenario Bank[/bold cyan]")
-        console.print("\n[yellow]This feature helps improve ARC-Eval by learning from real failures.[/yellow]")
+        console.print("\n[bold cyan]🔄 Pattern Learning & Scenario Generation[/bold cyan]")
+        
+        # Show the learning dashboard first
+        self.handle_learning_dashboard()
+        
+        console.print("\n[yellow]Submit new patterns to improve ARC-Eval:[/yellow]")
         console.print("\nYour failure patterns will be:")
         console.print("• Anonymized to remove sensitive data")
         console.print("• Used to generate new test scenarios")
@@ -386,7 +386,11 @@ class PostEvaluationMenu:
     
     def _handle_share_results(self) -> None:
         """Handle sharing anonymized results."""
-        console.print("\n[bold cyan]🌐 Share Results[/bold cyan]")
+        console.print("\n[bold cyan]🌐 Learning Dashboard & Result Sharing[/bold cyan]")
+        
+        # Show the learning dashboard first
+        self.handle_learning_dashboard()
+        
         console.print("\n[yellow]Help improve ARC-Eval by sharing anonymized results.[/yellow]")
         console.print("\nSharing includes:")
         console.print("• Pass/fail rates by scenario type")
@@ -441,8 +445,12 @@ class PostEvaluationMenu:
     
     def _handle_track_pattern(self) -> None:
         """Track improvement patterns for future scenarios."""
-        console.print("\n[bold cyan]📈 Pattern Tracking[/bold cyan]")
-        console.print("\n[yellow]Your improvement patterns help us create better scenarios.[/yellow]")
+        console.print("\n[bold cyan]📈 Pattern Tracking & Learning Dashboard[/bold cyan]")
+        
+        # Show the learning dashboard first
+        self.handle_learning_dashboard()
+        
+        console.print("\n[yellow]Track your improvement patterns:[/yellow]")
         console.print("\nTracking includes:")
         console.print("• Successful remediation strategies")
         console.print("• Common fix patterns")
