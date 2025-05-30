@@ -276,7 +276,7 @@ def analyze(input_file: Path, domain: str, quick: bool, verbose: bool):
 @click.option('--verbose', is_flag=True, help='Enable verbose output')
 def debug(input_file: Path, framework: Optional[str], output_format: str, verbose: bool):
     """
-    Debug agent failures with comprehensive analysis.
+    Debug: Why is my agent failing?
     
     Analyzes your agent's outputs to identify:
     • Framework-specific performance issues
@@ -338,7 +338,7 @@ def debug(input_file: Path, framework: Optional[str], output_format: str, verbos
 @click.option('--verbose', is_flag=True, help='Enable verbose output')
 def compliance(domain: str, input_file: Optional[Path], export: Optional[str], no_export: bool, quick_start: bool, verbose: bool):
     """
-    Evaluate agent compliance against domain requirements.
+    Compliance: Does it meet requirements?
     
     Runs comprehensive evaluation across:
     • Finance: SOX, KYC, AML, PCI-DSS, GDPR (110 scenarios)
@@ -418,7 +418,7 @@ def compliance(domain: str, input_file: Optional[Path], export: Optional[str], n
 @click.option('--verbose', is_flag=True, help='Enable verbose output')
 def improve(evaluation_file: Optional[Path], baseline: Optional[Path], current: Optional[Path], auto_detect: bool, verbose: bool):
     """
-    Generate and track improvement plans.
+    Improve: How do I make it better?
     
     Creates actionable improvement plans with:
     • Prioritized fixes for failed scenarios
