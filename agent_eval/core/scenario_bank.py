@@ -1,8 +1,13 @@
 import os
 import json
 from datetime import datetime
-import fcntl
 import yaml
+
+try:
+    import fcntl
+    has_fcntl = True
+except ImportError:
+    has_fcntl = False
 
 
 class ScenarioBank:
@@ -21,11 +26,13 @@ class ScenarioBank:
     def add_pattern(self, pattern: dict):
         """Append a new failure pattern entry (thread-safe)."""
         with open(self.patterns_file, "a") as f:
-            fcntl.flock(f.fileno(), fcntl.LOCK_EX)
+            if has_fcntl:
+                fcntl.flock(f.fileno(), fcntl.LOCK_EX)
             try:
                 f.write(json.dumps(pattern) + "\n")
             finally:
-                fcntl.flock(f.fileno(), fcntl.LOCK_UN)
+                if has_fcntl:
+                    fcntl.flock(f.fileno(), fcntl.LOCK_UN)
 
     def get_pattern_count(self, fingerprint: str) -> int:
         """Return how many times this fingerprint has been recorded."""
@@ -71,7 +78,7 @@ class ScenarioBank:
         appending it to the generated scenarios file.
         """
         scenario = {
-            "id": f"{pattern.get('scenario_id')}-learned-{pattern['fingerprint'][:8]}",
+            "id": pattern.get('scenario_id'),
             "name": f"LEARNED: {pattern.get('failure_reason', '')[:50]}",
             "description": pattern.get("failure_reason", "").strip(),
             "severity": "high",  # Default to high for learned patterns
@@ -88,11 +95,19 @@ class ScenarioBank:
         if scenarios_dir and not os.path.exists(scenarios_dir):
             os.makedirs(scenarios_dir, exist_ok=True)
 
-        # Write header if file is new or empty
+        # Read existing content
+        existing = {"scenarios": []}
         first_write = not os.path.exists(self.scenarios_file) or os.path.getsize(self.scenarios_file) == 0
-        with open(self.scenarios_file, "a") as f:
+        if not first_write:
+            with open(self.scenarios_file, "r") as f:
+                existing = yaml.safe_load(f) or existing
+        
+        # Append new scenario
+        existing["scenarios"].append(scenario)
+        
+        # Write back complete file
+        with open(self.scenarios_file, "w") as f:
             if first_write:
                 f.write(self._write_scenarios_header())
-            # Append as YAML block
-            yaml.dump({"scenarios": [scenario]}, f, sort_keys=False)
+            yaml.dump(existing, f, sort_keys=False)
         return scenario
