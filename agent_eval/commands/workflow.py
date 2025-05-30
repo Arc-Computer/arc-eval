@@ -488,7 +488,10 @@ class WorkflowCommandHandler(BaseCommandHandler):
             color = "red" if severity == "CRITICAL" else "yellow"
             
             console.print(f"{i}. [{color}]{severity}[/{color}] {action.description}")
-            console.print(f"   └─ Expected impact: {action.rationale}")
+            if hasattr(action, 'rationale') and action.rationale:
+                console.print(f"   └─ Expected impact: {action.rationale}")
+            if hasattr(action, 'impact') and action.impact:
+                console.print(f"   └─ Expected impact: {action.impact}")
             if hasattr(action, 'implementation_hint') and action.implementation_hint:
                 console.print(f"   └─ Implementation: {action.implementation_hint}")
         

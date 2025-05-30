@@ -699,18 +699,18 @@ class ComplianceCommandHandler(BaseCommandHandler):
             metrics = learner.get_learning_metrics()
             
             # Calculate performance delta if we have baseline data
-            passed = sum(1 for r in judge_results if r.passed)
+            passed = sum(1 for r in judge_results if r.judgment == "pass")
             current_pass_rate = (passed / len(judge_results)) * 100 if judge_results else 0
             
             # Get critical failure count
-            critical_failures = sum(1 for r in judge_results if not r.passed and r.severity == "critical")
+            critical_failures = sum(1 for r in judge_results if r.judgment == "fail" and hasattr(r, 'severity') and r.severity == "critical")
             
             # Build top failure patterns from recent failures
             top_patterns = []
             pattern_counts = {}
             for result in judge_results:
-                if not result.passed and result.failure_reason:
-                    pattern_key = f"{result.scenario_id}:{result.failure_reason[:50]}"
+                if result.judgment != "pass" and hasattr(result, 'reasoning') and result.reasoning:
+                    pattern_key = f"{result.scenario_id}:{result.reasoning[:50]}"
                     pattern_counts[pattern_key] = pattern_counts.get(pattern_key, 0) + 1
             
             for pattern, count in sorted(pattern_counts.items(), key=lambda x: x[1], reverse=True)[:3]:
