@@ -128,7 +128,7 @@ def get_next_workflow_suggestion(current_workflow: str) -> str:
 
 @click.group(invoke_without_command=True)
 @click.pass_context
-@click.version_option(version="0.2.6", prog_name="arc-eval")
+@click.version_option(version="0.2.7", prog_name="arc-eval")
 def cli(ctx):
     """
     ARC-Eval: Debug, Comply, Improve - The complete agent improvement lifecycle.
