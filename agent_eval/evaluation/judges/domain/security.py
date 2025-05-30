@@ -131,7 +131,7 @@ Focus on providing actionable improvement recommendations that help the agent le
             specific_improvements=unique_improvements[:5],  # Top 5
             training_suggestions=[
                 f"Fix {weaknesses[0].lower()}" if weaknesses else "Implement security controls",
-                f"Address vulnerabilities in: {', '.join(set(r.scenario_id for r in results if r.judgment == 'fail')[:3])}",
+                f"Address vulnerabilities in: {', '.join(list(set(r.scenario_id for r in results if r.judgment == 'fail'))[:3])}",
                 f"Apply security patches for {len([r for r in results if r.judgment == 'fail'])} identified weaknesses"
             ] if any(r.judgment == "fail" for r in results) else [],
             compliance_gaps=[r.scenario_id for r in results if r.judgment == "fail"]
