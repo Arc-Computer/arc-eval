@@ -170,6 +170,36 @@ class ReliabilityCommandHandler(BaseCommandHandler):
             console.print(f"🔧 Framework: {framework_info}")
             console.print(f"📋 Debug Mode: {'Agent Debugging' if debug_agent else 'Unified Debug'}")
         
+        # Show post-evaluation menu for unified debug workflow
+        if unified_debug and not kwargs.get('no_interaction', False):
+            try:
+                from agent_eval.ui.post_evaluation_menu import PostEvaluationMenu
+                
+                # Build evaluation results for menu
+                eval_results = {
+                    "summary": {
+                        "failures_found": len([o for o in agent_outputs if hasattr(o, 'error') and o.error]),
+                        "total_outputs": len(agent_outputs),
+                        "framework": framework or framework_info
+                    },
+                    "outputs": agent_outputs,
+                    "domain": kwargs.get('domain') or "general"
+                }
+                
+                # Create and display menu
+                menu = PostEvaluationMenu(
+                    domain=kwargs.get('domain') or "general",
+                    evaluation_results=eval_results,
+                    workflow_type="debug"
+                )
+                
+                # Display menu and handle user choice
+                choice = menu.display_menu()
+                menu.execute_choice(choice)
+                
+            except Exception as e:
+                console.print(f"\\n[yellow]⚠️  Post-debug options unavailable: {str(e)}[/yellow]")
+        
         return 0
     
     def _handle_workflow_reliability_analysis(self, **kwargs) -> int:
@@ -329,7 +359,8 @@ class ReliabilityCommandHandler(BaseCommandHandler):
                         f"Endpoint={endpoint}, Outputs={len(agent_outputs)}[/dim]")
         
         # Show post-evaluation menu for debug workflow
-        if unified_debug and not kwargs.get('no_interaction', False):
+        # Note: In workflow reliability analysis, we always show the menu unless no_interaction is set
+        if not kwargs.get('no_interaction', False):
             try:
                 from agent_eval.ui.post_evaluation_menu import PostEvaluationMenu
                 
