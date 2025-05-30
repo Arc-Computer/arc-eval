@@ -143,11 +143,10 @@ Focus on providing actionable improvement recommendations that help the agent le
             weaknesses=weaknesses,
             specific_improvements=unique_improvements[:5],  # Top 5
             training_suggestions=[
-                "Practice with MLOps governance scenarios",
-                "Study EU AI Act compliance requirements",
-                "Review production reliability patterns",
-                "Learn agent-ML workflow optimization",
-                "Master data governance and lineage tracking"
+                f"Implement {weaknesses[0].lower()}" if weaknesses else "Add model validation",
+                f"Fix issues in: {', '.join(set(r.scenario_id for r in results if r.judgment == 'fail')[:3])}",
+                f"Apply MLOps best practices to resolve {len([r for r in results if r.judgment == 'fail'])} failures"
+            ] if any(r.judgment == "fail" for r in results) else [
             ],
             compliance_gaps=[r.scenario_id for r in results if r.judgment == "fail"]
         )
