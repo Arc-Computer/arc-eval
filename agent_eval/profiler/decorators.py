@@ -16,7 +16,9 @@ def track_evaluation(fn):
     def wrapper(self, agent_id, domain, evaluation_results, *args, **kwargs):
         result = fn(self, agent_id, domain, evaluation_results, *args, **kwargs)
         try:
-            learner = PatternLearner()
+            if not hasattr(wrapper, "_cached_learner"):
+                wrapper._cached_learner = PatternLearner()
+            learner = wrapper._cached_learner
             learner.learn_from_debug_session(evaluation_results)
             
             # Get learning metrics and generated fixes
