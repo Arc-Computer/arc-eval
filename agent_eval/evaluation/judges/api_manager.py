@@ -25,58 +25,91 @@ logger = logging.getLogger(__name__)
 class APIManager:
     """Enterprise API management with cost tracking and fallback."""
     
-    def __init__(self, preferred_model: str = "auto"):
-        # Model configuration with Claude 4 Sonnet as primary
-        self.primary_model = "claude-sonnet-4-20250514"  # Primary model
-        self.fallback_model = "claude-3-5-haiku-latest"    # Cost-effective fallback
+    def __init__(self, preferred_model: str = "auto", provider: str = None):
+        # Determine provider
+        self.provider = provider or os.getenv("LLM_PROVIDER", "anthropic")
+        
+        # Initialize provider-specific settings
+        if self.provider == "anthropic":
+            self.primary_model = "claude-sonnet-4-20250514"
+            self.fallback_model = "claude-3-5-haiku-latest"
+            self.api_key = os.getenv("ANTHROPIC_API_KEY")
+            if not self.api_key:
+                raise ValueError("ANTHROPIC_API_KEY environment variable not set")
+        elif self.provider == "openai":
+            self.primary_model = "gpt-4.1"  # GPT-4.1 as primary
+            self.fallback_model = "gpt-4.1-mini"  # GPT-4.1-mini as fallback
+            self.api_key = os.getenv("OPENAI_API_KEY")
+            if not self.api_key:
+                raise ValueError("OPENAI_API_KEY environment variable not set")
+        else:
+            raise ValueError(f"Unsupported provider: {self.provider}")
         
         # Handle user model preference
         if preferred_model == "auto":
             self.preferred_model = self.primary_model
-        elif preferred_model in ["claude-sonnet-4-20250514", "claude-3-5-haiku-latest"]:
-            self.preferred_model = preferred_model
         else:
-            logger.warning(f"Unknown model {preferred_model}, using auto selection")
-            self.preferred_model = self.primary_model
+            # Validate model for provider
+            if self.provider == "anthropic" and preferred_model in ["claude-sonnet-4-20250514", "claude-3-5-haiku-latest"]:
+                self.preferred_model = preferred_model
+            elif self.provider == "openai" and preferred_model in ["gpt-4.1", "gpt-4.1-mini", "gpt-4.1-nano"]:
+                self.preferred_model = preferred_model
+            else:
+                logger.warning(f"Unknown model {preferred_model} for provider {self.provider}, using auto selection")
+                self.preferred_model = self.primary_model
         
-        self.api_key = os.getenv("ANTHROPIC_API_KEY")
         self.cost_threshold = float(os.getenv("AGENT_EVAL_COST_THRESHOLD", "10.0"))  # $10 default
         self.total_cost = 0.0
-        
-        if not self.api_key:
-            raise ValueError("ANTHROPIC_API_KEY environment variable not set")
     
     def get_client(self, prefer_primary: bool = True):
         """Get API client with cost-aware model selection."""
-        try:
-            import anthropic
-        except ImportError:
-            raise ImportError("anthropic library not installed. Run: pip install anthropic")
+        if self.provider == "anthropic":
+            try:
+                import anthropic
+            except ImportError:
+                raise ImportError("anthropic library not installed. Run: pip install anthropic")
+            
+            client = anthropic.Anthropic(api_key=self.api_key)
+        elif self.provider == "openai":
+            try:
+                import openai
+            except ImportError:
+                raise ImportError("openai library not installed. Run: pip install openai")
+            
+            client = openai.OpenAI(api_key=self.api_key)
         
-        client = anthropic.Anthropic(api_key=self.api_key)
-        
-        # Use user's preferred model if specified, otherwise smart selection
-        if self.preferred_model == "claude-3-5-haiku":
-            # User explicitly wants Haiku (cost optimization)
-            logger.info(f"Using user-preferred model {self.preferred_model}")
-            return client, self.preferred_model
-        elif self.total_cost > self.cost_threshold or not prefer_primary:
+        # Model selection logic
+        if self.total_cost > self.cost_threshold or not prefer_primary:
             # Auto fallback due to cost threshold
             logger.info(f"Using fallback model {self.fallback_model} (cost: ${self.total_cost:.2f})")
             return client, self.fallback_model
         else:
-            # Use primary (Claude 4 Sonnet) or user preference
-            model_to_use = self.preferred_model if self.preferred_model != "auto" else self.primary_model
-            logger.info(f"Using primary model {model_to_use}")
+            # Use primary or user preference
+            model_to_use = self.preferred_model
+            logger.info(f"Using {self.provider} model {model_to_use}")
             return client, model_to_use
     
     def track_cost(self, input_tokens: int, output_tokens: int, model: str):
         """Track API costs for enterprise cost management."""
-        # Claude pricing (approximate)
-        if "sonnet" in model:
-            cost = (input_tokens * 3.0 + output_tokens * 15.0) / 1_000_000
-        else:  # haiku
-            cost = (input_tokens * 0.25 + output_tokens * 1.25) / 1_000_000
+        if self.provider == "anthropic":
+            # Claude pricing (approximate)
+            if "sonnet" in model:
+                cost = (input_tokens * 3.0 + output_tokens * 15.0) / 1_000_000
+            else:  # haiku
+                cost = (input_tokens * 0.25 + output_tokens * 1.25) / 1_000_000
+        elif self.provider == "openai":
+            # OpenAI GPT-4.1 pricing (from search results)
+            if model == "gpt-4.1":
+                cost = (input_tokens * 2.0 + output_tokens * 8.0) / 1_000_000
+            elif model == "gpt-4.1-mini":
+                cost = (input_tokens * 0.40 + output_tokens * 1.60) / 1_000_000
+            elif model == "gpt-4.1-nano":
+                cost = (input_tokens * 0.10 + output_tokens * 0.40) / 1_000_000
+            else:
+                # Default to mini pricing if unknown
+                cost = (input_tokens * 0.40 + output_tokens * 1.60) / 1_000_000
+        else:
+            cost = 0.0
         
         self.total_cost += cost
         logger.info(f"API call cost: ${cost:.4f}, Total: ${self.total_cost:.2f}")
@@ -95,32 +128,58 @@ class APIManager:
         client, model = self.get_client()
         
         try:
-            # Note: Anthropic Claude API doesn't directly support logprobs like OpenAI
-            # This is a placeholder for when/if that functionality becomes available
-            # For now, we'll make a standard call and return None for logprobs
-            
-            response = client.messages.create(
-                model=model,
-                max_tokens=2000,
-                temperature=0.1,
-                messages=[
-                    {
-                        "role": "user",
-                        "content": prompt
-                    }
-                ]
-            )
-            
-            response_text = response.content[0].text
-            
-            # Track API costs
-            input_tokens = len(prompt) // 4  # Rough approximation
-            output_tokens = len(response_text) // 4
-            self.track_cost(input_tokens, output_tokens, model)
-            
-            # For now, logprobs are not available from Anthropic Claude API
-            # We'll extract pseudo-logprobs from response patterns
-            logprobs = self._extract_pseudo_logprobs(response_text) if enable_logprobs else None
+            if self.provider == "anthropic":
+                # Anthropic Claude API doesn't directly support logprobs
+                response = client.messages.create(
+                    model=model,
+                    max_tokens=2000,
+                    temperature=0.1,
+                    messages=[
+                        {
+                            "role": "user",
+                            "content": prompt
+                        }
+                    ]
+                )
+                
+                response_text = response.content[0].text
+                
+                # Track API costs
+                input_tokens = len(prompt) // 4  # Rough approximation
+                output_tokens = len(response_text) // 4
+                self.track_cost(input_tokens, output_tokens, model)
+                
+                # Extract pseudo-logprobs from response patterns
+                logprobs = self._extract_pseudo_logprobs(response_text) if enable_logprobs else None
+                
+            elif self.provider == "openai":
+                # OpenAI supports logprobs natively
+                response = client.chat.completions.create(
+                    model=model,
+                    max_tokens=2000,
+                    temperature=0.1,
+                    messages=[
+                        {
+                            "role": "user",
+                            "content": prompt
+                        }
+                    ],
+                    logprobs=enable_logprobs,
+                    top_logprobs=5 if enable_logprobs else None
+                )
+                
+                response_text = response.choices[0].message.content
+                
+                # Track API costs using actual token counts
+                input_tokens = response.usage.prompt_tokens
+                output_tokens = response.usage.completion_tokens
+                self.track_cost(input_tokens, output_tokens, model)
+                
+                # Extract logprobs if available
+                if enable_logprobs and response.choices[0].logprobs:
+                    logprobs = self._extract_openai_logprobs(response.choices[0].logprobs)
+                else:
+                    logprobs = None
             
             return response_text, logprobs
             
@@ -179,6 +238,25 @@ class APIManager:
                 pseudo_logprobs[confidence_level] = confidence_scores[confidence_level]
         
         return pseudo_logprobs
+    
+    def _extract_openai_logprobs(self, logprobs_data) -> Dict[str, float]:
+        """Extract logprobs from OpenAI response.
+        
+        Args:
+            logprobs_data: Logprobs data from OpenAI response
+            
+        Returns:
+            Dictionary of token to logprob mappings
+        """
+        extracted_logprobs = {}
+        
+        # OpenAI returns logprobs for each token
+        if hasattr(logprobs_data, 'content') and logprobs_data.content:
+            for token_data in logprobs_data.content:
+                if hasattr(token_data, 'token') and hasattr(token_data, 'logprob'):
+                    extracted_logprobs[token_data.token] = token_data.logprob
+        
+        return extracted_logprobs
     
     def create_batch(self, prompts: List[Dict[str, Any]], prefer_primary: bool = False) -> Tuple[str, float]:
         """Create a batch evaluation request using Anthropic's Message Batches API.
@@ -291,45 +369,53 @@ class APIManager:
             # Until batch API is available, process synchronously with simulated batching
             logger.info(f"Processing {len(prompts)} scenarios with cascade strategy (simulated batch)")
             
-            # Phase 1: Process all with Haiku
-            client, haiku_model = self.get_client(prefer_primary=False)
-            haiku_results = []
+            # Phase 1: Process all with fallback model
+            client, fallback_model = self.get_client(prefer_primary=False)
+            fallback_results = []
             
             for prompt_data in prompts:
                 try:
-                    response = client.messages.create(
-                        model=haiku_model,
-                        max_tokens=2000,
-                        temperature=0.1,
-                        messages=[{"role": "user", "content": prompt_data["prompt"]}]
-                    )
-                    response_text = response.content[0].text
+                    if self.provider == "anthropic":
+                        response = client.messages.create(
+                            model=fallback_model,
+                            max_tokens=2000,
+                            temperature=0.1,
+                            messages=[{"role": "user", "content": prompt_data["prompt"]}]
+                        )
+                        response_text = response.content[0].text
+                    elif self.provider == "openai":
+                        response = client.chat.completions.create(
+                            model=fallback_model,
+                            max_tokens=2000,
+                            temperature=0.1,
+                            messages=[{"role": "user", "content": prompt_data["prompt"]}]
+                        )
+                        response_text = response.choices[0].message.content
                     
                     # Track cost with batch discount simulation
                     input_tokens = len(prompt_data["prompt"]) // 4
                     output_tokens = len(response_text) // 4
-                    cost = (input_tokens * 0.25 + output_tokens * 1.25) / 1_000_000
-                    telemetry["total_cost"] += cost * BATCH_API_DISCOUNT
+                    self.track_cost(input_tokens, output_tokens, fallback_model)
                     
-                    haiku_results.append({
+                    fallback_results.append({
                         "response": response_text,
                         "error": None,
                         "prompt_data": prompt_data
                     })
                 except Exception as e:
-                    haiku_results.append({
+                    fallback_results.append({
                         "response": None,
                         "error": str(e),
                         "prompt_data": prompt_data
                     })
             
-            telemetry["haiku_evaluations"] = len(prompts)
+            telemetry["haiku_evaluations"] = len(prompts)  # Keep for backward compatibility
             
             # Phase 2: Identify low-confidence results
             low_confidence_prompts = []
             final_results = {}
             
-            for result in haiku_results:
+            for result in fallback_results:
                 prompt_data = result["prompt_data"]
                 scenario_id = prompt_data.get("scenario_id", "unknown")
                 
@@ -344,35 +430,43 @@ class APIManager:
                 else:
                     final_results[scenario_id] = {
                         "response": result["response"],
-                        "model": haiku_model,
+                        "model": fallback_model,
                         "confidence": confidence
                     }
             
-            # Phase 3: Re-evaluate low confidence with Sonnet
+            # Phase 3: Re-evaluate low confidence with primary model
             if low_confidence_prompts:
-                logger.info(f"Re-evaluating {len(low_confidence_prompts)} low-confidence scenarios with Sonnet")
-                client, sonnet_model = self.get_client(prefer_primary=True)
+                logger.info(f"Re-evaluating {len(low_confidence_prompts)} low-confidence scenarios with primary model")
+                client, primary_model = self.get_client(prefer_primary=True)
                 
                 for prompt_data in low_confidence_prompts:
                     try:
-                        response = client.messages.create(
-                            model=sonnet_model,
-                            max_tokens=2000,
-                            temperature=0.1,
-                            messages=[{"role": "user", "content": prompt_data["prompt"]}]
-                        )
-                        response_text = response.content[0].text
+                        if self.provider == "anthropic":
+                            response = client.messages.create(
+                                model=primary_model,
+                                max_tokens=2000,
+                                temperature=0.1,
+                                messages=[{"role": "user", "content": prompt_data["prompt"]}]
+                            )
+                            response_text = response.content[0].text
+                        elif self.provider == "openai":
+                            response = client.chat.completions.create(
+                                model=primary_model,
+                                max_tokens=2000,
+                                temperature=0.1,
+                                messages=[{"role": "user", "content": prompt_data["prompt"]}]
+                            )
+                            response_text = response.choices[0].message.content
                         
                         # Track cost with batch discount
                         input_tokens = len(prompt_data["prompt"]) // 4
                         output_tokens = len(response_text) // 4
-                        cost = (input_tokens * 3.0 + output_tokens * 15.0) / 1_000_000
-                        telemetry["total_cost"] += cost * BATCH_API_DISCOUNT
+                        self.track_cost(input_tokens, output_tokens, primary_model)
                         
                         scenario_id = prompt_data.get("scenario_id", "unknown")
                         final_results[scenario_id] = {
                             "response": response_text,
-                            "model": sonnet_model,
+                            "model": primary_model,
                             "confidence": self._extract_confidence_from_response(response_text)
                         }
                     except Exception as e:

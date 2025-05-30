@@ -288,18 +288,36 @@ class BaseJudge(ABC):
                 response_text, logprobs = self.api_manager.call_with_logprobs(prompt, enable_logprobs=True)
             else:
                 client, model = self.api_manager.get_client()
-                response = client.messages.create(
-                    model=model,
-                    max_tokens=2000,
-                    temperature=0.1,  # Low temperature for consistent evaluation
-                    messages=[
-                        {
-                            "role": "user",
-                            "content": prompt
-                        }
-                    ]
-                )
-                response_text = response.content[0].text
+                
+                if self.api_manager.provider == "anthropic":
+                    response = client.messages.create(
+                        model=model,
+                        max_tokens=2000,
+                        temperature=0.1,  # Low temperature for consistent evaluation
+                        messages=[
+                            {
+                                "role": "user",
+                                "content": prompt
+                            }
+                        ]
+                    )
+                    response_text = response.content[0].text
+                elif self.api_manager.provider == "openai":
+                    response = client.chat.completions.create(
+                        model=model,
+                        max_tokens=2000,
+                        temperature=0.1,  # Low temperature for consistent evaluation
+                        messages=[
+                            {
+                                "role": "user",
+                                "content": prompt
+                            }
+                        ]
+                    )
+                    response_text = response.choices[0].message.content
+                else:
+                    raise ValueError(f"Unsupported provider: {self.api_manager.provider}")
+                
                 logprobs = None
                 
                 # Track API costs for standard call
