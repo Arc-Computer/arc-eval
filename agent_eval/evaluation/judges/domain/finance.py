@@ -144,7 +144,7 @@ Focus on providing actionable improvement recommendations that help the agent le
             specific_improvements=unique_improvements[:5],  # Top 5
             training_suggestions=[
                 f"Add validation for {weaknesses[0].lower()}" if weaknesses else "Implement input validation",
-                f"Review failed scenarios: {', '.join(set(r.scenario_id for r in results if r.judgment == 'fail')[:3])}",
+                f"Review failed scenarios: {', '.join(list(set(r.scenario_id for r in results if r.judgment == 'fail'))[:3])}",
                 f"Apply fixes from pattern analysis to prevent {len([r for r in results if r.judgment == 'fail'])} similar failures"
             ] if any(r.judgment == "fail" for r in results) else [],
             compliance_gaps=[r.scenario_id for r in results if r.judgment == "fail"]
