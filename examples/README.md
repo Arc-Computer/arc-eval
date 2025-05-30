@@ -1,145 +1,54 @@
-# ARC-Eval Examples & Documentation
+# ARC-Eval Examples
 
-This directory contains comprehensive examples, datasets, and integration guides for ARC-Eval.
+This directory contains example agent outputs and traces for testing ARC-Eval workflows.
 
-## 📁 Directory Structure
+## Directory Structure
 
-### 🚀 Quick Start Data
-Quick demo data is automatically generated when using `arc-eval --quick-start --domain <domain>`
+### `/quickstart`
+**Start here for enterprise onboarding.** Contains minimal examples and a comprehensive walkthrough of all ARC-Eval capabilities for debugging, compliance testing, and improvement workflows.
 
-### 📊 [Complete Datasets](complete-datasets/)
-Full evaluation datasets for comprehensive testing
-- **finance.json**: 110 scenarios covering SOX, KYC, AML, PCI-DSS
-- **security.json**: 120 scenarios covering OWASP, MITRE ATT&CK
-- **ml.json**: 107 scenarios covering EU AI Act, IEEE Ethics
+### `/enhanced-traces`
+Production-grade agent trace examples with detailed execution steps, timing metrics, and tool calls. These demonstrate the full richness of data that ARC-Eval can analyze.
 
-### 🔍 [Enhanced Traces](enhanced-traces/)
-Advanced trace examples with detailed step-by-step evaluation data
-- Workflow traces for complex agent reasoning
-- Multi-step evaluation examples
-- Training data for agent improvement
+### `/workflow-reliability`
+Framework-specific examples for LangChain, CrewAI, and other agent frameworks. Shows how ARC-Eval handles different output formats automatically.
 
-### 🔧 [Integration](integration/)
-Ready-to-use integration examples
-- **[ci-cd/](integration/ci-cd/)**: GitHub Actions, GitLab CI templates
-- **[python/](integration/python/)**: Python integration examples
-- **[api/](integration/api/)**: REST API integration guides
+### `/integration`
+CI/CD integration templates for GitHub Actions and other platforms. Use these to add ARC-Eval to your deployment pipeline.
 
-### 📚 [Tutorials](tutorials/)
-Step-by-step guides and tutorials
-- Getting started guide
-- Enterprise setup tutorial
-- Custom scenario creation
+### `failed_trace_example.json`
+A detailed example of a failed agent execution with PII exposure. Useful for understanding the debug workflow and how ARC-Eval identifies failure patterns.
 
-## 🚀 Quick Start Examples
+## Quick Start
 
-### Basic Evaluation
 ```bash
-# Quick demo (3 seconds)
-arc-eval --quick-start --domain finance
+# Go to the quickstart guide for a complete enterprise walkthrough
+cd quickstart && cat README.md
 
-# Evaluate your data
-arc-eval --domain finance --input path/to/your/outputs.json
-
-# Generate audit report
-arc-eval --domain finance --input your_outputs.json --export pdf --workflow
+# Or jump straight to testing
+arc-eval debug --input quickstart/finance_example.json
 ```
 
-### Advanced Features
-```bash
-# Agent-as-a-Judge evaluation
-arc-eval --domain security --input outputs.json --agent-judge
+## Input Format Requirements
 
-# With verification layer
-arc-eval --domain security --input outputs.json --agent-judge --verify
+ARC-Eval accepts agent outputs in various formats:
 
-# Benchmark evaluation
-arc-eval --benchmark mmlu --subset anatomy --limit 20 --agent-judge
-```
-
-### Python Integration
-```python
-from agent_eval.core.engine import EvaluationEngine
-
-# Initialize and run evaluation
-engine = EvaluationEngine(domain='finance')
-results = engine.evaluate(your_agent_outputs)
-
-# Process results
-for result in results:
-    if not result.passed:
-        print(f"FAIL: {result.scenario_name} - {result.failure_reason}")
-```
-
-## 📋 Input Format Examples
-
-### Simple Format
-```json
-{"output": "Transaction approved for customer John Smith"}
-```
-
-### Enhanced Format
+1. **Simple Format** (minimum required):
 ```json
 {
-  "output": "KYC verification completed successfully",
-  "scenario_id": "fin_001", 
-  "timestamp": "2025-01-15T10:30:00Z",
-  "framework": "custom"
+  "output": "Agent response text",
+  "scenario_id": "optional_id"
 }
 ```
 
-### Multiple Outputs
+2. **Array of Outputs**:
 ```json
 [
-  {"output": "Transaction 1 approved"},
-  {"output": "Transaction 2 rejected due to compliance flags"}
+  {"output": "Response 1", "scenario_id": "test_001"},
+  {"output": "Response 2", "scenario_id": "test_002"}
 ]
 ```
 
-## 🎯 Domain-Specific Examples
+3. **Framework-Specific Formats**: See `/workflow-reliability` for LangChain, CrewAI, OpenAI, and Anthropic examples.
 
-### Finance Domain
-Focus: Banking, fintech, payments, insurance compliance
-```bash
-arc-eval --domain finance --input banking_outputs.json
-```
-
-### Security Domain  
-Focus: AI safety, prompt injection, data protection
-```bash
-arc-eval --domain security --input chatbot_outputs.json
-```
-
-### ML Domain
-Focus: Bias detection, model governance, ethics
-```bash
-arc-eval --domain ml --input model_predictions.json
-```
-
-## 📖 Learning Path
-
-1. **Start Here**: `arc-eval --quick-start` 
-2. **Learn Domains**: `arc-eval --list-domains`
-3. **Input Formats**: `arc-eval --help-input`
-4. **Try Your Data**: `arc-eval --domain <domain> --input your_file.json`
-5. **Generate Reports**: Add `--export pdf --workflow`
-6. **Advanced Features**: Try `--agent-judge` and `--verify`
-7. **Integration**: See [integration/](integration/) examples
-
-## 🆘 Support
-
-- **Validate Input**: `arc-eval --validate --input your_file.json`
-- **Get Help**: `arc-eval --help`
-- **Documentation**: See individual README files in each directory
-- **Issues**: Check common problems in [tutorials/](tutorials/)
-
-## 🔄 Continuous Integration
-
-Quick CI/CD setup:
-```yaml
-# .github/workflows/compliance.yml
-- name: ARC-Eval Compliance Check
-  run: arc-eval --domain finance --input outputs.json --export json
-```
-
-See [integration/ci-cd/](integration/ci-cd/) for complete templates.
+ARC-Eval automatically detects your format - no configuration needed.
