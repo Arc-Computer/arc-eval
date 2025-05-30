@@ -146,7 +146,6 @@ Focus on providing actionable improvement recommendations that help the agent le
                 f"Implement {weaknesses[0].lower()}" if weaknesses else "Add model validation",
                 f"Fix issues in: {', '.join(list(set(r.scenario_id for r in results if r.judgment == 'fail'))[:3])}",
                 f"Apply MLOps best practices to resolve {len([r for r in results if r.judgment == 'fail'])} failures"
-            ] if any(r.judgment == "fail" for r in results) else [
-            ],
+            ] if any(r.judgment == "fail" for r in results) else []
             compliance_gaps=[r.scenario_id for r in results if r.judgment == "fail"]
         )
