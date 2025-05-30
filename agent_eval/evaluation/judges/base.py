@@ -337,7 +337,7 @@ class BaseJudge(ABC):
             # Fallback to alternative model if primary fails
             if "sonnet" in model:
                 logger.info("Falling back to Haiku model")
-                client, _ = self.api_manager.get_client(prefer_primary=False)
-                return self.evaluate(output, scenario)
+                _, fallback_model = self.api_manager.get_client(prefer_primary=False)
+                return self._execute_evaluation(prompt, scenario, fallback_model)
             else:
                 raise
