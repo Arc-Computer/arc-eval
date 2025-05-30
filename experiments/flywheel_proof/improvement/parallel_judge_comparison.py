@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Parallel Agent-as-a-Judge comparison: Anthropic Claude vs OpenAI GPT-4
+Parallel Agent-as-a-Judge comparison: Anthropic Claude Sonnet 4 vs OpenAI GPT-4.1
 Run the same flywheel experiment with both judge models to compare performance.
 """
 
@@ -27,10 +27,10 @@ class ParallelJudgeComparison:
         # Configure environment for judge type
         if judge_type == "anthropic":
             # Use existing ANTHROPIC_API_KEY
-            env_vars = {"LLM_PROVIDER": "anthropic"}
+            judge_config = "--agent-judge"
         elif judge_type == "openai":
-            # Use OPENAI_API_KEY with OpenAI provider
-            env_vars = {"LLM_PROVIDER": "openai"}
+            # Would need OPENAI_API_KEY and modified CLI
+            judge_config = "--agent-judge --judge-model gpt-4.1"
         
         try:
             cmd = [
@@ -40,13 +40,8 @@ class ParallelJudgeComparison:
                 "--budget", "50.0"
             ]
             
-            # Set environment variables for judge type
-            import os
-            env = os.environ.copy()
-            env.update(env_vars)
-            
             start_time = time.time()
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=1800, env=env)  # 30 min timeout
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=1800)  # 30 min timeout
             duration = time.time() - start_time
             
             return {
@@ -85,7 +80,8 @@ class ParallelJudgeComparison:
         with ThreadPoolExecutor(max_workers=2) as executor:
             futures = {
                 executor.submit(self.run_experiment_with_judge, "anthropic", max_iterations): "anthropic",
-                executor.submit(self.run_experiment_with_judge, "openai", max_iterations): "openai"
+                # Note: OpenAI support would need to be implemented in CLI first
+                # executor.submit(self.run_experiment_with_judge, "openai", max_iterations): "openai"
             }
             
             results = {}

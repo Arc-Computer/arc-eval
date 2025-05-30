@@ -34,113 +34,28 @@
 
 ## Execution
 
-### Prerequisites
+### Test Mode (Validation)
 ```bash
-# Set API key for Agent-as-a-Judge evaluation
-export ANTHROPIC_API_KEY="your-anthropic-key-here"
-
-# Navigate to experiment directory
-cd /Users/jarrodbarnes/arc-eval/experiments/flywheel_proof/phase2_improvement
-```
-
-### Test Mode (Quick Validation - 5 iterations, ~$10)
-```bash
+cd /Users/jarrodbarnes/arc-eval/experiments/flywheel_proof/improvement
 python flywheel_experiment.py --test
 ```
 
-### Research Mode (Full 30-iteration experiment, ~$50-100)
+### Full Research Experiment
 ```bash
-python flywheel_experiment.py --iterations 30 --target 91.0 --budget 100.0
+# Set API key for Agent-as-a-Judge
+export ANTHROPIC_API_KEY="your-key-here"
+
+# Run complete experiment
+python flywheel_experiment.py --iterations 30 --target 100 --budget 100.0
 ```
-
-### Conservative Mode (15 iterations, ~$25-50)
-```bash
-python flywheel_experiment.py --iterations 15 --target 85.0 --budget 50.0
-```
-
-### Real-Time Progress Monitoring
-
-**The experiment provides comprehensive real-time logging:**
-
-#### Terminal Output (Real-Time)
-- ✅ **Live iteration progress**: "🔄 ITERATION X/30"
-- ✅ **Agent-as-a-Judge status**: Real CLI execution logs
-- ✅ **Pass rate updates**: Live percentage improvements
-- ✅ **Cost tracking**: Running API cost totals
-- ✅ **Time estimates**: Duration per iteration + remaining time
-
-#### Monitor Progress in Second Terminal
-```bash
-# Watch experiment directory creation
-watch -n 10 "ls -la flywheel_experiment/"
-
-# Monitor real-time logs (JSONL format)
-tail -f flywheel_experiment/improvement_log.jsonl
-
-# Check latest results
-cat flywheel_experiment/experiment_summary.json | jq '.'
-```
-
-#### Progress Files Created in Real-Time
-```bash
-flywheel_experiment/
-├── improvement_log.jsonl          # ⚡ Real-time iteration logs
-├── agent_outputs/                 # ⚡ Live agent outputs
-│   ├── improved_outputs_iter_01.json
-│   ├── improved_outputs_iter_02.json
-│   └── ...
-├── evaluations/                   # ⚡ Live Agent-as-a-Judge results  
-│   ├── evaluation_iter_01.json
-│   ├── evaluation_iter_02.json
-│   └── ...
-└── strategies/                    # ⚡ Live improvement strategies
-    ├── strategy_iter_01.json
-    └── ...
-```
-
-### Expected Timing
-- **Per Iteration**: 3-8 minutes (Agent-as-a-Judge + analysis)
-- **Full 30-iteration**: 2-4 hours total
-- **Conservative 15-iteration**: 1-2 hours total
-- **Test mode (5 iterations)**: 20-40 minutes
 
 ### Expected Cost
 - **Test Mode**: ~$10 (5 iterations)
-- **Conservative**: ~$25-50 (15 iterations)  
 - **Full Experiment**: ~$50-100 (30 iterations with Agent-as-a-Judge)
-
-### Optional: Parallel Judge Comparison (Anthropic vs OpenAI)
-
-**Prerequisites**:
-```bash
-# Set both API keys
-export ANTHROPIC_API_KEY="your-anthropic-key"
-export OPENAI_API_KEY="your-openai-key"
-
-# Install OpenAI library
-pip install openai
-```
-
-**Run Comparison**:
-```bash
-# Compare Anthropic Claude vs OpenAI GPT-4.1 (runs both experiments in parallel)
-python parallel_judge_comparison.py 10
-
-# Results saved to: parallel_judge_comparison/judge_comparison_results.json
-```
-
-**Individual Judge Experiments**:
-```bash
-# Anthropic Claude only
-LLM_PROVIDER=anthropic python flywheel_experiment.py --iterations 15 --target 85.0 --budget 50.0
-
-# OpenAI GPT-4.1 only  
-LLM_PROVIDER=openai python flywheel_experiment.py --iterations 15 --target 85.0 --budget 50.0
-```
 
 ## Output Structure
 
-```
+```bash
 flywheel_experiment/
 ├── experiment_log.jsonl              # Iteration-by-iteration results
 ├── experiment_summary.json           # Final research summary
