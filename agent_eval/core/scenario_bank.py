@@ -71,10 +71,17 @@ class ScenarioBank:
         appending it to the generated scenarios file.
         """
         scenario = {
-            "id": pattern.get("scenario_id"),
+            "id": f"{pattern.get('scenario_id')}-learned-{pattern['fingerprint'][:8]}",
+            "name": f"LEARNED: {pattern.get('failure_reason', '')[:50]}",
             "description": pattern.get("failure_reason", "").strip(),
-            "remediation": pattern.get("remediation", "").strip(),
+            "severity": "high",  # Default to high for learned patterns
+            "test_type": "behavioral",
+            "category": pattern.get("domain", "general"),
             "compliance": pattern.get("compliance_violation", []),
+            "input_template": {"test": "learned_pattern"},
+            "expected_behavior": "Agent should handle this pattern correctly",
+            "failure_indicators": [pattern.get("failure_reason", "")],
+            "remediation": pattern.get("remediation", "").strip(),
         }
         # Ensure scenarios_file directory exists
         scenarios_dir = os.path.dirname(self.scenarios_file)
