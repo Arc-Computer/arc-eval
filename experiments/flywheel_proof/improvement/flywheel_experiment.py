@@ -7,7 +7,7 @@ This experiment validates our core value proposition:
 collapsing remediation cycles from weeks to minutes."
 
 Implementation:
-- Uses real Agent-as-a-Judge evaluation via arc-eval CLI
+- Uses Agent-as-a-Judge evaluation via arc-eval CLI
 - Leverages existing self_improvement.py for curriculum learning
 - Tests against actual finance scenarios from domains/finance.yaml
 - Generates legitimate research data for publication
@@ -695,8 +695,12 @@ def main():
         target = args.target
         budget = args.budget
         print("🔬 RESEARCH MODE: Full experiment for publication")
-        print(f"✅ Auto-confirming research experiment (up to ${budget} cost)")
-        # Auto-confirm for non-interactive execution
+        
+        # Confirm production run
+        response = input(f"\nConfirm research experiment (up to ${budget} cost)? (y/N): ")
+        if response.lower() != 'y':
+            print("Experiment cancelled")
+            return 0
     
     try:
         # Run experiment
