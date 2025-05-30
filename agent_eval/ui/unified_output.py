@@ -10,6 +10,7 @@ from rich.tree import Tree
 from rich import box
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.syntax import Syntax
+from rich.text import Text
 
 console = Console()
 
@@ -166,3 +167,42 @@ class UnifiedOutputFormatter:
         console.print(f"\n[bold green]✨ {workflow.capitalize()} workflow complete![/bold green]")
         if next_command:
             console.print(f"\n🔄 [bold]Next Step:[/bold] [green]{next_command}[/green]")
+    
+    @staticmethod
+    def learning_progress(metrics: Dict[str, Any]) -> None:
+        """Display standardized learning progress metrics."""
+        # Create a clean panel for learning metrics
+        learning_text = Text()
+        
+        # Performance delta (most important)
+        if metrics.get("performance_delta"):
+            delta = metrics["performance_delta"]
+            sign = "+" if delta > 0 else ""
+            learning_text.append(f"Performance Delta: {sign}{delta:.1f}%\n", style="bold cyan")
+            learning_text.append(f"├─ Failures reduced: -{metrics.get('critical_failure_reduction', 0)}\n")
+            learning_text.append(f"├─ Test coverage: +{metrics.get('scenarios_generated', 0)} scenarios\n")
+            learning_text.append(f"└─ Detection time: {metrics.get('mean_detection_time', 0):.1f}s\n")
+        
+        # Pattern summary
+        if metrics.get("patterns_captured", 0) > 0:
+            learning_text.append(f"\nPatterns: {metrics['patterns_captured']} captured, ", style="bold")
+            learning_text.append(f"{metrics.get('scenarios_generated', 0)} scenarios generated\n")
+        
+        # Show in a clean panel
+        panel = Panel(
+            learning_text,
+            title="[bold blue]Learning Progress[/bold blue]",
+            border_style="blue",
+            padding=(1, 2)
+        )
+        console.print(panel)
+    
+    @staticmethod
+    def learning_summary(total_patterns: int, new_scenarios: int, fixes_available: int) -> None:
+        """Display quick learning summary line."""
+        console.print(
+            f"\n📊 [bold]Learning Summary:[/bold] "
+            f"{total_patterns} patterns learned | "
+            f"{new_scenarios} scenarios generated | "
+            f"{fixes_available} fixes available"
+        )

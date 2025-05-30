@@ -100,6 +100,9 @@ class WorkflowCommandHandler(BaseCommandHandler):
                     emoji = {"CRITICAL": "🔴", "HIGH": "🟠", "MEDIUM": "🟡", "LOW": "🟢"}.get(priority, "⚪")
                     console.print(f"  {emoji} {priority}: {count}")
             
+            # Show remediation priority queue (PR3)
+            self._display_remediation_priority(improvement_plan)
+            
             # Show next steps
             console.print(f"\n[bold blue]Next Steps:[/bold blue]")
             console.print(f"1. Review improvement plan: [green]cat {output_path}[/green]")
@@ -465,3 +468,32 @@ class WorkflowCommandHandler(BaseCommandHandler):
                 return plan_file
         
         return None
+    
+    def _display_remediation_priority(self, improvement_plan: Any) -> None:
+        """Display remediation priority queue with MLOps focus."""
+        # Extract critical actions from improvement plan
+        critical_actions = [a for a in improvement_plan.actions if a.priority == "CRITICAL"]
+        high_actions = [a for a in improvement_plan.actions if a.priority == "HIGH"]
+        
+        if not critical_actions and not high_actions:
+            return
+        
+        console.print(f"\n[bold]Remediation Priority Queue:[/bold]")
+        
+        # Show top 3 critical/high priority items
+        priority_queue = critical_actions[:2] + high_actions[:1]
+        
+        for i, action in enumerate(priority_queue[:3], 1):
+            severity = "CRITICAL" if action.priority == "CRITICAL" else "HIGH"
+            color = "red" if severity == "CRITICAL" else "yellow"
+            
+            console.print(f"{i}. [{color}]{severity}[/{color}] {action.description}")
+            console.print(f"   └─ Expected impact: {action.rationale}")
+            if hasattr(action, 'implementation_hint') and action.implementation_hint:
+                console.print(f"   └─ Implementation: {action.implementation_hint}")
+        
+        # Show projected improvement
+        failed_scenarios = improvement_plan.summary.get('failed_scenarios', 0)
+        if failed_scenarios > 0:
+            projected_improvement = min(len(priority_queue) * 5, 25)  # Estimate 5% per fix
+            console.print(f"\n[dim]Projected compliance improvement: +{projected_improvement}% after implementing top fixes[/dim]")
