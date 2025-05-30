@@ -144,7 +144,7 @@ Focus on providing actionable improvement recommendations that help the agent le
             specific_improvements=unique_improvements[:5],  # Top 5
             training_suggestions=[
                 f"Implement {weaknesses[0].lower()}" if weaknesses else "Add model validation",
-                f"Fix issues in: {', '.join(set(r.scenario_id for r in results if r.judgment == 'fail')[:3])}",
+                f"Fix issues in: {', '.join(list(set(r.scenario_id for r in results if r.judgment == 'fail'))[:3])}",
                 f"Apply MLOps best practices to resolve {len([r for r in results if r.judgment == 'fail'])} failures"
             ] if any(r.judgment == "fail" for r in results) else [
             ],
