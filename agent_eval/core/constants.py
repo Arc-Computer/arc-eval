@@ -97,6 +97,12 @@ DEFAULT_EXPORT_FORMATS = ["pdf", "csv", "json"]
 REPORT_TIMESTAMP_FORMAT = "%Y-%m-%d_%H-%M-%S"
 EVALUATION_ID_TIMESTAMP_FORMAT = "%Y%m%d_%H%M%S"
 
+# Batch Processing Thresholds
+BATCH_PROCESSING_THRESHOLD = 5  # Auto-enable batch processing for 5+ scenarios
+BATCH_SIZE_LIMIT = 100  # Maximum scenarios per batch (Anthropic limit)
+BATCH_CONFIDENCE_THRESHOLD = 0.7  # Confidence threshold for Haiku → Sonnet escalation
+BATCH_API_DISCOUNT = 0.5  # 50% discount on batch API pricing
+
 # Error Handling
 DEFAULT_TIMEOUT_SECONDS = 120  # 2 minutes default timeout
 MAX_RETRIES = 3
