@@ -16,7 +16,11 @@ The platform addresses two core problems: debugging agent failures in production
 
 ```bash
 pip install arc-eval
-export ANTHROPIC_API_KEY="your-key-here"
+
+# Set your API keys (supports both Anthropic and OpenAI)
+export ANTHROPIC_API_KEY="your-anthropic-key"
+export OPENAI_API_KEY="your-openai-key"  # Optional
+export LLM_PROVIDER="anthropic"  # or "openai" (default: anthropic)
 
 # Three simple workflows:
 arc-eval debug --input agent_trace.json        # Why is it failing?
