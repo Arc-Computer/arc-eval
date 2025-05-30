@@ -59,7 +59,7 @@ class FlywheelExperiment:
         
         # Experiment tracking
         self.results_log = self.experiment_dir / "experiment_log.jsonl"
-        self.baseline_dir = self.experiment_dir.parent / "phase1_baseline"
+        self.baseline_dir = self.experiment_dir.parent / "baseline"
         
         # Create output directories
         (self.experiment_dir / "agent_outputs").mkdir(exist_ok=True)
@@ -110,14 +110,25 @@ class FlywheelExperiment:
         
         try:
             # Run from project root with API key
+            print("⚡ Starting Agent-as-a-Judge evaluation (this may take 3-8 minutes)...")
+            print("📝 Live output from arc-eval CLI:")
+            print("-" * 50)
+            
             result = subprocess.run(
                 cmd,
-                capture_output=True,
-                text=True,
                 cwd=self.experiment_dir.parent.parent.parent,  # arc-eval root
                 timeout=900,  # 15 minute timeout
-                env={**os.environ, "ANTHROPIC_API_KEY": self.api_key}
+                env={**os.environ, "ANTHROPIC_API_KEY": self.api_key},
+                capture_output=True,
+                text=True
             )
+            
+            # Show the output even if captured
+            if result.stdout:
+                print("STDOUT:", result.stdout)
+            if result.stderr:
+                print("STDERR:", result.stderr)
+            print("-" * 50)
             
             if result.returncode != 0:
                 print(f"⚠️  CLI evaluation failed:")
