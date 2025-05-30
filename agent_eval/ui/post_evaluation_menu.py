@@ -257,27 +257,49 @@ class PostEvaluationMenu:
         try:
             if format_choice in ["pdf", "all"]:
                 exporter = PDFExporter()
-                filename = exporter.export(
-                    self.evaluation_results,
-                    output_dir,
-                    include_recommendations=True
+                # Create filename
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                filename = f"{output_dir}/{self.domain}_report_{timestamp}.pdf"
+                Path(output_dir).mkdir(exist_ok=True)
+                
+                # Export with correct signature
+                exporter.export(
+                    results=self.evaluation_results.get("results", []),
+                    filename=filename,
+                    domain=self.domain,
+                    summary_only=False
                 )
                 console.print(f"[green]✅ PDF exported: {filename}[/green]")
             
             if format_choice in ["csv", "all"]:
                 exporter = CSVExporter()
-                filename = exporter.export(
-                    self.evaluation_results,
-                    output_dir
+                # Create filename
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                filename = f"{output_dir}/{self.domain}_report_{timestamp}.csv"
+                Path(output_dir).mkdir(exist_ok=True)
+                
+                # Export with correct signature
+                exporter.export(
+                    results=self.evaluation_results.get("results", []),
+                    filename=filename,
+                    domain=self.domain,
+                    summary_only=False
                 )
                 console.print(f"[green]✅ CSV exported: {filename}[/green]")
             
             if format_choice in ["json", "all"]:
                 exporter = JSONExporter()
-                filename = exporter.export(
-                    self.evaluation_results,
-                    output_dir,
-                    include_metadata=True
+                # Create filename
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                filename = f"{output_dir}/{self.domain}_report_{timestamp}.json"
+                Path(output_dir).mkdir(exist_ok=True)
+                
+                # Export with correct signature
+                exporter.export(
+                    results=self.evaluation_results.get("results", []),
+                    filename=filename,
+                    domain=self.domain,
+                    summary_only=False
                 )
                 console.print(f"[green]✅ JSON exported: {filename}[/green]")
                 

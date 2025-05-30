@@ -109,6 +109,9 @@ class ReliabilityCommandHandler(BaseCommandHandler):
         console.print(f"🔧 Starting unified debugging session...")
         console.print(f"📊 Analyzing {len(agent_outputs)} workflow components...")
         
+        # Initialize framework_info for later use
+        framework_info = None
+        
         # Delegate to core reliability analyzer
         try:
             from agent_eval.evaluation.reliability_validator import ReliabilityAnalyzer
@@ -176,11 +179,18 @@ class ReliabilityCommandHandler(BaseCommandHandler):
                 from agent_eval.ui.post_evaluation_menu import PostEvaluationMenu
                 
                 # Build evaluation results for menu
+                # Try to get framework from analysis if available
+                detected_framework = framework
+                if 'analysis' in locals() and hasattr(analysis, 'detected_framework'):
+                    detected_framework = analysis.detected_framework
+                elif framework_info:
+                    detected_framework = framework_info
+                
                 eval_results = {
                     "summary": {
                         "failures_found": len([o for o in agent_outputs if hasattr(o, 'error') and o.error]),
                         "total_outputs": len(agent_outputs),
-                        "framework": framework or framework_info
+                        "framework": detected_framework
                     },
                     "outputs": agent_outputs,
                     "domain": kwargs.get('domain') or "general"
