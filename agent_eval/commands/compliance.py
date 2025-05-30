@@ -63,9 +63,8 @@ class ComplianceCommandHandler(BaseCommandHandler):
         # Get no_interaction first, then potentially override it
         no_interaction = kwargs.get('no_interaction', False)
         
-        # Auto-disable interaction when exporting to avoid EOF errors
-        if export and not no_interaction:
-            no_interaction = True
+        # Note: We no longer auto-disable interaction when exporting
+        # The post-evaluation menu handles exports gracefully
         
         # Validate required parameters
         self._validate_required_params(['domain'], **kwargs)

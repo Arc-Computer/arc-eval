@@ -112,6 +112,44 @@ class WorkflowCommandHandler(BaseCommandHandler):
             if dev:
                 console.print(f"\n[dim]Debug: Generated {len(improvement_plan.actions)} actions from {improvement_plan.summary['failed_scenarios']} failed scenarios[/dim]")
             
+            # Show post-evaluation menu for improve workflow
+            if not kwargs.get('no_interaction', False):
+                try:
+                    from agent_eval.ui.post_evaluation_menu import PostEvaluationMenu
+                    
+                    # Build evaluation results for menu
+                    eval_results = {
+                        "summary": {
+                            "actions_count": len(improvement_plan.actions),
+                            "expected_improvement": improvement_plan.summary.get('expected_improvement', 15),
+                            "domain": improvement_plan.domain
+                        },
+                        "improvement_actions": [
+                            {
+                                "title": action.description[:50],
+                                "priority": action.priority,
+                                "impact": action.expected_improvement,
+                                "description": action.action
+                            }
+                            for action in improvement_plan.actions[:5]
+                        ],
+                        "domain": improvement_plan.domain
+                    }
+                    
+                    # Create and display menu
+                    menu = PostEvaluationMenu(
+                        domain=improvement_plan.domain,
+                        evaluation_results=eval_results,
+                        workflow_type="improve"
+                    )
+                    
+                    # Display menu and handle user choice
+                    choice = menu.display_menu()
+                    menu.execute_choice(choice)
+                    
+                except Exception as e:
+                    console.print(f"\n[yellow]⚠️  Post-improvement options unavailable: {str(e)}[/yellow]")
+            
             return 0
             
         except Exception as e:

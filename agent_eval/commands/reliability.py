@@ -328,6 +328,36 @@ class ReliabilityCommandHandler(BaseCommandHandler):
             console.print(f"\\n[dim]Debug: Framework={framework}, Domain={domain}, "
                         f"Endpoint={endpoint}, Outputs={len(agent_outputs)}[/dim]")
         
+        # Show post-evaluation menu for debug workflow
+        if unified_debug and not kwargs.get('no_interaction', False):
+            try:
+                from agent_eval.ui.post_evaluation_menu import PostEvaluationMenu
+                
+                # Build evaluation results for menu
+                eval_results = {
+                    "summary": {
+                        "failures_found": len([o for o in agent_outputs if hasattr(o, 'error') and o.error]),
+                        "total_outputs": len(agent_outputs),
+                        "framework": framework
+                    },
+                    "outputs": agent_outputs,
+                    "domain": domain or "general"
+                }
+                
+                # Create and display menu
+                menu = PostEvaluationMenu(
+                    domain=domain or "general",
+                    evaluation_results=eval_results,
+                    workflow_type="debug"
+                )
+                
+                # Display menu and handle user choice
+                choice = menu.display_menu()
+                menu.execute_choice(choice)
+                
+            except Exception as e:
+                console.print(f"\\n[yellow]⚠️  Post-debug options unavailable: {str(e)}[/yellow]")
+        
         return 0
     
     def _handle_schema_validation(self, **kwargs) -> int:
