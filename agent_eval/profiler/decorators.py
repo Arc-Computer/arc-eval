@@ -2,9 +2,12 @@
 Simple evaluation tracking decorator for pattern learning integration.
 """
 
+import logging
 from functools import wraps
 
 from agent_eval.analysis.pattern_learner import PatternLearner
+
+logger = logging.getLogger(__name__)
 
 
 def track_evaluation(fn):
@@ -25,25 +28,25 @@ def track_evaluation(fn):
             metrics = learner.get_learning_metrics()
             fixes = learner.get_generated_fixes()
             
-            # Display learning progress if anything was learned
+            # Log learning progress if anything was learned
             if metrics.get("patterns_learned", 0) > 0:
-                print(f"\n🧠 [Pattern Learning] Captured {metrics['patterns_learned']} failure patterns")
+                logger.info(f"[Pattern Learning] Captured {metrics['patterns_learned']} failure patterns")
                 if metrics.get("scenarios_generated", 0) > 0:
-                    print(f"   ✨ Generated {metrics['scenarios_generated']} new test scenarios")
+                    logger.info(f"Generated {metrics['scenarios_generated']} new test scenarios")
                 if metrics.get("fixes_generated", 0) > 0:
-                    print(f"   🔧 Generated {metrics['fixes_generated']} actionable fixes")
+                    logger.info(f"Generated {metrics['fixes_generated']} actionable fixes")
                     
-                    # Display fixes by domain
+                    # Log fixes by domain
                     for domain, domain_fixes in fixes.items():
                         if domain_fixes:
-                            print(f"\n   📋 {domain.upper()} Fixes:")
+                            logger.info(f"{domain.upper()} Fixes:")
                             for fix in domain_fixes[:2]:  # Show first 2 fixes per domain
-                                print(f"   {fix}")
+                                logger.info(f"  {fix}")
                             if len(domain_fixes) > 2:
-                                print(f"   ... and {len(domain_fixes) - 2} more fixes")
+                                logger.info(f"  ... and {len(domain_fixes) - 2} more fixes")
         except Exception as e:
-            # Fail silently on learning errors to not break main flow
-            print(f"[WARN] Pattern learning failed: {e}")
+            # Log warning on learning errors to not break main flow
+            logger.warning(f"Pattern learning failed: {e}")
         return result
 
     return wrapper

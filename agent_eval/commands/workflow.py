@@ -203,6 +203,12 @@ class WorkflowCommandHandler(BaseCommandHandler):
             console.print("[yellow]⚠️  No improvement plan found[/yellow]")
             console.print("\n[bold yellow]🎯 Next Step: Generate improvement plan[/bold yellow]")
             
+            # Check if running in non-interactive mode (e.g., tests)
+            if not sys.stdin.isatty():
+                # Non-interactive mode - skip prompt
+                console.print("[dim]Non-interactive mode detected - skipping prompt[/dim]")
+                return 0
+            
             if click.confirm("Generate improvement plan now?", default=True):
                 console.print(f"\n[blue]Generating improvement plan from {latest_evaluation}...[/blue]")
                 try:

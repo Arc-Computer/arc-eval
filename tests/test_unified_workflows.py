@@ -232,22 +232,23 @@ class TestWorkflowIntegration:
         assert "improve" in result.output
 
 
-class TestBackwardCompatibility:
-    """Test backward compatibility with legacy CLI."""
+class TestSimplifiedCLI:
+    """Test that CLI has been simplified for better UX."""
     
-    def test_legacy_command_warning(self, runner, sample_agent_output):
-        """Test that legacy commands show deprecation warning."""
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
-            json.dump([sample_agent_output], f)
-            f.flush()
-            
-            # Use legacy multi-flag command
-            from agent_eval.cli import legacy_main
-            result = runner.invoke(legacy_main, ['--domain', 'finance', '--input', f.name])
-            
-            # Should work but show warning
-            assert "legacy CLI interface" in result.output
-            assert "migrate to the new unified commands" in result.output
+    def test_legacy_cli_removed(self):
+        """Test that legacy_main doesn't exist (intentionally removed)."""
+        from agent_eval import cli
+        
+        # Ensure legacy_main is not available
+        assert not hasattr(cli, 'legacy_main'), "Legacy CLI should be removed for simplified UX"
+    
+    def test_interactive_menu_exists(self, runner):
+        """Test that interactive menu is available when no command given."""
+        result = runner.invoke(cli, [], input='q\n')
+        
+        assert result.exit_code == 0
+        assert "ARC-Eval Unified Workflow" in result.output
+        assert any(cmd in result.output for cmd in ["debug", "compliance", "improve"])
 
 
 @pytest.mark.parametrize("command,expected", [
