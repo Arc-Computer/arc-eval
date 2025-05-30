@@ -690,7 +690,7 @@ class ResultRenderer:
             if len(top_patterns) > 3:
                 console.print(f"└─ ... and {len(top_patterns) - 3} more patterns")
             else:
-                console.print(f"└─ Total patterns: {learning_metrics['patterns_captured']} captured, {learning_metrics['scenarios_generated']} scenarios generated, {learning_metrics['fixes_available']} fixes available")
+                console.print(f"└─ Total patterns: {learning_metrics.get('patterns_captured', 0)} captured, {learning_metrics.get('scenarios_generated', 0)} scenarios generated, {learning_metrics.get('fixes_available', 0)} fixes available")
         
         # Test coverage expansion
         if learning_metrics.get("scenarios_generated", 0) > 0:
