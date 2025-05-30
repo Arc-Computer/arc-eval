@@ -666,7 +666,7 @@ class ResultRenderer:
             baseline_rate = learning_metrics.get("baseline_pass_rate", 0)
             current_rate = baseline_rate + delta
             
-            console.print(f"\n[bold cyan]Performance Delta: {'+'if delta > 0 else ''}{delta:.1f}% ({baseline_rate:.0f}% → {current_rate:.0f}%) over {learning_metrics.get('evaluation_count', 0)} evaluations[/bold cyan]")
+            console.print(f"\n[bold cyan]Performance Delta: {'+' if delta > 0 else ''}{delta:.1f}% ({baseline_rate:.0f}% → {current_rate:.0f}%) over {learning_metrics.get('evaluation_count', 0)} evaluations[/bold cyan]")
             
             # Sub-metrics that explain the delta
             console.print(f"├─ Critical failures reduced: -{learning_metrics.get('critical_failure_reduction', 0)} (from {learning_metrics.get('baseline_critical', 0)} to {learning_metrics.get('current_critical', 0)})")
