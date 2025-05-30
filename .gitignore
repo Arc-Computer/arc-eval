@@ -70,6 +70,7 @@ custom_scenarios/
 retraining_data/
 
 # Internal documentation (not for public release)
+docs/
 .claude/
 CLAUDE.md
 PROJECT_OVERVIEW.md
