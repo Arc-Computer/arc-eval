@@ -3,8 +3,9 @@ Core data types and structures for AgentEval.
 """
 
 from dataclasses import dataclass, asdict, field
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union, Set, Tuple
 from enum import Enum
+from datetime import datetime
 
 
 class Severity(Enum):
@@ -188,6 +189,12 @@ class EvaluationSummary:
     domain: str
     compliance_frameworks: List[str] = field(default_factory=list)
     
+    # Learning metrics for PR3
+    patterns_captured: int = 0
+    scenarios_generated: int = 0
+    fixes_available: int = 0
+    performance_delta: Optional[float] = None  # Percentage change from baseline
+    
     @property
     def pass_rate(self) -> float:
         """Calculate pass rate as percentage."""
@@ -353,3 +360,25 @@ class ProductionReadinessReport:
             self.performance_recommendations = []
         if self.reliability_recommendations is None:
             self.reliability_recommendations = []
+
+
+@dataclass
+class LearningMetrics:
+    """Metrics for pattern learning and test generation system."""
+    
+    # Required fields (no defaults)
+    failure_patterns_captured: int
+    test_scenarios_generated: int
+    remediation_count: int
+    performance_delta: float  # Percentage change from baseline
+    critical_failure_reduction: int
+    mean_detection_time: float  # seconds
+    
+    # Optional fields (with defaults)
+    unique_pattern_fingerprints: Set[str] = field(default_factory=set)
+    patterns_by_domain: Dict[str, int] = field(default_factory=dict)
+    scenario_generation_history: List[Tuple[datetime, str, str]] = field(default_factory=list)  # (timestamp, pattern_id, scenario_id)
+    fixes_by_severity: Dict[str, int] = field(default_factory=dict)  # {"critical": 5, "high": 3, "medium": 2}
+    evaluation_history: List[Tuple[datetime, float, int]] = field(default_factory=list)  # (timestamp, pass_rate, scenario_count)
+    top_failure_patterns: List[Dict[str, Any]] = field(default_factory=list)  # [{pattern, count, severity, has_fix}]
+    pattern_detection_rate: float = 0.0  # Percentage of failures with patterns captured

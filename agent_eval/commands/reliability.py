@@ -109,6 +109,9 @@ class ReliabilityCommandHandler(BaseCommandHandler):
         console.print(f"🔧 Starting unified debugging session...")
         console.print(f"📊 Analyzing {len(agent_outputs)} workflow components...")
         
+        # Initialize framework_info for later use
+        framework_info = None
+        
         # Delegate to core reliability analyzer
         try:
             from agent_eval.evaluation.reliability_validator import ReliabilityAnalyzer
@@ -169,6 +172,43 @@ class ReliabilityCommandHandler(BaseCommandHandler):
             console.print(f"✅ Total Components: {len(agent_outputs)}")
             console.print(f"🔧 Framework: {framework_info}")
             console.print(f"📋 Debug Mode: {'Agent Debugging' if debug_agent else 'Unified Debug'}")
+        
+        # Show post-evaluation menu for unified debug workflow
+        if unified_debug and not kwargs.get('no_interaction', False):
+            try:
+                from agent_eval.ui.post_evaluation_menu import PostEvaluationMenu
+                
+                # Build evaluation results for menu
+                # Try to get framework from analysis if available
+                detected_framework = framework
+                if 'analysis' in locals() and hasattr(analysis, 'detected_framework'):
+                    detected_framework = analysis.detected_framework
+                elif framework_info:
+                    detected_framework = framework_info
+                
+                eval_results = {
+                    "summary": {
+                        "failures_found": len([o for o in agent_outputs if hasattr(o, 'error') and o.error]),
+                        "total_outputs": len(agent_outputs),
+                        "framework": detected_framework
+                    },
+                    "outputs": agent_outputs,
+                    "domain": kwargs.get('domain') or "general"
+                }
+                
+                # Create and display menu
+                menu = PostEvaluationMenu(
+                    domain=kwargs.get('domain') or "general",
+                    evaluation_results=eval_results,
+                    workflow_type="debug"
+                )
+                
+                # Display menu and handle user choice
+                choice = menu.display_menu()
+                menu.execute_choice(choice)
+                
+            except Exception as e:
+                console.print(f"\n[yellow]⚠️  Post-debug options unavailable: {str(e)}[/yellow]")
         
         return 0
     
@@ -327,6 +367,37 @@ class ReliabilityCommandHandler(BaseCommandHandler):
         if dev:
             console.print(f"\\n[dim]Debug: Framework={framework}, Domain={domain}, "
                         f"Endpoint={endpoint}, Outputs={len(agent_outputs)}[/dim]")
+        
+        # Show post-evaluation menu for debug workflow
+        # Note: In workflow reliability analysis, we always show the menu unless no_interaction is set
+        if not kwargs.get('no_interaction', False):
+            try:
+                from agent_eval.ui.post_evaluation_menu import PostEvaluationMenu
+                
+                # Build evaluation results for menu
+                eval_results = {
+                    "summary": {
+                        "failures_found": len([o for o in agent_outputs if hasattr(o, 'error') and o.error]),
+                        "total_outputs": len(agent_outputs),
+                        "framework": framework
+                    },
+                    "outputs": agent_outputs,
+                    "domain": domain or "general"
+                }
+                
+                # Create and display menu
+                menu = PostEvaluationMenu(
+                    domain=domain or "general",
+                    evaluation_results=eval_results,
+                    workflow_type="debug"
+                )
+                
+                # Display menu and handle user choice
+                choice = menu.display_menu()
+                menu.execute_choice(choice)
+                
+            except Exception as e:
+                console.print(f"\n[yellow]⚠️  Post-debug options unavailable: {str(e)}[/yellow]")
         
         return 0
     

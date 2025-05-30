@@ -191,6 +191,85 @@ def show_workflow_selector():
 
 
 @cli.command()
+@click.option('--input', 'input_file', type=click.Path(exists=True, path_type=Path), required=True, help='Agent outputs to analyze')
+@click.option('--domain', type=click.Choice(['finance', 'security', 'ml']), required=True, help='Evaluation domain')
+@click.option('--quick', is_flag=True, help='Quick analysis without agent-judge')
+@click.option('--verbose', is_flag=True, help='Enable verbose output')
+def analyze(input_file: Path, domain: str, quick: bool, verbose: bool):
+    """
+    Unified analysis workflow that chains debug → compliance → improve.
+    
+    This is the recommended entry point for comprehensive agent evaluation.
+    
+    Example:
+        arc-eval analyze --input agent_outputs.json --domain finance
+    """
+    console.print("\n[bold blue]🔄 Unified Analysis Workflow[/bold blue]")
+    console.print("=" * 60)
+    
+    try:
+        # Step 1: Debug Analysis
+        console.print("\n[bold cyan]Step 1: Debug Analysis[/bold cyan]")
+        handler = ReliabilityCommandHandler()
+        debug_result = handler.execute(
+            input_file=input_file,
+            unified_debug=True,
+            workflow_reliability=True,
+            schema_validation=True,
+            verbose=verbose,
+            no_interaction=True  # Suppress menu in intermediate steps
+        )
+        
+        if debug_result != 0:
+            console.print("[yellow]⚠️  Debug analysis found issues. Continuing to compliance check...[/yellow]")
+        
+        # Step 2: Compliance Check
+        console.print("\n[bold cyan]Step 2: Compliance Evaluation[/bold cyan]")
+        compliance_handler = ComplianceCommandHandler()
+        compliance_result = compliance_handler.execute(
+            domain=domain,
+            input_file=input_file,
+            agent_judge=not quick,
+            workflow=True,
+            verbose=verbose,
+            no_interaction=True  # Suppress menu in intermediate steps
+        )
+        
+        # Step 3: Show unified menu with all options
+        console.print("\n[bold cyan]Step 3: Analysis Complete[/bold cyan]")
+        
+        # Get the latest evaluation file
+        evaluation_files = list(Path.cwd().glob(f"{domain}_evaluation_*.json"))
+        if evaluation_files:
+            evaluation_files.sort(key=lambda f: f.stat().st_mtime, reverse=True)
+            latest_evaluation = evaluation_files[0]
+            
+            # Load evaluation data
+            import json
+            with open(latest_evaluation, 'r') as f:
+                eval_data = json.load(f)
+            
+            # Show unified post-evaluation menu
+            from agent_eval.ui.post_evaluation_menu import PostEvaluationMenu
+            menu = PostEvaluationMenu(
+                domain=domain,
+                evaluation_results=eval_data,
+                workflow_type="compliance"  # Use compliance menu as it has all options
+            )
+            
+            choice = menu.display_menu()
+            menu.execute_choice(choice)
+        
+        return 0
+        
+    except Exception as e:
+        console.print(f"[red]Analysis failed:[/red] {e}")
+        if verbose:
+            console.print_exception()
+        return 1
+
+
+@cli.command()
 @click.option('--input', 'input_file', type=click.Path(exists=True, path_type=Path), required=True, help='Agent trace or output file to debug')
 @click.option('--framework', type=click.Choice(['langchain', 'langgraph', 'crewai', 'autogen', 'openai', 'anthropic', 'generic']), help='Framework (auto-detected if not specified)')
 @click.option('--output-format', type=click.Choice(['console', 'json', 'html']), default='console', help='Output format')

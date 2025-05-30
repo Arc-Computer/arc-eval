@@ -143,11 +143,9 @@ Focus on providing actionable improvement recommendations that help the agent le
             weaknesses=weaknesses,
             specific_improvements=unique_improvements[:5],  # Top 5
             training_suggestions=[
-                "Practice with SOX compliance scenarios",
-                "Study KYC/AML regulatory frameworks",
-                "Review PCI-DSS security controls",
-                "Learn AI bias detection in financial services",
-                "Master model governance and SR 11-7 requirements"
-            ],
+                f"Add validation for {weaknesses[0].lower()}" if weaknesses else "Implement input validation",
+                f"Review failed scenarios: {', '.join(list(set(r.scenario_id for r in results if r.judgment == 'fail'))[:3])}",
+                f"Apply fixes from pattern analysis to prevent {len([r for r in results if r.judgment == 'fail'])} similar failures"
+            ] if any(r.judgment == "fail" for r in results) else [],
             compliance_gaps=[r.scenario_id for r in results if r.judgment == "fail"]
         )

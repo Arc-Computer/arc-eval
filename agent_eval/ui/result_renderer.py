@@ -30,8 +30,13 @@ class ResultRenderer:
     
     def display_agent_judge_results(self, improvement_report: dict, domain: str, 
                                    performance_metrics: Optional[dict] = None, 
-                                   reliability_metrics: Optional[dict] = None) -> None:
+                                   reliability_metrics: Optional[dict] = None,
+                                   learning_metrics: Optional[dict] = None) -> None:
         """Display Agent-as-a-Judge specific results with continuous feedback."""
+        # Display learning metrics first if available (PR3 - highest priority info)
+        if learning_metrics:
+            self.display_learning_metrics(learning_metrics)
+        
         console.print(f"\n[bold blue]🤖 Agent-as-a-Judge Improvement Report[/bold blue]")
         console.print("[blue]" + "═" * 60 + "[/blue]")
         
@@ -185,40 +190,45 @@ class ResultRenderer:
         # Table output (default)
         self._display_table_results(results, dev_mode, workflow_mode, domain, summary_only, format_template)
         
-        # Interactive Results Analyst Integration - Replace dense recommendations
-        if improvement_report:
-            failed_results = [r for r in results if not r.passed]
-            if failed_results:
-                try:
-                    from agent_eval.analysis.interactive_analyst import InteractiveAnalyst
-                    
-                    # Check if we can run interactive mode
-                    # Enable interactive mode unless explicitly disabled or no API key
-                    can_interact = not no_interaction and os.getenv("ANTHROPIC_API_KEY")
-                    if can_interact:
-                        analyst = InteractiveAnalyst(
-                            improvement_report=improvement_report,
-                            judge_results=improvement_report.get("detailed_results", []),
-                            domain=domain,
-                            performance_metrics=improvement_report.get("performance_metrics"),
-                            reliability_metrics=improvement_report.get("reliability_metrics")
-                        )
-                        
-                        # Display concise summary + start interactive chat
-                        analyst.display_concise_summary_and_chat(console)
-                    else:
-                        # Fallback: show condensed recommendations for non-interactive mode
-                        analyst = InteractiveAnalyst(
-                            improvement_report=improvement_report,
-                            judge_results=improvement_report.get("detailed_results", []),
-                            domain=domain,
-                            performance_metrics=improvement_report.get("performance_metrics"),
-                            reliability_metrics=improvement_report.get("reliability_metrics")
-                        )
-                        analyst.display_condensed_recommendations(console)
-                except (ImportError, ValueError):
-                    # Fallback to original display if InteractiveAnalyst fails - but this is already handled in _display_table_results
-                    pass
+        # Post-Evaluation Menu - Show user journey options
+        if not no_interaction and results:  # Only show menu if we have results
+            try:
+                from agent_eval.ui.post_evaluation_menu import PostEvaluationMenu
+                
+                # Build evaluation results dict for menu
+                eval_results = {
+                    "summary": {
+                        "total_scenarios": len(results),
+                        "passed": sum(1 for r in results if r.passed),
+                        "failed": sum(1 for r in results if not r.passed),
+                        "pass_rate": sum(1 for r in results if r.passed) / len(results) if results else 0
+                    },
+                    "results": results,
+                    "domain": domain
+                }
+                
+                # Get learning metrics if available
+                learning_metrics = None
+                if improvement_report and "learning_metrics" in improvement_report:
+                    learning_metrics = improvement_report["learning_metrics"]
+                
+                # Create and display menu
+                menu = PostEvaluationMenu(
+                    domain=domain,
+                    evaluation_results=eval_results,
+                    judge_results=improvement_report.get("detailed_results", []) if improvement_report else None,
+                    improvement_report=improvement_report,
+                    learning_metrics=learning_metrics
+                )
+                
+                # Display menu and handle user choice
+                choice = menu.display_menu()
+                menu.execute_choice(choice)
+                
+            except (ImportError, ValueError) as e:
+                # Fallback to simple recommendations if menu fails
+                console.print("\n[yellow]⚠️  Post-evaluation menu unavailable[/yellow]")
+                console.print(f"[dim]Error: {str(e)}[/dim]")
     
     def _display_table_results(self, results: List[EvaluationResult], dev_mode: bool, 
                               workflow_mode: bool, domain: str = "finance", 
@@ -652,6 +662,54 @@ class ResultRenderer:
             for failure in failures[:5]:
                 severity_color = "red" if failure["severity"] == "HIGH" else "yellow"
                 console.print(f"  • [{severity_color}]{failure['test']}[/{severity_color}]: {failure['message']}")
+
+    def display_learning_metrics(self, learning_metrics: dict) -> None:
+        """Display pattern learning and improvement metrics with MLOps focus."""
+        # Performance delta is the most important metric - show it first
+        if learning_metrics.get("performance_delta"):
+            delta = learning_metrics["performance_delta"]
+            baseline_rate = learning_metrics.get("baseline_pass_rate", 0)
+            current_rate = baseline_rate + delta
+            
+            console.print(f"\n[bold cyan]Performance Delta: {'+' if delta > 0 else ''}{delta:.1f}% ({baseline_rate:.0f}% → {current_rate:.0f}%) over {learning_metrics.get('evaluation_count', 0)} evaluations[/bold cyan]")
+            
+            # Sub-metrics that explain the delta
+            console.print(f"├─ Critical failures reduced: -{learning_metrics.get('critical_failure_reduction', 0)} (from {learning_metrics.get('baseline_critical', 0)} to {learning_metrics.get('current_critical', 0)})")
+            console.print(f"├─ New test coverage: +{learning_metrics.get('scenarios_generated', 0)} scenarios ({learning_metrics.get('baseline_scenarios', 378)} → {learning_metrics.get('total_scenarios', 378)} total)")
+            console.print(f"└─ Mean time to detect: {learning_metrics.get('mean_detection_time', 0):.1f}s (previously: manual review)")
+        
+        # Pattern analysis summary
+        if learning_metrics.get("patterns_captured", 0) > 0:
+            console.print(f"\n[bold]Failure Pattern Analysis:[/bold]")
+            
+            # Show top patterns with actionable information
+            top_patterns = learning_metrics.get("top_failure_patterns", [])
+            for pattern in top_patterns[:3]:  # Show top 3
+                console.print(f"├─ {pattern['description']}: {pattern['count']} occurrences → generated {pattern['scenario_id']} scenario")
+            
+            if len(top_patterns) > 3:
+                console.print(f"└─ ... and {len(top_patterns) - 3} more patterns")
+            else:
+                console.print(f"└─ Total patterns: {learning_metrics.get('patterns_captured', 0)} captured, {learning_metrics.get('scenarios_generated', 0)} scenarios generated, {learning_metrics.get('fixes_available', 0)} fixes available")
+        
+        # Test coverage expansion
+        if learning_metrics.get("scenarios_generated", 0) > 0:
+            console.print(f"\n[bold]Test Scenario Coverage:[/bold]")
+            console.print(f"├─ Baseline: {learning_metrics.get('baseline_scenarios', 378)} scenarios ({learning_metrics.get('domain_breakdown', 'finance: 110, security: 120, ml: 148')})")
+            console.print(f"├─ Generated: +{learning_metrics['scenarios_generated']} scenarios from production failures")
+            console.print(f"├─ Coverage increase: {learning_metrics.get('coverage_increase', 0):.1f}%")
+            console.print(f"└─ Unique failure detection rate: {learning_metrics.get('pattern_detection_rate', 0):.0f}%")
+        
+        # Remediation priority queue (if fixes available)
+        if learning_metrics.get("fixes_available", 0) > 0:
+            console.print(f"\n[bold]Remediation Priority Queue:[/bold]")
+            fixes = learning_metrics.get("prioritized_fixes", [])
+            for i, fix in enumerate(fixes[:3], 1):
+                console.print(f"{i}. [{fix['severity'].upper()}] {fix['description']} - {fix['failures_prevented']} failures prevented")
+                console.print(f"   └─ {fix['file_path']}")
+            
+            if len(fixes) > 3:
+                console.print(f"\n[dim]... and {len(fixes) - 3} more fixes available[/dim]")
 
     def _get_domain_info(self) -> dict:
         """Get centralized domain information to avoid duplication."""
