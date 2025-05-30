@@ -482,25 +482,58 @@ class ComplianceCommandHandler(BaseCommandHandler):
     
     def _evaluate_scenarios_with_judge(self, scenarios: List, agent_output_objects: List[AgentOutput],
                                       agent_judge_instance, performance_tracker) -> List:
-        """Evaluate scenarios using Agent Judge."""
-        judge_results = []
-        for i, scenario in enumerate(scenarios):
+        """Evaluate scenarios using Agent Judge with automatic batch processing."""
+        # Prepare matched outputs for each scenario
+        matched_outputs = []
+        matched_scenarios = []
+        
+        for scenario in scenarios:
             best_output = self._find_best_matching_output(scenario, agent_output_objects)
-            
             if best_output:
+                matched_outputs.append(best_output)
+                matched_scenarios.append(scenario)
+        
+        if not matched_outputs:
+            logger.warning("No matching outputs found for any scenarios")
+            return []
+        
+        # Use batch evaluation (automatically uses batch API for 5+ scenarios)
+        batch_start_time = time.time()
+        
+        try:
+            if performance_tracker:
+                with performance_tracker.track_judge_execution():
+                    judge_results = agent_judge_instance.evaluate_batch(matched_outputs, matched_scenarios)
+            else:
+                judge_results = agent_judge_instance.evaluate_batch(matched_outputs, matched_scenarios)
+            
+            # Track batch completion for performance metrics
+            if performance_tracker:
+                batch_time = time.time() - batch_start_time
+                avg_scenario_time = batch_time / len(judge_results) if judge_results else 0
+                for _ in judge_results:
+                    performance_tracker.track_scenario_completion(avg_scenario_time)
+            
+            return judge_results
+            
+        except Exception as e:
+            logger.error(f"Batch evaluation failed: {e}")
+            # Fallback to sequential evaluation
+            logger.info("Falling back to sequential evaluation")
+            judge_results = []
+            
+            for i, (output, scenario) in enumerate(zip(matched_outputs, matched_scenarios)):
                 try:
                     scenario_start_time = time.time()
                     
-                    # Track judge execution time if performance monitoring is enabled
                     if performance_tracker:
                         with performance_tracker.track_judge_execution():
-                            result = agent_judge_instance.evaluate_scenario(best_output, scenario)
+                            result = agent_judge_instance.evaluate_scenario(output, scenario)
                     else:
-                        result = agent_judge_instance.evaluate_scenario(best_output, scenario)
+                        result = agent_judge_instance.evaluate_scenario(output, scenario)
                     
                     judge_results.append(result)
                     
-                    # Track scenario completion for performance metrics
                     if performance_tracker:
                         scenario_time = time.time() - scenario_start_time
                         performance_tracker.track_scenario_completion(scenario_time)
@@ -508,8 +541,8 @@ class ComplianceCommandHandler(BaseCommandHandler):
                 except Exception as e:
                     logger.error(f"Failed to evaluate scenario {scenario.id}: {e}")
                     continue
-        
-        return judge_results
+            
+            return judge_results
     
     def _run_verification_layer(self, judge_results: List, agent_output_objects: List[AgentOutput],
                                scenarios: List, domain: str, agent_judge_instance, 

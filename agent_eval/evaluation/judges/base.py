@@ -6,7 +6,7 @@ import json
 import logging
 import re
 from abc import ABC, abstractmethod
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, Tuple
 from dataclasses import dataclass
 from datetime import datetime
 
@@ -166,6 +166,103 @@ class BaseJudge(ABC):
         """Evaluate agent output using domain-specific judge."""
         pass
     
+    def evaluate_batch(self, evaluations: List[Tuple[AgentOutput, EvaluationScenario]]) -> List[JudgmentResult]:
+        """Evaluate multiple agent outputs in batch for efficiency.
+        
+        Args:
+            evaluations: List of (agent_output, scenario) tuples
+            
+        Returns:
+            List of JudgmentResult objects
+        """
+        from agent_eval.core.constants import BATCH_PROCESSING_THRESHOLD
+        
+        # Check if batch processing should be used
+        if len(evaluations) < BATCH_PROCESSING_THRESHOLD:
+            # Fall back to sequential processing for small batches
+            logger.info(f"Processing {len(evaluations)} evaluations sequentially (below threshold)")
+            return [self.evaluate(output, scenario) for output, scenario in evaluations]
+        
+        # Prepare prompts for batch processing
+        prompts = []
+        for agent_output, scenario in evaluations:
+            prompt = self._build_prompt(agent_output, scenario)
+            prompts.append({
+                "prompt": prompt,
+                "scenario_id": scenario.id,
+                "agent_output": agent_output,
+                "scenario": scenario
+            })
+        
+        # Use cascade batch processing
+        logger.info(f"Processing {len(evaluations)} evaluations in batch mode")
+        batch_results = self.api_manager.process_batch_cascade(prompts)
+        
+        # Convert batch results to JudgmentResult objects
+        judgment_results = []
+        results_dict = batch_results["results"]
+        telemetry = batch_results["telemetry"]
+        
+        # Log cost savings
+        if telemetry["cost_savings"] > 0:
+            logger.info(f"Batch processing saved ${telemetry['cost_savings']:.2f} "
+                       f"({telemetry['savings_percentage']:.1f}%) in API costs")
+        
+        for prompt_data in prompts:
+            scenario_id = prompt_data["scenario_id"]
+            
+            if scenario_id in results_dict:
+                result_data = results_dict[scenario_id]
+                response_text = result_data["response"]
+                model_used = result_data["model"]
+                
+                # Parse the response
+                try:
+                    judgment_data = self._parse_response(response_text)
+                    
+                    # Override confidence with extracted value
+                    judgment_data["confidence"] = result_data["confidence"]
+                    
+                    judgment_result = JudgmentResult(
+                        scenario_id=scenario_id,
+                        judgment=judgment_data["judgment"],
+                        confidence=judgment_data["confidence"],
+                        reasoning=judgment_data["reasoning"],
+                        improvement_recommendations=judgment_data["improvements"],
+                        reward_signals=judgment_data["reward_signals"],
+                        evaluation_time=telemetry["duration"] / len(prompts),  # Average time
+                        model_used=model_used
+                    )
+                    judgment_results.append(judgment_result)
+                except Exception as e:
+                    logger.error(f"Failed to parse batch result for {scenario_id}: {e}")
+                    # Create fallback result
+                    judgment_results.append(self._create_fallback_result(
+                        prompt_data["scenario"],
+                        str(e)
+                    ))
+            else:
+                # No result for this scenario - create error result
+                judgment_results.append(self._create_fallback_result(
+                    prompt_data["scenario"],
+                    "No result returned from batch processing"
+                ))
+        
+        return judgment_results
+    
+    def _create_fallback_result(self, scenario: EvaluationScenario, error_message: str) -> JudgmentResult:
+        """Create a fallback result for failed evaluations."""
+        return JudgmentResult(
+            scenario_id=scenario.id,
+            judgment="warning",
+            confidence=0.0,
+            reasoning=f"Evaluation failed: {error_message}",
+            improvement_recommendations=["Re-run evaluation with different parameters"],
+            reward_signals={"error": 1.0},
+            evaluation_time=0.0,
+            model_used="unknown"
+        )
+    
     @abstractmethod
     def _build_prompt(self, agent_output: AgentOutput, scenario: EvaluationScenario) -> str:
         """Build domain-specific evaluation prompt."""
@@ -240,7 +337,7 @@ class BaseJudge(ABC):
             # Fallback to alternative model if primary fails
             if "sonnet" in model:
                 logger.info("Falling back to Haiku model")
-                client, _ = self.api_manager.get_client(prefer_primary=False)
-                return self.evaluate(agent_output, scenario)
+                _, fallback_model = self.api_manager.get_client(prefer_primary=False)
+                return self._execute_evaluation(prompt, scenario, fallback_model)
             else:
                 raise

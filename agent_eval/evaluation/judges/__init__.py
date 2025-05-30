@@ -41,20 +41,38 @@ class AgentJudge:
         return self.judge.evaluate(agent_output, scenario)
     
     def evaluate_batch(self, agent_outputs: List[AgentOutput], scenarios: List[EvaluationScenario]) -> List[JudgmentResult]:
-        """Evaluate multiple scenarios with continuous feedback."""
-        results = []
+        """Evaluate multiple scenarios with continuous feedback.
         
-        for output, scenario in zip(agent_outputs, scenarios):
-            try:
-                result = self.evaluate_scenario(output, scenario)
-                results.append(result)
-                logger.info(f"Evaluated scenario {scenario.id}: {result.judgment}")
-            except Exception as e:
-                logger.error(f"Failed to evaluate scenario {scenario.id}: {e}")
-                # Continue with other scenarios
-                continue
+        Automatically uses batch processing for 5+ scenarios to reduce costs by 50%.
+        """
+        # Check if we have enough scenarios for batch processing
+        from agent_eval.core.constants import BATCH_PROCESSING_THRESHOLD
         
-        return results
+        if len(scenarios) >= BATCH_PROCESSING_THRESHOLD:
+            # Use batch evaluation for efficiency
+            logger.info(f"Using batch evaluation for {len(scenarios)} scenarios (threshold: {BATCH_PROCESSING_THRESHOLD})")
+            
+            # Create evaluation pairs
+            evaluations = list(zip(agent_outputs, scenarios))
+            
+            # Delegate to the domain judge's batch evaluation
+            return self.judge.evaluate_batch(evaluations)
+        else:
+            # Fall back to sequential evaluation for small batches
+            logger.info(f"Using sequential evaluation for {len(scenarios)} scenarios (below threshold)")
+            results = []
+            
+            for output, scenario in zip(agent_outputs, scenarios):
+                try:
+                    result = self.evaluate_scenario(output, scenario)
+                    results.append(result)
+                    logger.info(f"Evaluated scenario {scenario.id}: {result.judgment}")
+                except Exception as e:
+                    logger.error(f"Failed to evaluate scenario {scenario.id}: {e}")
+                    # Continue with other scenarios
+                    continue
+            
+            return results
     
     def generate_improvement_report(self, results: List[JudgmentResult], agent_outputs: Optional[List[AgentOutput]] = None) -> Dict[str, Any]:
         """Generate comprehensive improvement report with bias detection."""
@@ -97,7 +115,9 @@ class AgentJudge:
                 "pass_rate": passed / total_scenarios,
                 "average_confidence": avg_confidence,
                 "total_cost": total_cost,
-                "bias_risk_level": bias_metrics.overall_bias_risk
+                "bias_risk_level": bias_metrics.overall_bias_risk,
+                "batch_processing_used": total_scenarios >= 5,
+                "estimated_savings": total_cost if total_scenarios >= 5 else 0.0  # 50% savings with batch
             },
             "continuous_feedback": {
                 "strengths": feedback.strengths,

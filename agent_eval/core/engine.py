@@ -78,6 +78,19 @@ class EvaluationEngine:
             
             with open(domain_file, 'r') as f:
                 data = yaml.safe_load(f)
+            
+            # Also load customer-generated scenarios if they exist
+            customer_file = Path(__file__).parent.parent / "domains" / "customer_generated.yaml"
+            if customer_file.exists():
+                try:
+                    with open(customer_file, 'r') as f:
+                        customer_data = yaml.safe_load(f)
+                        if customer_data and "scenarios" in customer_data:
+                            # Merge customer scenarios into the domain pack
+                            data.setdefault("scenarios", []).extend(customer_data["scenarios"])
+                except Exception:
+                    # Fail silently to not break evaluation
+                    pass
         
         return EvaluationPack.from_dict(data)
     

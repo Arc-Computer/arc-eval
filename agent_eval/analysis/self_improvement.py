@@ -8,6 +8,7 @@ from datetime import datetime
 from typing import Dict, List, Any, Optional, Tuple
 import json
 from pathlib import Path
+from agent_eval.profiler.decorators import track_evaluation
 
 @dataclass
 class RewardSignalHistory:
@@ -59,6 +60,7 @@ class SelfImprovementEngine:
         self.training_file = self.storage_path / "training_examples.jsonl"
         self.curriculum_file = self.storage_path / "improvement_curriculum.json"
     
+    @track_evaluation
     def record_evaluation_result(self, 
                                agent_id: str,
                                domain: str,
