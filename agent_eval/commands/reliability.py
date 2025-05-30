@@ -198,7 +198,7 @@ class ReliabilityCommandHandler(BaseCommandHandler):
                 menu.execute_choice(choice)
                 
             except Exception as e:
-                console.print(f"\\n[yellow]⚠️  Post-debug options unavailable: {str(e)}[/yellow]")
+                console.print(f"\n[yellow]⚠️  Post-debug options unavailable: {str(e)}[/yellow]")
         
         return 0
     
