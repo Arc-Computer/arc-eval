@@ -1,8 +1,6 @@
-# ARC-Eval Enterprise Quick Start Guide
+# ARC-Eval Quick Start Guide
 
-**Enterprise-Grade AI Agent Evaluation for Fortune 500 Companies**
-
-This guide provides white-glove onboarding for immediate self-service deployment. ARC-Eval automatically ingests traces from **any agent framework** and delivers instant compliance assessment across 378 enterprise scenarios with zero configuration.
+ARC-Eval automatically ingests traces from **any agent framework** and delivers instant compliance assessment across 378 enterprise scenarios with zero configuration.
 
 ## Prerequisites
 
