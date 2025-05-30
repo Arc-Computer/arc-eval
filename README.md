@@ -4,7 +4,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 
-![Agent-as-a-Judge Demo](public/agent-as-judge-demo.png)
+![ARC-Eval Dashboard](public/cli_dashboard_rounded.png)
 
 ARC-Eval helps you find and fix issues in AI agents through three simple workflows: debug failures, check compliance, and track improvements. It runs 378 real-world test scenarios and learns from failures to help your agents get better over time.
 
