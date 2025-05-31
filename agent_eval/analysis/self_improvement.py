@@ -212,6 +212,67 @@ class SelfImprovementEngine:
         
         return needs_retraining, recommendation
     
+    def calculate_learning_progress(self, agent_id: str, domain: str, window_size: int = 10) -> float:
+        """
+        Calculate TD-error based learning progress for more stable curriculum decisions.
+        
+        Args:
+            agent_id: Agent identifier
+            domain: Domain (e.g., 'finance')
+            window_size: Number of recent evaluations to consider
+            
+        Returns:
+            Learning progress score [0.0, 1.0] where higher indicates more learning
+        """
+        if not self.history_file.exists():
+            return 0.5  # Default moderate progress for new agents
+        
+        recent_rewards = []
+        historical_rewards = []
+        
+        with open(self.history_file, 'r') as f:
+            all_entries = [json.loads(line) for line in f 
+                          if json.loads(line)['agent_id'] == agent_id and 
+                             json.loads(line)['domain'] == domain]
+        
+        if len(all_entries) < window_size:
+            return 0.5  # Insufficient data, moderate progress
+        
+        # Split into recent and historical windows
+        recent_entries = all_entries[-window_size:]
+        historical_entries = all_entries[-(window_size*2):-window_size] if len(all_entries) >= window_size*2 else all_entries[:-window_size]
+        
+        # Extract average reward signals
+        for entry in recent_entries:
+            reward_avg = sum(entry['reward_signals'].values()) / len(entry['reward_signals'])
+            recent_rewards.append(reward_avg)
+            
+        for entry in historical_entries:
+            reward_avg = sum(entry['reward_signals'].values()) / len(entry['reward_signals'])
+            historical_rewards.append(reward_avg)
+        
+        if not recent_rewards or not historical_rewards:
+            return 0.5
+            
+        # Calculate TD-error based learning progress
+        import numpy as np
+        recent_mean = np.mean(recent_rewards)
+        historical_mean = np.mean(historical_rewards)
+        
+        # TD-error represents how much the agent is learning (improving)
+        td_error = abs(recent_mean - historical_mean)
+        
+        # Normalize to [0,1] and add direction bias (improvement vs decline)
+        normalized_progress = min(td_error, 1.0)
+        
+        # Boost if improving, reduce if declining
+        if recent_mean > historical_mean:
+            normalized_progress = min(normalized_progress * 1.2, 1.0)  # 20% boost for improvement
+        else:
+            normalized_progress = max(normalized_progress * 0.8, 0.0)  # 20% reduction for decline
+            
+        return normalized_progress
+    
     # Helper methods
     def _get_recent_failures(self, agent_id: str, domain: str, threshold: float) -> List[Dict]:
         """Load recent evaluation failures below threshold."""
@@ -541,13 +602,17 @@ class SelfImprovementEngine:
         recommendations = self.recommend_next_scenarios(agent_id, domain, 
                                                       performance_data.get('overall_pass_rate', 0.0))
         
+        # Calculate learning progress for enhanced curriculum decisions
+        learning_progress = self.calculate_learning_progress(agent_id, domain)
+        
         return {
             "performance_summary": {
                 "overall_pass_rate": performance_data.get('overall_pass_rate', 0.0),
                 "total_evaluations": performance_data.get('total_evaluations', 0),
                 "recent_trend": performance_data.get('recent_trend', 'stable'),
                 "weakness_areas": performance_data.get('weakness_areas', []),
-                "mastered_areas": performance_data.get('mastered_areas', [])
+                "mastered_areas": performance_data.get('mastered_areas', []),
+                "learning_progress": learning_progress
             },
             "scenario_readiness": {
                 "recommended_difficulty": readiness,
