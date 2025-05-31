@@ -29,6 +29,7 @@ from typing import Dict, List, Any, Tuple
 sys.path.append(str(Path(__file__).parent.parent.parent.parent))
 
 from agent_eval.analysis.self_improvement import SelfImprovementEngine
+from agent_eval.core.scenario_bank import ScenarioBank
 
 class FlywheelExperiment:
     """
@@ -56,6 +57,9 @@ class FlywheelExperiment:
         self.self_improvement = SelfImprovementEngine(
             storage_path=self.experiment_dir / "retraining_data"
         )
+        
+        # Initialize scenario bank for adaptive selection
+        self.scenario_bank = ScenarioBank()
         
         # Experiment tracking
         self.results_log = self.experiment_dir / "experiment_log.jsonl"
@@ -139,8 +143,13 @@ class FlywheelExperiment:
                 with open(agent_outputs_file, 'r') as f:
                     full_data = json.load(f)
                 
-                # Use only first 5 examples for testing
-                sample_data = full_data[:5]
+                # Use adaptive scenario selection if not baseline iteration
+                if iteration > 1:
+                    sample_data = self.select_adaptive_scenarios(full_data, iteration, 
+                                                               baseline_pass_rate=42.0)
+                else:
+                    # Use only first 5 examples for baseline testing
+                    sample_data = full_data[:5]
                 sample_file = self.experiment_dir / f"sample_iter_{iteration:02d}.json"
                 sample_file.parent.mkdir(exist_ok=True)
                 
@@ -404,13 +413,21 @@ class FlywheelExperiment:
                 evaluation_results=evaluation_data.get("results", [])
             )
             
-            # Get real performance analysis
+            # Get real performance analysis with ACL enhancements
             performance_trends = self.self_improvement.get_performance_trends(agent_id, domain)
             improvement_curriculum = self.self_improvement.create_improvement_curriculum(agent_id, domain)
             needs_retraining, retraining_details = self.self_improvement.should_trigger_retraining(agent_id, domain)
             
+            # Get adaptive curriculum data for enhanced analysis
+            adaptive_curriculum = self.self_improvement.get_adaptive_curriculum_data(agent_id, domain)
+            scenario_performance = self.self_improvement.get_scenario_specific_performance(agent_id, domain)
+            recommended_scenarios = self.self_improvement.recommend_next_scenarios(agent_id, domain, 
+                                                                                 scenario_performance.get('overall_pass_rate', 0.5))
+            
             print(f"📊 Performance analysis completed")
             print(f"📚 Curriculum generated with {len(improvement_curriculum.get('training_progression', []))} phases")
+            print(f"🎯 Adaptive curriculum: {adaptive_curriculum.get('scenario_readiness', {}).get('recommended_difficulty', 'unknown')} difficulty")
+            print(f"🔍 Learning zone scenarios: {adaptive_curriculum.get('scenario_readiness', {}).get('learning_zone_count', 0)}")
             
         except Exception as e:
             print(f"⚠️  Self-improvement analysis error: {e}")
@@ -426,9 +443,10 @@ class FlywheelExperiment:
             print(f"⚠️  Training generation error: {e}")
             training_examples = []
         
-        # Analyze failure patterns
+        # Analyze failure patterns with ACL enhancement
         failed_results = [r for r in evaluation_data.get("results", []) if not r.get("passed", True)]
-        improvement_actions = self._extract_improvement_actions(failed_results, iteration)
+        improvement_actions = self._extract_improvement_actions_acl_enhanced(
+            failed_results, iteration, adaptive_curriculum, scenario_performance)
         
         strategy = {
             "iteration": iteration,
@@ -441,7 +459,12 @@ class FlywheelExperiment:
             "training_examples_count": len(training_examples),
             "improvement_actions": improvement_actions,
             "failed_scenarios_count": len(failed_results),
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
+            # ACL-enhanced data
+            "adaptive_curriculum": adaptive_curriculum,
+            "scenario_performance": scenario_performance,
+            "recommended_scenarios": recommended_scenarios,
+            "acl_enhanced": True
         }
         
         # Save strategy
@@ -453,6 +476,119 @@ class FlywheelExperiment:
         print(f"✅ Strategy created with {len(improvement_actions)} improvement actions")
         
         return strategy
+    
+    def _extract_improvement_actions_acl_enhanced(self, failed_results: List[Dict], iteration: int, 
+                                                adaptive_curriculum: Dict, scenario_performance: Dict) -> List[Dict[str, Any]]:
+        """
+        Extract targeted improvement actions using ACL insights from adaptive curriculum.
+        
+        Prioritizes improvements based on:
+        1. Current weakness areas from performance analysis
+        2. Learning zone scenarios that need attention
+        3. Progressive difficulty targeting
+        """
+        performance_summary = adaptive_curriculum.get('performance_summary', {})
+        scenario_readiness = adaptive_curriculum.get('scenario_readiness', {})
+        
+        weakness_areas = performance_summary.get('weakness_areas', [])
+        mastered_areas = performance_summary.get('mastered_areas', [])
+        current_pass_rate = performance_summary.get('overall_pass_rate', 0.5)
+        recommended_difficulty = scenario_readiness.get('recommended_difficulty', 'basic')
+        
+        print(f"🧠 ACL-Enhanced Action Extraction:")
+        print(f"   📊 Pass rate: {current_pass_rate*100:.1f}%")
+        print(f"   ⚠️  Weakness areas: {weakness_areas}")
+        print(f"   🎯 Target difficulty: {recommended_difficulty}")
+        
+        # Start with traditional failure analysis
+        base_actions = self._extract_improvement_actions(failed_results, iteration)
+        
+        # Enhance with ACL-specific actions
+        acl_actions = []
+        
+        # Priority 1: Address identified weakness areas
+        for weakness in weakness_areas[:2]:  # Top 2 weaknesses
+            acl_actions.append({
+                "category": f"ACL_Weakness_{weakness}",
+                "failure_count": 0,  # Will be updated based on actual failures
+                "critical_count": 0,
+                "action": f"targeted_improvement_{weakness.lower()}",
+                "priority": "critical",
+                "expected_improvement": 0.12,  # Higher improvement for targeted weaknesses
+                "acl_reasoning": f"Identified weakness area requiring focused attention",
+                "difficulty_target": recommended_difficulty
+            })
+        
+        # Priority 2: Progressive difficulty adaptation
+        if current_pass_rate >= 0.75 and recommended_difficulty != 'advanced':
+            acl_actions.append({
+                "category": "ACL_Difficulty_Progression",
+                "failure_count": 0,
+                "critical_count": 0,
+                "action": f"advance_to_{recommended_difficulty}",
+                "priority": "high",
+                "expected_improvement": 0.08,
+                "acl_reasoning": "Ready for increased difficulty based on performance",
+                "difficulty_target": recommended_difficulty
+            })
+        elif current_pass_rate < 0.4:
+            acl_actions.append({
+                "category": "ACL_Difficulty_Reduction",
+                "failure_count": len(failed_results),
+                "critical_count": len([f for f in failed_results if f.get('severity') == 'critical']),
+                "action": "reduce_to_basic_scenarios",
+                "priority": "critical",
+                "expected_improvement": 0.15,
+                "acl_reasoning": "Performance indicates need for simpler scenarios",
+                "difficulty_target": "basic"
+            })
+        
+        # Priority 3: Learning zone optimization
+        learning_zone_count = scenario_readiness.get('learning_zone_count', 0)
+        if learning_zone_count < 3:
+            acl_actions.append({
+                "category": "ACL_Learning_Zone_Expansion",
+                "failure_count": 0,
+                "critical_count": 0,
+                "action": "expand_learning_zone_scenarios",
+                "priority": "medium",
+                "expected_improvement": 0.06,
+                "acl_reasoning": "Insufficient scenarios in optimal learning zone (60-80% pass rate)",
+                "difficulty_target": recommended_difficulty
+            })
+        
+        # Combine base actions with ACL enhancements
+        all_actions = base_actions + acl_actions
+        
+        # Re-prioritize based on ACL insights
+        for action in all_actions:
+            category = action.get('category', '')
+            
+            # Boost priority for weakness-targeting actions
+            if any(weakness.lower() in category.lower() for weakness in weakness_areas):
+                action['priority'] = 'critical'
+                action['expected_improvement'] = action.get('expected_improvement', 0.05) * 1.5
+                action['acl_enhanced'] = True
+            
+            # Adjust based on mastered areas (lower priority)
+            elif any(mastered.lower() in category.lower() for mastered in mastered_areas):
+                action['priority'] = 'low' if action['priority'] != 'critical' else 'medium'
+                action['acl_enhanced'] = True
+        
+        # Sort by ACL-enhanced priority
+        priority_order = {'critical': 3, 'high': 2, 'medium': 1, 'low': 0}
+        all_actions.sort(key=lambda x: (
+            priority_order.get(x.get('priority'), 0),
+            x.get('expected_improvement', 0),
+            x.get('failure_count', 0)
+        ), reverse=True)
+        
+        # Return top 5 actions with ACL enhancement flag
+        enhanced_actions = all_actions[:5]
+        
+        print(f"✅ Generated {len(enhanced_actions)} ACL-enhanced improvement actions")
+        
+        return enhanced_actions
     
     def _extract_improvement_actions(self, failed_results: List[Dict], iteration: int) -> List[Dict[str, Any]]:
         """Extract targeted improvement actions from failure analysis."""
@@ -837,6 +973,133 @@ class FlywheelExperiment:
         print(f"📁 Complete results: {self.experiment_dir}")
         
         return final_iteration, final_pass_rate
+    
+    def select_adaptive_scenarios(self, baseline_data: List[Dict], 
+                                iteration: int, baseline_pass_rate: float) -> List[Dict]:
+        """
+        Select scenarios adaptively based on current performance using ACL principles.
+        
+        This replaces the fixed sampling approach with intelligent scenario selection
+        that targets the agent's current learning zone.
+        """
+        agent_id = "flywheel_research_agent"
+        domain = "finance"
+        
+        try:
+            # Get adaptive curriculum data from self-improvement engine
+            curriculum_data = self.self_improvement.get_adaptive_curriculum_data(agent_id, domain)
+            
+            performance_summary = curriculum_data.get('performance_summary', {})
+            scenario_readiness = curriculum_data.get('scenario_readiness', {})
+            
+            current_pass_rate = performance_summary.get('overall_pass_rate', baseline_pass_rate / 100.0)
+            weakness_areas = performance_summary.get('weakness_areas', [])
+            mastered_areas = performance_summary.get('mastered_areas', [])
+            recommended_difficulty = scenario_readiness.get('recommended_difficulty', 'basic')
+            
+            print(f"🧠 ACL Adaptive Selection:")
+            print(f"   📊 Current pass rate: {current_pass_rate*100:.1f}%")
+            print(f"   🎯 Target difficulty: {recommended_difficulty}")
+            print(f"   ⚠️  Weakness areas: {len(weakness_areas)}")
+            print(f"   ✅ Mastered areas: {len(mastered_areas)}")
+            
+            # Build performance data structure for scenario bank
+            performance_data = {
+                'overall_pass_rate': current_pass_rate,
+                'weakness_areas': weakness_areas,
+                'mastered_areas': mastered_areas,
+                'recent_trend': performance_summary.get('recent_trend', 'stable')
+            }
+            
+            # Get adaptive scenarios from scenario bank
+            adaptive_scenarios = self.scenario_bank.get_adaptive_scenario_selection(
+                performance_data=performance_data,
+                target_difficulty=recommended_difficulty,
+                domain=domain,
+                count=5
+            )
+            
+            if adaptive_scenarios:
+                print(f"✅ Selected {len(adaptive_scenarios)} adaptive scenarios")
+                
+                # Convert scenario definitions to agent output format
+                adaptive_samples = []
+                for i, scenario in enumerate(adaptive_scenarios):
+                    # Find matching baseline example or create synthetic one
+                    if i < len(baseline_data):
+                        base_sample = baseline_data[i].copy()
+                    else:
+                        base_sample = baseline_data[0].copy()  # Template
+                    
+                    # Update with scenario-specific information
+                    base_sample.update({
+                        "scenario_id": scenario.get('id', f'adaptive_{i:03d}'),
+                        "category": scenario.get('category', 'adaptive'),
+                        "compliance_requirements": scenario.get('compliance', []),
+                        "difficulty": recommended_difficulty,
+                        "adaptive_selection": True,
+                        "selection_reason": f"Targets {', '.join(weakness_areas[:2])}" if weakness_areas else "Progressive difficulty"
+                    })
+                    
+                    adaptive_samples.append(base_sample)
+                
+                return adaptive_samples
+            
+            else:
+                print(f"⚠️  No adaptive scenarios found, using fallback progressive selection")
+                return self._progressive_scenario_selection(baseline_data, iteration, current_pass_rate)
+                
+        except Exception as e:
+            print(f"⚠️  Adaptive selection error: {e}")
+            print(f"🔄 Falling back to progressive selection")
+            return self._progressive_scenario_selection(baseline_data, iteration, baseline_pass_rate / 100.0)
+    
+    def _progressive_scenario_selection(self, baseline_data: List[Dict], 
+                                      iteration: int, current_pass_rate: float) -> List[Dict]:
+        """
+        Fallback progressive scenario selection when adaptive selection unavailable.
+        
+        Implements basic ACL principles with iteration-based difficulty progression.
+        """
+        # Progressive difficulty based on iteration and performance
+        if current_pass_rate >= 0.8:
+            difficulty = 'advanced'
+            start_idx = 7  # Later, more complex scenarios
+        elif current_pass_rate >= 0.6:
+            difficulty = 'intermediate' 
+            start_idx = 3  # Middle scenarios
+        else:
+            difficulty = 'basic'
+            start_idx = 0  # Early scenarios
+        
+        # Iteration-based progression
+        if iteration <= 3:
+            # Early iterations: focus on basic scenarios
+            end_idx = min(start_idx + 5, len(baseline_data))
+        elif iteration <= 8:
+            # Mid iterations: mix of basic and intermediate
+            start_idx = max(0, start_idx - 1)
+            end_idx = min(start_idx + 6, len(baseline_data))
+        else:
+            # Later iterations: more challenging scenarios
+            start_idx = max(0, start_idx)
+            end_idx = min(start_idx + 7, len(baseline_data))
+        
+        selected_samples = baseline_data[start_idx:end_idx][:5]
+        
+        # Update samples with progressive metadata
+        for i, sample in enumerate(selected_samples):
+            sample = sample.copy()
+            sample.update({
+                "difficulty": difficulty,
+                "progressive_selection": True,
+                "iteration": iteration,
+                "selection_strategy": f"Progressive {difficulty} (iter {iteration})"
+            })
+        
+        print(f"🔄 Progressive selection: {difficulty} difficulty, {len(selected_samples)} scenarios")
+        
+        return selected_samples
     
     def _load_previous_strategy(self, iteration: int) -> Dict[str, Any]:
         """Load strategy from previous iteration."""
