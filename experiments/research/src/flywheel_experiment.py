@@ -25,7 +25,7 @@ from pathlib import Path
 from datetime import datetime
 from typing import Dict, List, Any, Tuple
 
-# Add parent directories to path for imports
+# Add arc-eval root to path for imports
 sys.path.append(str(Path(__file__).parent.parent.parent.parent))
 
 from agent_eval.analysis.self_improvement import SelfImprovementEngine
@@ -43,10 +43,11 @@ class FlywheelExperiment:
     5. Progressive iteration until 91% target achievement
     """
     
-    def __init__(self, experiment_dir: Path = None):
+    def __init__(self, experiment_dir: Path = None, research_mode: bool = False):
         """Initialize experiment with production infrastructure."""
-        self.experiment_dir = experiment_dir or Path("../flywheel_experiment")
+        self.experiment_dir = experiment_dir or Path("../experiment_outputs")
         self.experiment_dir.mkdir(parents=True, exist_ok=True)
+        self.research_mode = research_mode  # Controls full vs sampled evaluation
         
         # Verify API key for Agent-as-a-Judge
         self.api_key = os.getenv("ANTHROPIC_API_KEY")
@@ -137,20 +138,33 @@ class FlywheelExperiment:
         print(f"🔍 Input file size: {agent_outputs_file.stat().st_size if agent_outputs_file.exists() else 'N/A'} bytes")
         
         try:
-            # Create a smaller sample for testing if using full baseline
+            # Handle baseline data based on research mode
             if str(agent_outputs_file).endswith("baseline_outputs.json"):
-                # Create a small sample from the baseline for faster testing
                 with open(agent_outputs_file, 'r') as f:
                     full_data = json.load(f)
                 
-                # Use adaptive scenario selection if not baseline iteration
-                if iteration > 1:
-                    sample_data = self.select_adaptive_scenarios(full_data, iteration, 
-                                                               baseline_pass_rate=42.0)
+                # Research mode: use full dataset, Dev mode: use sample
+                if self.research_mode:
+                    # Use full baseline dataset for research evaluation
+                    if iteration > 1:
+                        sample_data = self.select_adaptive_scenarios(full_data, iteration, 
+                                                                   baseline_pass_rate=42.0)
+                    else:
+                        # Use full 337 baseline examples for research
+                        sample_data = full_data
+                    sample_file = self.experiment_dir / f"full_research_iter_{iteration:02d}.json"
+                    evaluation_type = "full research dataset"
                 else:
-                    # Use only first 5 examples for baseline testing
-                    sample_data = full_data[:5]
-                sample_file = self.experiment_dir / f"sample_iter_{iteration:02d}.json"
+                    # Development mode: use smaller sample for faster testing
+                    if iteration > 1:
+                        sample_data = self.select_adaptive_scenarios(full_data, iteration, 
+                                                                   baseline_pass_rate=42.0)
+                    else:
+                        # Use only first 5 examples for development testing
+                        sample_data = full_data[:5]
+                    sample_file = self.experiment_dir / f"sample_iter_{iteration:02d}.json"
+                    evaluation_type = "development sample"
+                
                 sample_file.parent.mkdir(exist_ok=True)
                 
                 with open(sample_file, 'w') as f:
@@ -166,7 +180,7 @@ class FlywheelExperiment:
                     "--no-export",
                     "--verbose"
                 ]
-                print(f"🔬 Using sample of {len(sample_data)} examples for faster testing")
+                print(f"🔬 Using {evaluation_type}: {len(sample_data)} examples")
                 print(f"🔧 Updated command: {' '.join(cmd)}")
             
             # Run from project root with API key
@@ -1013,6 +1027,16 @@ class FlywheelExperiment:
         
         print(f"📁 Complete results: {self.experiment_dir}")
         
+        # Generate metrics and charts for technical report
+        try:
+            print(f"\n📊 Generating technical report data...")
+            from metrics_collector import FlywheelMetricsCollector
+            collector = FlywheelMetricsCollector(self.experiment_dir)
+            collector.generate_technical_report_data()
+            print(f"✅ Technical report data generated in technical_report/")
+        except Exception as e:
+            print(f"⚠️  Could not generate technical report data: {e}")
+        
         return final_iteration, final_pass_rate
     
     def select_adaptive_scenarios(self, baseline_data: List[Dict], 
@@ -1250,8 +1274,9 @@ def main():
             return 0
     
     try:
-        # Run experiment
-        experiment = FlywheelExperiment()
+        # Run experiment with research mode based on test flags
+        research_mode = not (args.test or args.small_test)
+        experiment = FlywheelExperiment(research_mode=research_mode)
         final_iteration, final_pass_rate = experiment.run_complete_experiment(
             max_iterations=iterations,
             target_pass_rate=target,
