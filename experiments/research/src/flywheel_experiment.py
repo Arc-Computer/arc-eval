@@ -117,11 +117,14 @@ class FlywheelExperiment:
             "--input", str(agent_outputs_file),
             "--export", "json",
             "--no-export",  # Skip PDF generation for speed
+            "--no-interactive",  # Skip interactive menu for automation
             "--verbose"
         ]
         
         # Set up environment with OpenAI if available
         env_vars = {**os.environ, "ANTHROPIC_API_KEY": self.api_key}
+        # Set environment variable to bypass interactive menu
+        env_vars["ARC_EVAL_NO_INTERACTION"] = "1"
         
         # Try OpenAI if API key available
         if os.getenv("OPENAI_API_KEY"):
@@ -181,6 +184,7 @@ class FlywheelExperiment:
                     "--input", str(sample_file),
                     "--export", "json",
                     "--no-export",
+                    "--no-interactive",  # Skip interactive menu for automation
                     "--verbose"
                 ]
                 print(f"🔬 Using {evaluation_type}: {len(sample_data)} examples")
@@ -1119,6 +1123,7 @@ def main():
     parser.add_argument('--small-test', action='store_true', help='Small test mode (20 examples, 3 iterations)')
     parser.add_argument('--sample-size', type=int, help='Number of examples to sample for testing')
     parser.add_argument('--debug-cli', action='store_true', help='Debug CLI command directly')
+    parser.add_argument('--auto-confirm', action='store_true', help='Auto-confirm experiment without prompting')
     
     args = parser.parse_args()
     
@@ -1162,7 +1167,8 @@ def main():
                     sys.executable, "-m", "agent_eval.cli",
                     "compliance", "--domain", "finance",
                     "--input", str(baseline_file),
-                    "--no-export"
+                    "--no-export",
+                    "--no-interactive"  # Skip interactive menu for automation
                 ], capture_output=True, text=True, timeout=60, env=env_vars)
                 
                 print(f"Compliance Test: {'✅' if result.returncode == 0 else '❌'}")
@@ -1198,10 +1204,13 @@ def main():
         print("🔬 RESEARCH MODE: Full experiment for publication")
         
         # Confirm production run
-        response = input(f"\nConfirm research experiment (up to ${budget} cost)? (y/N): ")
-        if response.lower() != 'y':
-            print("Experiment cancelled")
-            return 0
+        if not args.auto_confirm:
+            response = input(f"\nConfirm research experiment (up to ${budget} cost)? (y/N): ")
+            if response.lower() != 'y':
+                print("Experiment cancelled")
+                return 0
+        else:
+            print(f"Auto-confirming research experiment (up to ${budget} cost)")
     
     try:
         # Run experiment with research mode based on test flags
