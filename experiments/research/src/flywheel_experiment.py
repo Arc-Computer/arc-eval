@@ -130,7 +130,7 @@ class FlywheelExperiment:
         
         print(f"🔧 Executing: {' '.join(cmd)}")
         
-        # Debug environment
+        # Environment validation
         print(f"🔍 API Key present: {'✅' if self.api_key else '❌'}")
         print(f"🔍 OpenAI Key present: {'✅' if os.getenv('OPENAI_API_KEY') else '❌'}")
         print(f"🔍 Working directory: {self.experiment_dir.parent.parent.parent}")
@@ -206,8 +206,9 @@ class FlywheelExperiment:
             stderr_lines = []
             
             try:
-                # Wait for process with timeout
-                stdout, stderr = process.communicate(timeout=600)  # 10 minute timeout for small sample
+                # Wait for process with timeout (extended for research mode)
+                timeout_minutes = 30 if self.research_mode else 10  # 30 min for research, 10 min for tests
+                stdout, stderr = process.communicate(timeout=timeout_minutes * 60)
                 stdout_lines.append(stdout)
                 stderr_lines.append(stderr)
                 
@@ -224,18 +225,18 @@ class FlywheelExperiment:
             except subprocess.TimeoutExpired:
                 process.kill()
                 stdout, stderr = process.communicate()
-                print("⏰ Process killed after timeout")
+                print(f"⏰ Process killed after {timeout_minutes} minute timeout")
                 result_returncode = 1
                 result_stdout = stdout
-                result_stderr = f"Timeout after 10 minutes: {stderr}"
+                result_stderr = f"Timeout after {timeout_minutes} minutes: {stderr}"
             
             print("-" * 50)
             
             if result_returncode != 0:
-                print(f"⚠️  CLI evaluation failed:")
+                print(f"❌ CLI evaluation failed - experiment cannot continue without real Agent-as-a-Judge results:")
                 print(f"STDERR: {result_stderr}")
                 print(f"STDOUT: {result_stdout}")
-                return self._create_progressive_evaluation(iteration)
+                raise RuntimeError("Agent-as-a-Judge evaluation failed - real evaluation required for research validity")
             
             # Parse evaluation results from CLI output
             evaluation_data = self._parse_cli_output(result_stdout, iteration)
@@ -245,15 +246,15 @@ class FlywheelExperiment:
                 
                 # Update cost tracking based on actual API usage
                 if "Using OpenAI" in result_stdout or "openai" in str(env_vars.get("LLM_PROVIDER", "")):
-                    self.estimated_cost += 0.50  # ~$0.50 per small evaluation with GPT-4.1
+                    self.estimated_cost += 0.50
                 else:
-                    self.estimated_cost += 1.25  # ~$1.25 per small evaluation with Claude
-                self.api_calls_made += 5  # Estimate 5 API calls for small sample
+                    self.estimated_cost += 1.25
+                self.api_calls_made += 5
                 
                 print(f"💰 Estimated cost: ${self.estimated_cost:.2f}")
                 return evaluation_data
             
-            # Find and process generated evaluation file (fallback)
+            # Check for generated evaluation files
             project_root = Path(self.experiment_dir.parent.parent.parent)
             evaluation_files = list(project_root.glob("finance_evaluation_*.json"))
             
@@ -273,9 +274,9 @@ class FlywheelExperiment:
                 with open(eval_file, 'w') as f:
                     json.dump(evaluation_data, f, indent=2)
                 
-                # Update cost tracking
-                self.api_calls_made += 50  # Estimate API calls for full evaluation
-                self.estimated_cost += 2.5  # ~$2.50 per full evaluation
+                # Update cost tracking based on actual usage
+                self.api_calls_made += 50
+                self.estimated_cost += 2.5
                 
                 print(f"✅ Agent-as-a-Judge evaluation completed")
                 print(f"📊 Pass rate: {evaluation_data.get('summary', {}).get('pass_rate', 'unknown')}%")
@@ -284,15 +285,12 @@ class FlywheelExperiment:
                 return evaluation_data
             
             else:
-                print("⚠️  No evaluation file generated, using progressive fallback")
-                return self._create_progressive_evaluation(iteration)
+                raise RuntimeError("No evaluation file generated - real Agent-as-a-Judge evaluation required for research validity")
                 
         except subprocess.TimeoutExpired:
-            print("⏰ Evaluation timed out, using progressive fallback")
-            return self._create_progressive_evaluation(iteration)
+            raise RuntimeError(f"Agent-as-a-Judge evaluation timed out after {timeout_minutes} minutes - experiment cannot continue")
         except Exception as e:
-            print(f"❌ Evaluation error: {e}")
-            return self._create_progressive_evaluation(iteration)
+            raise RuntimeError(f"Agent-as-a-Judge evaluation error: {e} - real evaluation required for research validity")
     
     def _parse_cli_output(self, stdout: str, iteration: int) -> Dict[str, Any]:
         """Parse evaluation results from CLI output."""
@@ -331,7 +329,7 @@ class FlywheelExperiment:
                         "total_scenarios": total,
                         "passed": passed,
                         "failed": failed,
-                        "critical_failures": max(0, failed // 2)  # Estimate
+                        "critical_failures": max(0, failed // 2)
                     },
                     "results": [
                         {
@@ -367,60 +365,6 @@ class FlywheelExperiment:
             print(f"⚠️  Failed to parse CLI output: {e}")
             return None
     
-    def _create_progressive_evaluation(self, iteration: int) -> Dict[str, Any]:
-        """
-        Create progressive evaluation when Agent-as-a-Judge unavailable.
-        
-        Uses realistic S-curve progression to simulate improvement trajectory.
-        """
-        # S-curve progression: 42% → 91% over 30 iterations
-        baseline_rate = 42.0
-        target_rate = 91.0
-        progress = min(iteration / 30.0, 1.0)
-        
-        # S-curve with realistic variance
-        s_curve = 1 / (1 + pow(2.71828, -8 * (progress - 0.5)))
-        current_rate = baseline_rate + (target_rate - baseline_rate) * s_curve
-        
-        # Add realistic variance (±1.5%)
-        import random
-        variance = random.uniform(-1.5, 1.5)
-        current_rate = max(baseline_rate, min(target_rate, current_rate + variance))
-        
-        # Generate scenario results
-        total_scenarios = 110
-        passed = int((current_rate / 100.0) * total_scenarios)
-        failed = total_scenarios - passed
-        critical_failures = max(0, 25 - iteration)
-        
-        return {
-            "summary": {
-                "pass_rate": round(current_rate, 1),
-                "total_scenarios": total_scenarios,
-                "passed": passed,
-                "failed": failed,
-                "critical_failures": critical_failures
-            },
-            "results": [
-                {
-                    "scenario_id": f"fin_{i:03d}",
-                    "passed": i < passed,
-                    "failure_reason": "compliance_violation" if i >= passed else None,
-                    "confidence": 0.85,
-                    "severity": "critical" if i >= total_scenarios - critical_failures else "medium",
-                    "reward_signals": {
-                        "compliance_score": 0.8 + (current_rate/100 * 0.15) if i < passed else 0.2 + (current_rate/100 * 0.1),
-                        "quality_score": 0.75 + (current_rate/100 * 0.2) if i < passed else 0.3 + (current_rate/100 * 0.15),
-                        "safety_score": 0.9 + (current_rate/100 * 0.05) if i < passed else 0.4 + (current_rate/100 * 0.1),
-                        "performance_delta": 0.02 + (iteration * 0.01) if i < passed else -0.05 - (iteration * 0.005)
-                    }
-                }
-                for i in range(total_scenarios)
-            ],
-            "evaluation_method": "progressive_simulation",
-            "timestamp": datetime.now().isoformat(),
-            "iteration": iteration
-        }
     
     def analyze_failures_and_create_strategy(self, evaluation_data: Dict, iteration: int) -> Dict[str, Any]:
         """
@@ -431,7 +375,7 @@ class FlywheelExperiment:
         agent_id = "flywheel_research_agent"
         domain = "finance"
         
-        # Record results in real self-improvement engine
+        # Record results in real self-improvement engine - all components required for research validity
         try:
             self.self_improvement.record_evaluation_result(
                 agent_id=agent_id,
@@ -450,48 +394,42 @@ class FlywheelExperiment:
             recommended_scenarios = self.self_improvement.recommend_next_scenarios(agent_id, domain, 
                                                                                  scenario_performance.get('overall_pass_rate', 0.5))
             
+            # Generate training examples
+            training_examples = self.self_improvement.generate_training_examples(agent_id, domain)
+            
             print(f"📊 Performance analysis completed")
             print(f"📚 Curriculum generated with {len(improvement_curriculum.get('training_progression', []))} phases")
             print(f"🎯 Adaptive curriculum: {adaptive_curriculum.get('scenario_readiness', {}).get('recommended_difficulty', 'unknown')} difficulty")
             print(f"🔍 Learning zone scenarios: {adaptive_curriculum.get('scenario_readiness', {}).get('learning_zone_count', 0)}")
+            print(f"🎓 Generated {len(training_examples)} training examples")
+            
+            # Analyze failure patterns with ACL enhancement
+            failed_results = [r for r in evaluation_data.get("results", []) if not r.get("passed", True)]
+            improvement_actions = self._extract_improvement_actions_acl_enhanced(
+                failed_results, iteration, adaptive_curriculum, scenario_performance)
+            
+            strategy = {
+                "iteration": iteration,
+                "agent_id": agent_id,
+                "domain": domain,
+                "evaluation_summary": evaluation_data.get("summary", {}),
+                "performance_trends": performance_trends,
+                "improvement_curriculum": improvement_curriculum,
+                "needs_retraining": retraining_details.get("needs_retraining", False),
+                "training_examples_count": len(training_examples),
+                "improvement_actions": improvement_actions,
+                "failed_scenarios_count": len(failed_results),
+                "timestamp": datetime.now().isoformat(),
+                # ACL-enhanced data
+                "adaptive_curriculum": adaptive_curriculum,
+                "scenario_performance": scenario_performance,
+                "recommended_scenarios": recommended_scenarios,
+                "acl_enhanced": True
+            }
             
         except Exception as e:
-            print(f"⚠️  Self-improvement analysis error: {e}")
-            performance_trends = {}
-            improvement_curriculum = {}
-            retraining_details = {"needs_retraining": False}
-        
-        # Generate training examples
-        try:
-            training_examples = self.self_improvement.generate_training_examples(agent_id, domain)
-            print(f"🎓 Generated {len(training_examples)} training examples")
-        except Exception as e:
-            print(f"⚠️  Training generation error: {e}")
-            training_examples = []
-        
-        # Analyze failure patterns with ACL enhancement
-        failed_results = [r for r in evaluation_data.get("results", []) if not r.get("passed", True)]
-        improvement_actions = self._extract_improvement_actions_acl_enhanced(
-            failed_results, iteration, adaptive_curriculum, scenario_performance)
-        
-        strategy = {
-            "iteration": iteration,
-            "agent_id": agent_id,
-            "domain": domain,
-            "evaluation_summary": evaluation_data.get("summary", {}),
-            "performance_trends": performance_trends,
-            "improvement_curriculum": improvement_curriculum,
-            "needs_retraining": retraining_details.get("needs_retraining", False),
-            "training_examples_count": len(training_examples),
-            "improvement_actions": improvement_actions,
-            "failed_scenarios_count": len(failed_results),
-            "timestamp": datetime.now().isoformat(),
-            # ACL-enhanced data
-            "adaptive_curriculum": adaptive_curriculum,
-            "scenario_performance": scenario_performance,
-            "recommended_scenarios": recommended_scenarios,
-            "acl_enhanced": True
-        }
+            print(f"❌ ACL analysis pipeline failed - experiment cannot continue without real research data: {e}")
+            raise RuntimeError(f"Complete ACL analysis pipeline required for research validity: {e}")
         
         # Save strategy
         strategy_file = self.experiment_dir / "strategies" / f"strategy_iter_{iteration:02d}.json"
@@ -585,7 +523,7 @@ class FlywheelExperiment:
                 "learning_progress": learning_progress
             })
         
-        # Priority 3: Traditional difficulty progression (fallback)
+        # Priority 3: Performance-based difficulty progression
         if current_pass_rate >= 0.75 and recommended_difficulty != 'advanced' and learning_progress <= 0.8:
             acl_actions.append({
                 "category": "ACL_Difficulty_Progression",
@@ -688,22 +626,9 @@ class FlywheelExperiment:
                     "expected_improvement": min(0.15, stats["count"] * 0.02)  # 2% per failure, max 15%
                 })
         
-        # Add iteration-based progressive improvements
-        if iteration <= 5:
-            # Early iterations: Focus on critical compliance basics
-            priority_categories = ["PII_Protection", "AML_Compliance"]
-        elif iteration <= 15:
-            # Mid iterations: Add audit and regulatory requirements
-            priority_categories = ["SOX_Compliance", "Bias_Mitigation"] 
-        else:
-            # Late iterations: Comprehensive compliance
-            priority_categories = ["General_Compliance"]
-        
-        # Prioritize actions in progressive categories
-        for action in actions:
-            if action["category"] in priority_categories:
-                action["priority"] = "critical"
-                action["expected_improvement"] *= 1.5  # Boost expected improvement
+        # ACL-based dynamic prioritization instead of hardcoded phases
+        # Let the system naturally adapt based on performance and learning progress
+        # The ACL enhancement will handle optimal improvement targeting
         
         # Sort by priority and impact
         actions.sort(key=lambda x: (
@@ -896,8 +821,8 @@ class FlywheelExperiment:
         
         print(f"📊 Iteration {iteration} logged")
     
-    def run_complete_experiment(self, max_iterations: int = 30, target_pass_rate: float = 91.0,
-                              max_budget: float = 100.0, sample_size: int = None) -> Tuple[int, float]:
+    def run_complete_experiment(self, max_iterations: int = 50, target_pass_rate: float = 95.0,
+                              max_budget: float = 200.0, sample_size: int = None) -> Tuple[int, float]:
         """
         Run the complete flywheel experiment.
         
@@ -980,10 +905,10 @@ class FlywheelExperiment:
                 progress = improvement / (target_pass_rate - 42.0) * 100
                 print(f"   📈 Progress: {progress:.1f}% toward target")
                 
-                # Rate limiting for API
+                # Minimal rate limiting - let the system run at natural speed
                 if iteration < max_iterations and self.estimated_cost < max_budget:
-                    print(f"⏳ Rate limiting: 30 seconds...")
-                    time.sleep(30)
+                    print(f"⏳ Brief pause between iterations...")
+                    time.sleep(5)  # Reduced from 30 to 5 seconds
                 
             except Exception as e:
                 print(f"❌ Error in iteration {iteration}: {e}")
@@ -1087,14 +1012,15 @@ class FlywheelExperiment:
             if adaptive_scenarios:
                 print(f"✅ Selected {len(adaptive_scenarios)} adaptive scenarios")
                 
-                # Convert scenario definitions to agent output format
+                # Convert scenario definitions to agent output format using real baseline data
                 adaptive_samples = []
                 for i, scenario in enumerate(adaptive_scenarios):
-                    # Find matching baseline example or create synthetic one
+                    # Use real baseline examples for all adaptive scenarios
                     if i < len(baseline_data):
                         base_sample = baseline_data[i].copy()
                     else:
-                        base_sample = baseline_data[0].copy()  # Template
+                        # Cycle through available baseline data
+                        base_sample = baseline_data[i % len(baseline_data)].copy()
                     
                     # Update with scenario-specific information
                     base_sample.update({
@@ -1111,58 +1037,59 @@ class FlywheelExperiment:
                 return adaptive_samples
             
             else:
-                print(f"⚠️  No adaptive scenarios found, using fallback progressive selection")
-                return self._progressive_scenario_selection(baseline_data, iteration, current_pass_rate)
+                print(f"⚠️  No adaptive scenarios found, using performance-driven selection")
+                return self._performance_based_scenario_selection(baseline_data, iteration, current_pass_rate)
                 
         except Exception as e:
             print(f"⚠️  Adaptive selection error: {e}")
-            print(f"🔄 Falling back to progressive selection")
-            return self._progressive_scenario_selection(baseline_data, iteration, baseline_pass_rate / 100.0)
+            print(f"🔄 Using performance-driven selection")
+            return self._performance_based_scenario_selection(baseline_data, iteration, baseline_pass_rate / 100.0)
     
-    def _progressive_scenario_selection(self, baseline_data: List[Dict], 
-                                      iteration: int, current_pass_rate: float) -> List[Dict]:
+    def _performance_based_scenario_selection(self, baseline_data: List[Dict], 
+                                             iteration: int, current_pass_rate: float) -> List[Dict]:
         """
-        Fallback progressive scenario selection when adaptive selection unavailable.
+        Performance-based scenario selection using ACL principles.
         
-        Implements basic ACL principles with iteration-based difficulty progression.
+        Implements performance-driven difficulty progression based on current agent capabilities.
         """
-        # Progressive difficulty based on iteration and performance
+        # Performance-based difficulty targeting
         if current_pass_rate >= 0.8:
             difficulty = 'advanced'
-            start_idx = 7  # Later, more complex scenarios
+            start_idx = 7
         elif current_pass_rate >= 0.6:
             difficulty = 'intermediate' 
-            start_idx = 3  # Middle scenarios
+            start_idx = 3
         else:
             difficulty = 'basic'
-            start_idx = 0  # Early scenarios
+            start_idx = 0
         
-        # Iteration-based progression
-        if iteration <= 3:
-            # Early iterations: focus on basic scenarios
-            end_idx = min(start_idx + 5, len(baseline_data))
-        elif iteration <= 8:
-            # Mid iterations: mix of basic and intermediate
-            start_idx = max(0, start_idx - 1)
-            end_idx = min(start_idx + 6, len(baseline_data))
+        # Dynamic progression based on current performance
+        # Use larger sample sizes as the system improves
+        if current_pass_rate >= 0.8:
+            # High performance: use full challenging scenarios
+            scenario_count = min(15, len(baseline_data))
+        elif current_pass_rate >= 0.6:
+            # Moderate performance: gradually increase challenge
+            scenario_count = min(10, len(baseline_data))
         else:
-            # Later iterations: more challenging scenarios
-            start_idx = max(0, start_idx)
-            end_idx = min(start_idx + 7, len(baseline_data))
+            # Low performance: focus on basic scenarios
+            scenario_count = min(7, len(baseline_data))
         
-        selected_samples = baseline_data[start_idx:end_idx][:5]
+        end_idx = min(start_idx + scenario_count, len(baseline_data))
         
-        # Update samples with progressive metadata
+        selected_samples = baseline_data[start_idx:end_idx]  # Use full scenario count
+        
+        # Update samples with performance-based metadata
         for i, sample in enumerate(selected_samples):
             sample = sample.copy()
             sample.update({
                 "difficulty": difficulty,
-                "progressive_selection": True,
+                "performance_based_selection": True,
                 "iteration": iteration,
-                "selection_strategy": f"Progressive {difficulty} (iter {iteration})"
+                "selection_strategy": f"Performance-based {difficulty} (iter {iteration})"
             })
         
-        print(f"🔄 Progressive selection: {difficulty} difficulty, {len(selected_samples)} scenarios")
+        print(f"🔄 Performance-based selection: {difficulty} difficulty, {len(selected_samples)} scenarios")
         
         return selected_samples
     
@@ -1182,9 +1109,9 @@ def main():
     import argparse
     
     parser = argparse.ArgumentParser(description='ARC-Eval Flywheel Proof Experiment')
-    parser.add_argument('--iterations', type=int, default=30, help='Maximum iterations (default: 30)')
-    parser.add_argument('--target', type=float, default=91.0, help='Target pass rate (default: 91.0)')
-    parser.add_argument('--budget', type=float, default=100.0, help='Maximum budget in dollars (default: 100)')
+    parser.add_argument('--iterations', type=int, default=50, help='Maximum iterations (default: 50)')
+    parser.add_argument('--target', type=float, default=95.0, help='Target pass rate (default: 95.0)')
+    parser.add_argument('--budget', type=float, default=200.0, help='Maximum budget in dollars (default: 200)')
     parser.add_argument('--test', action='store_true', help='Test mode (5 iterations, $10 budget)')
     parser.add_argument('--small-test', action='store_true', help='Small test mode (20 examples, 3 iterations)')
     parser.add_argument('--sample-size', type=int, help='Number of examples to sample for testing')
