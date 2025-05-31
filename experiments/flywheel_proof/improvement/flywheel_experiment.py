@@ -112,13 +112,25 @@ class FlywheelExperiment:
             "--verbose"
         ]
         
+        # Set up environment with OpenAI if available
+        env_vars = {**os.environ, "ANTHROPIC_API_KEY": self.api_key}
+        
+        # Try OpenAI if API key available
+        if os.getenv("OPENAI_API_KEY"):
+            env_vars["LLM_PROVIDER"] = "openai"
+            env_vars["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
+            print("🔄 Using OpenAI GPT-4.1 as Agent-as-a-Judge")
+        else:
+            print("🔄 Using Anthropic Claude as Agent-as-a-Judge")
+        
         print(f"🔧 Executing: {' '.join(cmd)}")
         
         # Debug environment
         print(f"🔍 API Key present: {'✅' if self.api_key else '❌'}")
+        print(f"🔍 OpenAI Key present: {'✅' if os.getenv('OPENAI_API_KEY') else '❌'}")
         print(f"🔍 Working directory: {self.experiment_dir.parent.parent.parent}")
         print(f"🔍 Input file exists: {'✅' if agent_outputs_file.exists() else '❌'}")
-        print(f"🔍 Input file size: {agent_outputs_file.stat().st_size if agent_outputs_file.exists() else 'N/A'} bytes")
+        print(f"🔍 Input file size: {agent_outputs_file.stat().st_size if agent_outputs_file.exists() else 'N/A'} bytes"
         
         try:
             # Run from project root with API key
@@ -130,7 +142,7 @@ class FlywheelExperiment:
                 cmd,
                 cwd=self.experiment_dir.parent.parent.parent,  # arc-eval root
                 timeout=1800,  # 30 minute timeout
-                env={**os.environ, "ANTHROPIC_API_KEY": self.api_key},
+                env=env_vars,
                 capture_output=True,
                 text=True
             )
@@ -690,14 +702,65 @@ def main():
     parser.add_argument('--test', action='store_true', help='Test mode (5 iterations, $10 budget)')
     parser.add_argument('--small-test', action='store_true', help='Small test mode (20 examples, 3 iterations)')
     parser.add_argument('--sample-size', type=int, help='Number of examples to sample for testing')
+    parser.add_argument('--debug-cli', action='store_true', help='Debug CLI command directly')
     
     args = parser.parse_args()
     
     # Check API key
-    if not os.getenv("ANTHROPIC_API_KEY"):
-        print("❌ ANTHROPIC_API_KEY required for Agent-as-a-Judge evaluation")
+    if not os.getenv("ANTHROPIC_API_KEY") and not os.getenv("OPENAI_API_KEY"):
+        print("❌ Either ANTHROPIC_API_KEY or OPENAI_API_KEY required for Agent-as-a-Judge evaluation")
         print("   Set: export ANTHROPIC_API_KEY='your-key-here'")
+        print("   Or: export OPENAI_API_KEY='your-key-here'")
         return 1
+    
+    # Debug CLI if requested
+    if args.debug_cli:
+        print("🔍 DEBUG CLI MODE: Testing arc-eval CLI directly")
+        print("=" * 50)
+        
+        # Test basic CLI
+        try:
+            result = subprocess.run([sys.executable, "-m", "agent_eval.cli", "--help"], 
+                                  capture_output=True, text=True, timeout=30)
+            print(f"CLI Help Test: {'✅' if result.returncode == 0 else '❌'}")
+            if result.returncode != 0:
+                print(f"Error: {result.stderr}")
+        except Exception as e:
+            print(f"CLI Help Test: ❌ {e}")
+        
+        # Test compliance command
+        baseline_file = Path("../baseline/baseline_outputs.json")
+        if baseline_file.exists():
+            try:
+                print("Testing compliance command with 60 second timeout...")
+                env_vars = {**os.environ}
+                if os.getenv("OPENAI_API_KEY"):
+                    env_vars["LLM_PROVIDER"] = "openai"
+                    env_vars["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
+                    print("Using OpenAI")
+                elif os.getenv("ANTHROPIC_API_KEY"):
+                    env_vars["ANTHROPIC_API_KEY"] = os.getenv("ANTHROPIC_API_KEY")
+                    print("Using Anthropic")
+                
+                result = subprocess.run([
+                    sys.executable, "-m", "agent_eval.cli",
+                    "compliance", "--domain", "finance",
+                    "--input", str(baseline_file),
+                    "--no-export"
+                ], capture_output=True, text=True, timeout=60, env=env_vars)
+                
+                print(f"Compliance Test: {'✅' if result.returncode == 0 else '❌'}")
+                print(f"STDOUT: {result.stdout[:500]}...")
+                if result.stderr:
+                    print(f"STDERR: {result.stderr[:500]}...")
+                    
+            except subprocess.TimeoutExpired:
+                print("Compliance Test: ⏰ Timed out after 60 seconds")
+            except Exception as e:
+                print(f"Compliance Test: ❌ {e}")
+        
+        print("=" * 50)
+        return 0
     
     if args.small_test:
         iterations = 3
