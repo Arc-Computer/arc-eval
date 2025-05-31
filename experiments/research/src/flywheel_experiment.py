@@ -372,7 +372,7 @@ class FlywheelExperiment:
         """
         print(f"🧠 Analyzing failures and creating improvement strategy...")
         
-        agent_id = "flywheel_research_agent"
+        agent_id = "research_agent"
         domain = "finance"
         
         # Record results in real self-improvement engine - all components required for research validity
@@ -932,7 +932,7 @@ class FlywheelExperiment:
         
         # Generate final summary
         summary = {
-            "experiment_type": "flywheel_proof_research",
+            "experiment_type": "acl_research_experiment",
             "start_time": start_time.isoformat(),
             "end_time": datetime.now().isoformat(),
             "total_duration_minutes": total_time.total_seconds() / 60,
@@ -972,7 +972,7 @@ class FlywheelExperiment:
         This replaces the fixed sampling approach with intelligent scenario selection
         that targets the agent's current learning zone.
         """
-        agent_id = "flywheel_research_agent"
+        agent_id = "research_agent"
         domain = "finance"
         
         try:
