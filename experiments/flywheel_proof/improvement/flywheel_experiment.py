@@ -74,7 +74,7 @@ class FlywheelExperiment:
         print(f"🤖 Agent-as-a-Judge: ✅ Enabled")
         print(f"📁 Experiment directory: {self.experiment_dir}")
     
-    def load_baseline_data(self) -> List[Dict[str, Any]]:
+    def load_baseline_data(self, sample_size: int = None) -> List[Dict[str, Any]]:
         """Load realistic baseline data from Phase 1."""
         baseline_file = self.baseline_dir / "baseline_outputs.json"
         
@@ -84,7 +84,13 @@ class FlywheelExperiment:
         with open(baseline_file, 'r') as f:
             baseline_data = json.load(f)
         
-        print(f"✅ Loaded {len(baseline_data)} baseline examples")
+        # Use sample for testing if specified
+        if sample_size and sample_size < len(baseline_data):
+            baseline_data = baseline_data[:sample_size]
+            print(f"✅ Loaded {len(baseline_data)} baseline examples (sampled from {sample_size})")
+        else:
+            print(f"✅ Loaded {len(baseline_data)} baseline examples")
+        
         return baseline_data
     
     def run_agent_judge_evaluation(self, agent_outputs_file: Path, iteration: int) -> Dict[str, Any]:
@@ -108,16 +114,22 @@ class FlywheelExperiment:
         
         print(f"🔧 Executing: {' '.join(cmd)}")
         
+        # Debug environment
+        print(f"🔍 API Key present: {'✅' if self.api_key else '❌'}")
+        print(f"🔍 Working directory: {self.experiment_dir.parent.parent.parent}")
+        print(f"🔍 Input file exists: {'✅' if agent_outputs_file.exists() else '❌'}")
+        print(f"🔍 Input file size: {agent_outputs_file.stat().st_size if agent_outputs_file.exists() else 'N/A'} bytes")
+        
         try:
             # Run from project root with API key
-            print("⚡ Starting Agent-as-a-Judge evaluation (this may take 3-8 minutes)...")
+            print("⚡ Starting Agent-as-a-Judge evaluation (this may take up to 30 minutes)...")
             print("📝 Live output from arc-eval CLI:")
             print("-" * 50)
             
             result = subprocess.run(
                 cmd,
                 cwd=self.experiment_dir.parent.parent.parent,  # arc-eval root
-                timeout=900,  # 15 minute timeout
+                timeout=1800,  # 30 minute timeout
                 env={**os.environ, "ANTHROPIC_API_KEY": self.api_key},
                 capture_output=True,
                 text=True
@@ -524,7 +536,7 @@ class FlywheelExperiment:
         print(f"📊 Iteration {iteration} logged")
     
     def run_complete_experiment(self, max_iterations: int = 30, target_pass_rate: float = 91.0,
-                              max_budget: float = 100.0) -> Tuple[int, float]:
+                              max_budget: float = 100.0, sample_size: int = None) -> Tuple[int, float]:
         """
         Run the complete flywheel experiment.
         
@@ -537,7 +549,7 @@ class FlywheelExperiment:
         print("=" * 70)
         
         # Load baseline data
-        baseline_data = self.load_baseline_data()
+        baseline_data = self.load_baseline_data(sample_size)
         
         # Initialize tracking
         start_time = datetime.now()
@@ -676,6 +688,8 @@ def main():
     parser.add_argument('--target', type=float, default=91.0, help='Target pass rate (default: 91.0)')
     parser.add_argument('--budget', type=float, default=100.0, help='Maximum budget in dollars (default: 100)')
     parser.add_argument('--test', action='store_true', help='Test mode (5 iterations, $10 budget)')
+    parser.add_argument('--small-test', action='store_true', help='Small test mode (20 examples, 3 iterations)')
+    parser.add_argument('--sample-size', type=int, help='Number of examples to sample for testing')
     
     args = parser.parse_args()
     
@@ -685,15 +699,23 @@ def main():
         print("   Set: export ANTHROPIC_API_KEY='your-key-here'")
         return 1
     
-    if args.test:
+    if args.small_test:
+        iterations = 3
+        target = 60.0
+        budget = 5.0
+        sample_size = 20
+        print("🔬 SMALL TEST MODE: 20 examples, 3 iterations for debugging")
+    elif args.test:
         iterations = 5
         target = 70.0
         budget = 10.0
+        sample_size = args.sample_size
         print("🧪 TEST MODE: Limited scope for validation")
     else:
         iterations = args.iterations
         target = args.target
         budget = args.budget
+        sample_size = args.sample_size
         print("🔬 RESEARCH MODE: Full experiment for publication")
         
         # Confirm production run
@@ -708,7 +730,8 @@ def main():
         final_iteration, final_pass_rate = experiment.run_complete_experiment(
             max_iterations=iterations,
             target_pass_rate=target,
-            max_budget=budget
+            max_budget=budget,
+            sample_size=sample_size
         )
         
         print(f"\n✅ Research experiment completed!")
