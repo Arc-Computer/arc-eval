@@ -1,6 +1,7 @@
 import os
 import json
 from datetime import datetime
+from typing import Dict, List, Any, Optional
 import yaml
 
 try:
@@ -111,3 +112,181 @@ class ScenarioBank:
                 f.write(self._write_scenarios_header())
             yaml.dump(existing, f, sort_keys=False)
         return scenario
+    
+    def classify_scenario_difficulty(self, scenario: dict) -> str:
+        """
+        Classify scenario difficulty based on compliance requirements and complexity.
+        
+        Difficulty levels:
+        - basic: Single compliance requirement, straightforward validation
+        - intermediate: Multiple compliance requirements or complex reasoning
+        - advanced: Multi-step reasoning, composition, or critical compliance
+        """
+        scenario_id = scenario.get('id', '')
+        compliance = scenario.get('compliance', [])
+        description = scenario.get('description', '').lower()
+        category = scenario.get('category', '').lower()
+        
+        # Count complexity indicators
+        complexity_score = 0
+        
+        # Compliance complexity
+        if len(compliance) >= 3:
+            complexity_score += 2
+        elif len(compliance) == 2:
+            complexity_score += 1
+        
+        # Critical compliance areas (higher difficulty)
+        critical_frameworks = ['sox', 'aml', 'kyc', 'sr-11-7', 'eu-ai-act']
+        if any(framework in str(compliance).lower() for framework in critical_frameworks):
+            complexity_score += 1
+        
+        # Description complexity indicators
+        complex_keywords = ['multi-step', 'complex', 'comprehensive', 'cross-border', 'validation', 'monitoring']
+        if any(keyword in description for keyword in complex_keywords):
+            complexity_score += 1
+        
+        # Model governance and bias are inherently more complex
+        if 'model' in category or 'bias' in category or 'ai/ml' in category:
+            complexity_score += 1
+        
+        # Scenario ID-based patterns (later scenarios tend to be more complex)
+        if scenario_id:
+            try:
+                scenario_num = int(scenario_id.split('_')[1]) if '_' in scenario_id else 0
+                if scenario_num >= 80:
+                    complexity_score += 2
+                elif scenario_num >= 50:
+                    complexity_score += 1
+            except (ValueError, IndexError):
+                pass
+        
+        # Classify based on score
+        if complexity_score >= 4:
+            return 'advanced'
+        elif complexity_score >= 2:
+            return 'intermediate'
+        else:
+            return 'basic'
+    
+    def get_scenarios_by_difficulty(self, domain: str, difficulty: str) -> List[dict]:
+        """
+        Get scenarios filtered by difficulty level from domain YAML file.
+        """
+        domain_file = f"agent_eval/domains/{domain}.yaml"
+        
+        if not os.path.exists(domain_file):
+            return []
+        
+        try:
+            with open(domain_file, 'r') as f:
+                domain_data = yaml.safe_load(f)
+            
+            scenarios = domain_data.get('scenarios', [])
+            filtered_scenarios = []
+            
+            for scenario in scenarios:
+                if self.classify_scenario_difficulty(scenario) == difficulty:
+                    filtered_scenarios.append(scenario)
+            
+            return filtered_scenarios
+            
+        except Exception as e:
+            print(f"Error loading domain scenarios: {e}")
+            return []
+    
+    def get_adaptive_scenario_selection(self, performance_data: Dict[str, Any], 
+                                      target_difficulty: str, 
+                                      domain: str = 'finance',
+                                      count: int = 5) -> List[dict]:
+        """
+        Select scenarios adaptively based on current performance and target difficulty.
+        
+        Performance data should include:
+        - overall_pass_rate: Current agent pass rate (0.0-1.0)
+        - weakness_areas: List of compliance areas with low performance
+        - mastered_areas: List of compliance areas with high performance
+        """
+        overall_pass_rate = performance_data.get('overall_pass_rate', 0.5)
+        weakness_areas = performance_data.get('weakness_areas', [])
+        mastered_areas = performance_data.get('mastered_areas', [])
+        
+        # Load all scenarios from domain
+        domain_file = f"agent_eval/domains/{domain}.yaml"
+        if not os.path.exists(domain_file):
+            return []
+        
+        try:
+            with open(domain_file, 'r') as f:
+                domain_data = yaml.safe_load(f)
+            
+            all_scenarios = domain_data.get('scenarios', [])
+            
+            # Filter by target difficulty
+            difficulty_filtered = [
+                scenario for scenario in all_scenarios
+                if self.classify_scenario_difficulty(scenario) == target_difficulty
+            ]
+            
+            # Prioritize scenarios that target weakness areas
+            prioritized_scenarios = []
+            backup_scenarios = []
+            
+            for scenario in difficulty_filtered:
+                scenario_compliance = [comp.lower() for comp in scenario.get('compliance', [])]
+                category = scenario.get('category', '').lower()
+                
+                # Check if this scenario addresses known weaknesses
+                addresses_weakness = any(
+                    weakness.lower() in scenario_compliance or weakness.lower() in category
+                    for weakness in weakness_areas
+                )
+                
+                # Avoid scenarios in already mastered areas unless we need to fill quota
+                addresses_mastered = any(
+                    mastered.lower() in scenario_compliance or mastered.lower() in category
+                    for mastered in mastered_areas
+                )
+                
+                if addresses_weakness:
+                    prioritized_scenarios.append(scenario)
+                elif not addresses_mastered:
+                    backup_scenarios.append(scenario)
+            
+            # Select scenarios: prioritize weaknesses, then fill with others
+            selected = prioritized_scenarios[:count]
+            
+            if len(selected) < count:
+                remaining = count - len(selected)
+                selected.extend(backup_scenarios[:remaining])
+            
+            # If still not enough, use any remaining scenarios
+            if len(selected) < count:
+                remaining = count - len(selected)
+                all_remaining = [s for s in difficulty_filtered if s not in selected]
+                selected.extend(all_remaining[:remaining])
+            
+            return selected[:count]
+            
+        except Exception as e:
+            print(f"Error in adaptive scenario selection: {e}")
+            return []
+    
+    def get_difficulty_progression_recommendation(self, performance_data: Dict[str, Any]) -> str:
+        """
+        Recommend next difficulty level based on current performance.
+        
+        Returns: 'basic', 'intermediate', or 'advanced'
+        """
+        overall_pass_rate = performance_data.get('overall_pass_rate', 0.5)
+        recent_trend = performance_data.get('recent_trend', 'stable')  # 'improving', 'declining', 'stable'
+        
+        # Progression thresholds based on ACL literature
+        if overall_pass_rate >= 0.8 and recent_trend in ['improving', 'stable']:
+            return 'advanced'
+        elif overall_pass_rate >= 0.6 and recent_trend in ['improving', 'stable']:
+            return 'intermediate'
+        elif overall_pass_rate < 0.4 and recent_trend == 'declining':
+            return 'basic'  # Step back if struggling
+        else:
+            return 'basic'  # Default to basic for safety
