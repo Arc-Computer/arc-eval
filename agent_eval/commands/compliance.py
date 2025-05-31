@@ -59,7 +59,6 @@ class ComplianceCommandHandler(BaseCommandHandler):
         dev = kwargs.get('dev', False)
         verbose = kwargs.get('verbose', False)
         config = kwargs.get('config')
-        batch_mode = kwargs.get('batch_mode', False)
         
         # Get no_interactive first, then potentially override it
         no_interaction = kwargs.get('no_interactive', False)
@@ -152,7 +151,7 @@ class ComplianceCommandHandler(BaseCommandHandler):
         if agent_judge:
             results, improvement_report, performance_metrics, reliability_metrics, learning_metrics = self._run_agent_judge_evaluation(
                 domain, judge_model, verify, performance, reliability, scenario_count, 
-                engine, agent_outputs, verbose, dev, agent_judge, batch_mode
+                engine, agent_outputs, verbose, dev, agent_judge
             )
         else:
             results = self._run_standard_evaluation(
@@ -327,7 +326,7 @@ class ComplianceCommandHandler(BaseCommandHandler):
     def _run_agent_judge_evaluation(self, domain: str, judge_model: str, verify: bool, 
                                    performance: bool, reliability: bool, scenario_count: int,
                                    engine: EvaluationEngine, agent_outputs: List[Dict[str, Any]], 
-                                   verbose: bool, dev: bool, agent_judge: bool, batch_mode: bool = False) -> tuple:
+                                   verbose: bool, dev: bool, agent_judge: bool) -> tuple:
         """Run Agent-as-a-Judge evaluation with all enhancements."""
         # Use Agent-as-a-Judge evaluation with model preference
         agent_judge_instance = AgentJudge(domain=domain, preferred_model=judge_model)
@@ -368,12 +367,9 @@ class ComplianceCommandHandler(BaseCommandHandler):
             # Update progress during evaluation
             progress.update(eval_task, advance=20, description="🤖 Initializing Agent Judge...")
             
-            # Run Agent-as-a-Judge evaluation with batch mode support
-            if batch_mode and verbose:
-                console.print("[cyan]Verbose:[/cyan] Using batch processing mode for Agent-as-a-Judge evaluation")
-            
+            # Run Agent-as-a-Judge evaluation
             judge_results = self._evaluate_scenarios_with_judge(
-                scenarios, agent_output_objects, agent_judge_instance, performance_tracker, batch_mode
+                scenarios, agent_output_objects, agent_judge_instance, performance_tracker
             )
             progress.update(eval_task, advance=40, description="🤖 Agent evaluation complete...")
             
@@ -495,7 +491,7 @@ class ComplianceCommandHandler(BaseCommandHandler):
         return agent_output_objects[0] if agent_output_objects else None
     
     def _evaluate_scenarios_with_judge(self, scenarios: List, agent_output_objects: List[AgentOutput],
-                                      agent_judge_instance, performance_tracker, batch_mode: bool = False) -> List:
+                                      agent_judge_instance, performance_tracker) -> List:
         """Evaluate scenarios using Agent Judge with automatic batch processing."""
         # Prepare matched outputs for each scenario
         matched_outputs = []
@@ -511,27 +507,15 @@ class ComplianceCommandHandler(BaseCommandHandler):
             logger.warning("No matching outputs found for any scenarios")
             return []
         
-        # Use batch evaluation (force batch mode if enabled, otherwise automatic based on scenario count)
+        # Use batch evaluation (automatically uses batch API for 5+ scenarios)
         batch_start_time = time.time()
         
         try:
-            # Determine if we should use batch processing
-            use_batch_processing = batch_mode or len(matched_scenarios) >= 5
-            
-            if use_batch_processing:
-                # Force batch processing through API Manager
-                if performance_tracker:
-                    with performance_tracker.track_judge_execution():
-                        judge_results = agent_judge_instance.evaluate_batch(matched_outputs, matched_scenarios)
-                else:
+            if performance_tracker:
+                with performance_tracker.track_judge_execution():
                     judge_results = agent_judge_instance.evaluate_batch(matched_outputs, matched_scenarios)
             else:
-                # Use standard sequential evaluation for small batches
-                if performance_tracker:
-                    with performance_tracker.track_judge_execution():
-                        judge_results = agent_judge_instance.evaluate_batch(matched_outputs, matched_scenarios)
-                else:
-                    judge_results = agent_judge_instance.evaluate_batch(matched_outputs, matched_scenarios)
+                judge_results = agent_judge_instance.evaluate_batch(matched_outputs, matched_scenarios)
             
             # Track batch completion for performance metrics
             if performance_tracker:
