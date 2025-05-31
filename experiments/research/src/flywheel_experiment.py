@@ -64,7 +64,9 @@ class FlywheelExperiment:
         
         # Experiment tracking
         self.results_log = self.experiment_dir / "experiment_log.jsonl"
-        self.baseline_dir = self.experiment_dir.parent / "baseline"
+        # Baseline directory is always relative to the research directory
+        research_root = Path(__file__).parent.parent  # experiments/research/
+        self.baseline_dir = research_root / "baseline"
         
         # Create output directories
         (self.experiment_dir / "agent_outputs").mkdir(exist_ok=True)
