@@ -36,7 +36,7 @@
 
 ### Test Mode (Validation)
 ```bash
-cd /Users/jarrodbarnes/arc-eval/experiments/flywheel_proof/improvement
+cd /Users/jarrodbarnes/arc-eval/experiments/research/src
 python flywheel_experiment.py --test
 ```
 
