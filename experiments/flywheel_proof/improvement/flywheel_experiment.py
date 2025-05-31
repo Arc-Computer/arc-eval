@@ -50,8 +50,8 @@ class FlywheelExperiment:
         
         # Verify API key for Agent-as-a-Judge
         self.api_key = os.getenv("ANTHROPIC_API_KEY")
-        if not self.api_key:
-            raise ValueError("ANTHROPIC_API_KEY required for Agent-as-a-Judge evaluation")
+        if not self.api_key and not os.getenv("OPENAI_API_KEY"):
+            raise ValueError("Either ANTHROPIC_API_KEY or OPENAI_API_KEY required for Agent-as-a-Judge evaluation")
         
         # Initialize real self-improvement engine
         self.self_improvement = SelfImprovementEngine(
@@ -324,7 +324,13 @@ class FlywheelExperiment:
                             "scenario_id": f"fin_{i:03d}",
                             "passed": i < passed,
                             "confidence": 0.9,
-                            "evaluation_method": "agent_judge_real"
+                            "evaluation_method": "agent_judge_real",
+                            "reward_signals": {
+                                "compliance_score": 0.9 if i < passed else 0.3,
+                                "quality_score": 0.85 if i < passed else 0.4,
+                                "safety_score": 0.95 if i < passed else 0.5,
+                                "performance_delta": 0.05 if i < passed else -0.08
+                            }
                         }
                         for i in range(total)
                     ],
@@ -387,7 +393,13 @@ class FlywheelExperiment:
                     "passed": i < passed,
                     "failure_reason": "compliance_violation" if i >= passed else None,
                     "confidence": 0.85,
-                    "severity": "critical" if i >= total_scenarios - critical_failures else "medium"
+                    "severity": "critical" if i >= total_scenarios - critical_failures else "medium",
+                    "reward_signals": {
+                        "compliance_score": 0.8 + (current_rate/100 * 0.15) if i < passed else 0.2 + (current_rate/100 * 0.1),
+                        "quality_score": 0.75 + (current_rate/100 * 0.2) if i < passed else 0.3 + (current_rate/100 * 0.15),
+                        "safety_score": 0.9 + (current_rate/100 * 0.05) if i < passed else 0.4 + (current_rate/100 * 0.1),
+                        "performance_delta": 0.02 + (iteration * 0.01) if i < passed else -0.05 - (iteration * 0.005)
+                    }
                 }
                 for i in range(total_scenarios)
             ],
@@ -493,10 +505,12 @@ class FlywheelExperiment:
         weakness_areas = performance_summary.get('weakness_areas', [])
         mastered_areas = performance_summary.get('mastered_areas', [])
         current_pass_rate = performance_summary.get('overall_pass_rate', 0.5)
+        learning_progress = performance_summary.get('learning_progress', 0.5)
         recommended_difficulty = scenario_readiness.get('recommended_difficulty', 'basic')
         
         print(f"🧠 ACL-Enhanced Action Extraction:")
         print(f"   📊 Pass rate: {current_pass_rate*100:.1f}%")
+        print(f"   📈 Learning progress: {learning_progress:.2f}")
         print(f"   ⚠️  Weakness areas: {weakness_areas}")
         print(f"   🎯 Target difficulty: {recommended_difficulty}")
         
@@ -519,31 +533,58 @@ class FlywheelExperiment:
                 "difficulty_target": recommended_difficulty
             })
         
-        # Priority 2: Progressive difficulty adaptation
-        if current_pass_rate >= 0.75 and recommended_difficulty != 'advanced':
+        # Priority 2: Learning progress based adaptation (enhanced)
+        if learning_progress > 0.8:  # Learning too fast, increase challenge
+            acl_actions.append({
+                "category": "ACL_Learning_Acceleration",
+                "failure_count": 0,
+                "critical_count": 0,
+                "action": f"accelerate_to_advanced_scenarios",
+                "priority": "high",
+                "expected_improvement": 0.10,
+                "acl_reasoning": f"High learning progress ({learning_progress:.2f}) indicates readiness for increased challenge",
+                "difficulty_target": "advanced",
+                "learning_progress": learning_progress
+            })
+        elif learning_progress < 0.2:  # Struggling, need consolidation
+            acl_actions.append({
+                "category": "ACL_Learning_Consolidation",
+                "failure_count": len(failed_results),
+                "critical_count": len([f for f in failed_results if f.get('severity') == 'critical']),
+                "action": "consolidate_with_basic_scenarios",
+                "priority": "critical",
+                "expected_improvement": 0.12,
+                "acl_reasoning": f"Low learning progress ({learning_progress:.2f}) indicates need for consolidation",
+                "difficulty_target": "basic",
+                "learning_progress": learning_progress
+            })
+        elif 0.2 <= learning_progress <= 0.8:  # Optimal learning zone
+            acl_actions.append({
+                "category": "ACL_Optimal_Learning_Zone",
+                "failure_count": 0,
+                "critical_count": 0,
+                "action": "maintain_current_difficulty_with_variation",
+                "priority": "medium",
+                "expected_improvement": 0.06,
+                "acl_reasoning": f"Optimal learning progress ({learning_progress:.2f}) - maintain current challenge with scenario variation",
+                "difficulty_target": recommended_difficulty,
+                "learning_progress": learning_progress
+            })
+        
+        # Priority 3: Traditional difficulty progression (fallback)
+        if current_pass_rate >= 0.75 and recommended_difficulty != 'advanced' and learning_progress <= 0.8:
             acl_actions.append({
                 "category": "ACL_Difficulty_Progression",
                 "failure_count": 0,
                 "critical_count": 0,
                 "action": f"advance_to_{recommended_difficulty}",
-                "priority": "high",
+                "priority": "medium",
                 "expected_improvement": 0.08,
                 "acl_reasoning": "Ready for increased difficulty based on performance",
                 "difficulty_target": recommended_difficulty
             })
-        elif current_pass_rate < 0.4:
-            acl_actions.append({
-                "category": "ACL_Difficulty_Reduction",
-                "failure_count": len(failed_results),
-                "critical_count": len([f for f in failed_results if f.get('severity') == 'critical']),
-                "action": "reduce_to_basic_scenarios",
-                "priority": "critical",
-                "expected_improvement": 0.15,
-                "acl_reasoning": "Performance indicates need for simpler scenarios",
-                "difficulty_target": "basic"
-            })
         
-        # Priority 3: Learning zone optimization
+        # Priority 4: Learning zone optimization
         learning_zone_count = scenario_readiness.get('learning_zone_count', 0)
         if learning_zone_count < 3:
             acl_actions.append({

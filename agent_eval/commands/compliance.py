@@ -577,11 +577,19 @@ class ComplianceCommandHandler(BaseCommandHandler):
             # Convert judge results to self-improvement format
             eval_results_for_training = []
             for judge_result in judge_results:
+                # Extract compliance gaps with proper fallback logic
+                continuous_feedback = improvement_report.get('continuous_feedback', {})
+                compliance_gaps = continuous_feedback.get('compliance_gaps', [])
+                
+                # If no compliance gaps found in report, derive from failed judge results
+                if not compliance_gaps:
+                    compliance_gaps = [r.scenario_id for r in judge_results if r.judgment == 'fail']
+                
                 eval_result = {
                     'scenario_id': judge_result.scenario_id,
                     'reward_signals': judge_result.reward_signals,
                     'improvement_recommendations': judge_result.improvement_recommendations,
-                    'compliance_gaps': improvement_report.get('continuous_feedback', {}).get('compliance_gaps', []),
+                    'compliance_gaps': compliance_gaps,
                     'performance_metrics': {
                         'confidence': judge_result.confidence,
                         'evaluation_time': judge_result.evaluation_time,
