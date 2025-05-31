@@ -334,9 +334,10 @@ def debug(input_file: Path, framework: Optional[str], output_format: str, verbos
 @click.option('--input', 'input_file', type=click.Path(exists=True, path_type=Path), help='Agent outputs to evaluate (optional with --quick-start)')
 @click.option('--export', type=click.Choice(['pdf', 'csv', 'json']), help='Export format (auto-exports PDF by default)')
 @click.option('--no-export', is_flag=True, help='Disable automatic PDF export')
+@click.option('--no-interactive', is_flag=True, help='Skip interactive menu for automation')
 @click.option('--quick-start', is_flag=True, help='Run with sample data (no input file required)')
 @click.option('--verbose', is_flag=True, help='Enable verbose output')
-def compliance(domain: str, input_file: Optional[Path], export: Optional[str], no_export: bool, quick_start: bool, verbose: bool):
+def compliance(domain: str, input_file: Optional[Path], export: Optional[str], no_export: bool, no_interactive: bool, quick_start: bool, verbose: bool):
     """
     Compliance: Does it meet requirements?
     
