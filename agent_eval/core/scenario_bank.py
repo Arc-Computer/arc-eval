@@ -195,6 +195,33 @@ class ScenarioBank:
             print(f"Error loading domain scenarios: {e}")
             return []
     
+    def adjust_complexity_dynamically(self, learning_progress: float, current_difficulty: str) -> str:
+        """
+        Adjust scenario complexity based on learning velocity for optimal challenge.
+        
+        Args:
+            learning_progress: Learning progress score [0.0, 1.0] from TD-error analysis
+            current_difficulty: Current difficulty level ('basic', 'intermediate', 'advanced')
+            
+        Returns:
+            Adjusted difficulty level maintaining optimal learning zone
+        """
+        if learning_progress > 0.8:  # Learning too fast, increase challenge
+            if current_difficulty == 'basic':
+                return 'intermediate'
+            elif current_difficulty == 'intermediate':
+                return 'advanced'
+            return current_difficulty  # Already at max
+            
+        elif learning_progress < 0.2:  # Struggling, reduce challenge
+            if current_difficulty == 'advanced':
+                return 'intermediate' 
+            elif current_difficulty == 'intermediate':
+                return 'basic'
+            return current_difficulty  # Already at min
+            
+        return current_difficulty  # Stay in sweet spot (0.2-0.8)
+
     def get_adaptive_scenario_selection(self, performance_data: Dict[str, Any], 
                                       target_difficulty: str, 
                                       domain: str = 'finance',
@@ -206,10 +233,15 @@ class ScenarioBank:
         - overall_pass_rate: Current agent pass rate (0.0-1.0)
         - weakness_areas: List of compliance areas with low performance
         - mastered_areas: List of compliance areas with high performance
+        - learning_progress: TD-error based learning velocity [0.0-1.0]
         """
         overall_pass_rate = performance_data.get('overall_pass_rate', 0.5)
         weakness_areas = performance_data.get('weakness_areas', [])
         mastered_areas = performance_data.get('mastered_areas', [])
+        learning_progress = performance_data.get('learning_progress', 0.5)
+        
+        # Dynamically adjust complexity based on learning progress
+        adjusted_difficulty = self.adjust_complexity_dynamically(learning_progress, target_difficulty)
         
         # Load all scenarios from domain
         domain_file = f"agent_eval/domains/{domain}.yaml"
@@ -220,12 +252,36 @@ class ScenarioBank:
             with open(domain_file, 'r') as f:
                 domain_data = yaml.safe_load(f)
             
-            all_scenarios = domain_data.get('scenarios', [])
+            # Parse the actual finance.yaml structure which has categories, not direct scenarios
+            all_scenarios = []
+            if 'scenarios' in domain_data:
+                # Direct scenarios list (for customer_generated.yaml)
+                all_scenarios = domain_data['scenarios']
+            else:
+                # finance.yaml format: extract scenarios from categories
+                categories = domain_data.get('categories', [])
+                for category in categories:
+                    scenario_ids = category.get('scenarios', [])
+                    category_name = category.get('name', 'general')
+                    compliance_list = category.get('compliance', [])
+                    
+                    for scenario_id in scenario_ids:
+                        # Create scenario object from ID and category metadata
+                        scenario = {
+                            'id': scenario_id,
+                            'name': f"{category_name}: {scenario_id}",
+                            'description': category.get('description', ''),
+                            'category': category_name.lower().replace(' ', '_'),
+                            'compliance': compliance_list,
+                            'severity': 'medium',  # Default
+                            'test_type': 'behavioral'
+                        }
+                        all_scenarios.append(scenario)
             
-            # Filter by target difficulty
+            # Filter by adjusted difficulty (enhanced with learning progress)
             difficulty_filtered = [
                 scenario for scenario in all_scenarios
-                if self.classify_scenario_difficulty(scenario) == target_difficulty
+                if self.classify_scenario_difficulty(scenario) == adjusted_difficulty
             ]
             
             # Prioritize scenarios that target weakness areas
@@ -270,6 +326,7 @@ class ScenarioBank:
             
         except Exception as e:
             print(f"Error in adaptive scenario selection: {e}")
+            print(f"Domain file structure: {list(domain_data.keys()) if 'domain_data' in locals() else 'Could not load domain file'}")
             return []
     
     def get_difficulty_progression_recommendation(self, performance_data: Dict[str, Any]) -> str:
