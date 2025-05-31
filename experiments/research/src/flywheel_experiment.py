@@ -45,7 +45,9 @@ class FlywheelExperiment:
     
     def __init__(self, experiment_dir: Path = None, research_mode: bool = False):
         """Initialize experiment with production infrastructure."""
-        self.experiment_dir = experiment_dir or Path("../experiment_outputs")
+        # Default to outputs directory within research structure
+        research_root = Path(__file__).parent.parent  # experiments/research/
+        self.experiment_dir = experiment_dir or (research_root / "outputs")
         self.experiment_dir.mkdir(parents=True, exist_ok=True)
         self.research_mode = research_mode  # Controls full vs sampled evaluation
         
@@ -65,7 +67,6 @@ class FlywheelExperiment:
         # Experiment tracking
         self.results_log = self.experiment_dir / "experiment_log.jsonl"
         # Baseline directory is always relative to the research directory
-        research_root = Path(__file__).parent.parent  # experiments/research/
         self.baseline_dir = research_root / "baseline"
         
         # Create output directories
