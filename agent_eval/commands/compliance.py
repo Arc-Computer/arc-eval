@@ -60,8 +60,8 @@ class ComplianceCommandHandler(BaseCommandHandler):
         verbose = kwargs.get('verbose', False)
         config = kwargs.get('config')
         
-        # Get no_interaction first, then potentially override it
-        no_interaction = kwargs.get('no_interaction', False)
+        # Get no_interactive first, then potentially override it
+        no_interaction = kwargs.get('no_interactive', False)
         
         # Note: We no longer auto-disable interaction when exporting
         # The post-evaluation menu handles exports gracefully
@@ -151,7 +151,7 @@ class ComplianceCommandHandler(BaseCommandHandler):
         if agent_judge:
             results, improvement_report, performance_metrics, reliability_metrics, learning_metrics = self._run_agent_judge_evaluation(
                 domain, judge_model, verify, performance, reliability, scenario_count, 
-                engine, agent_outputs, verbose, dev
+                engine, agent_outputs, verbose, dev, agent_judge
             )
         else:
             results = self._run_standard_evaluation(
@@ -168,9 +168,16 @@ class ComplianceCommandHandler(BaseCommandHandler):
         console.print(f"[dim]Processed {len(results)} scenarios in {evaluation_time:.2f} seconds[/dim]")
         
         if verbose:
-            passed = sum(1 for r in results if r.passed)
-            failed = len(results) - passed
-            console.print(f"[cyan]Verbose:[/cyan] Evaluation completed: {passed} passed, {failed} failed in {evaluation_time:.2f}s")
+            # Use judgment field for Agent Judge results, passed field for standard results
+            if agent_judge and hasattr(results[0], 'judgment') if results else False:
+                passed = sum(1 for r in results if getattr(r, 'judgment', 'fail') == 'pass')
+                failed = sum(1 for r in results if getattr(r, 'judgment', 'fail') == 'fail')
+                warnings = sum(1 for r in results if getattr(r, 'judgment', 'fail') == 'warning')
+                console.print(f"[cyan]Verbose:[/cyan] Agent Judge completed: {passed} passed, {failed} failed, {warnings} warnings in {evaluation_time:.2f}s")
+            else:
+                passed = sum(1 for r in results if r.passed)
+                failed = len(results) - passed
+                console.print(f"[cyan]Verbose:[/cyan] Evaluation completed: {passed} passed, {failed} failed in {evaluation_time:.2f}s")
         
         # Display Agent Judge specific results if applicable
         if agent_judge:
@@ -319,13 +326,13 @@ class ComplianceCommandHandler(BaseCommandHandler):
     def _run_agent_judge_evaluation(self, domain: str, judge_model: str, verify: bool, 
                                    performance: bool, reliability: bool, scenario_count: int,
                                    engine: EvaluationEngine, agent_outputs: List[Dict[str, Any]], 
-                                   verbose: bool, dev: bool) -> tuple:
+                                   verbose: bool, dev: bool, agent_judge: bool) -> tuple:
         """Run Agent-as-a-Judge evaluation with all enhancements."""
         # Use Agent-as-a-Judge evaluation with model preference
         agent_judge_instance = AgentJudge(domain=domain, preferred_model=judge_model)
         
-        # Initialize performance tracking if requested
-        if performance:
+        # Initialize performance tracking if requested OR for Agent Judge mode (always track performance for judges)
+        if performance or agent_judge:
             from agent_eval.evaluation.performance_tracker import PerformanceTracker
             performance_tracker = PerformanceTracker()
         else:
@@ -705,7 +712,7 @@ class ComplianceCommandHandler(BaseCommandHandler):
             learner = PatternLearner()
             metrics = learner.get_learning_metrics()
             
-            # Calculate performance delta if we have baseline data
+            # Calculate performance delta if we have baseline data (already using judgment field correctly)
             passed = sum(1 for r in judge_results if r.judgment == "pass")
             current_pass_rate = (passed / len(judge_results)) * 100 if judge_results else 0
             

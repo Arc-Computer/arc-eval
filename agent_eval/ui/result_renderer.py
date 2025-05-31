@@ -28,6 +28,31 @@ class ResultRenderer:
     def __init__(self):
         self.console = console
     
+    def _get_result_counts(self, results: List[Any]) -> Dict[str, int]:
+        """Get consistent result counts for both standard and Agent Judge results."""
+        if not results:
+            return {"passed": 0, "failed": 0, "warnings": 0, "total": 0}
+        
+        # Check if these are Agent Judge results (have judgment field)
+        first_result = results[0]
+        if hasattr(first_result, 'judgment'):
+            # Agent Judge results - use judgment field
+            passed = sum(1 for r in results if getattr(r, 'judgment', 'fail') == 'pass')
+            failed = sum(1 for r in results if getattr(r, 'judgment', 'fail') == 'fail')
+            warnings = sum(1 for r in results if getattr(r, 'judgment', 'fail') == 'warning')
+        else:
+            # Standard evaluation results - use passed field
+            passed = sum(1 for r in results if getattr(r, 'passed', False))
+            failed = sum(1 for r in results if not getattr(r, 'passed', False))
+            warnings = 0  # Standard results don't have warnings
+        
+        return {
+            "passed": passed,
+            "failed": failed,
+            "warnings": warnings,
+            "total": len(results)
+        }
+    
     def display_agent_judge_results(self, improvement_report: dict, domain: str, 
                                    performance_metrics: Optional[dict] = None, 
                                    reliability_metrics: Optional[dict] = None,
@@ -199,9 +224,8 @@ class ResultRenderer:
                 eval_results = {
                     "summary": {
                         "total_scenarios": len(results),
-                        "passed": sum(1 for r in results if r.passed),
-                        "failed": sum(1 for r in results if not r.passed),
-                        "pass_rate": sum(1 for r in results if r.passed) / len(results) if results else 0
+                        **self._get_result_counts(results),
+                        "pass_rate": self._get_result_counts(results)["passed"] / len(results) if results else 0
                     },
                     "results": results,
                     "domain": domain
@@ -237,11 +261,23 @@ class ResultRenderer:
         
         # Summary statistics
         total_scenarios = len(results)
-        passed = sum(1 for r in results if r.passed)
-        failed = sum(1 for r in results if not r.passed)
-        critical_failures = sum(1 for r in results if r.severity == "critical" and not r.passed)
-        high_failures = sum(1 for r in results if r.severity == "high" and not r.passed)
-        medium_failures = sum(1 for r in results if r.severity == "medium" and not r.passed)
+        counts = self._get_result_counts(results)
+        passed = counts["passed"]
+        failed = counts["failed"]
+        warnings = counts["warnings"]
+        
+        # Calculate failure counts by severity - need to handle both result types
+        first_result = results[0] if results else None
+        if hasattr(first_result, 'judgment'):
+            # Agent Judge results
+            critical_failures = sum(1 for r in results if getattr(r, 'severity', '') == "critical" and getattr(r, 'judgment', 'fail') != 'pass')
+            high_failures = sum(1 for r in results if getattr(r, 'severity', '') == "high" and getattr(r, 'judgment', 'fail') != 'pass')
+            medium_failures = sum(1 for r in results if getattr(r, 'severity', '') == "medium" and getattr(r, 'judgment', 'fail') != 'pass')
+        else:
+            # Standard evaluation results
+            critical_failures = sum(1 for r in results if getattr(r, 'severity', '') == "critical" and not getattr(r, 'passed', False))
+            high_failures = sum(1 for r in results if getattr(r, 'severity', '') == "high" and not getattr(r, 'passed', False))
+            medium_failures = sum(1 for r in results if getattr(r, 'severity', '') == "medium" and not getattr(r, 'passed', False))
         
         # Dynamic header based on domain
         domains_info = self._get_domain_info()
@@ -280,10 +316,21 @@ class ResultRenderer:
             "📈 Pass Rate:", f"[bold]{pass_rate:.1f}%[/bold]",
             "⚠️  Risk Level:", risk_status
         )
-        summary_table.add_row(
-            "✅ Passed:", f"[green]{passed}[/green]",
-            "❌ Failed:", f"[red]{failed}[/red]"
-        )
+        # Add warnings row if Agent Judge results have warnings
+        if warnings > 0:
+            summary_table.add_row(
+                "✅ Passed:", f"[green]{passed}[/green]",
+                "❌ Failed:", f"[red]{failed}[/red]"
+            )
+            summary_table.add_row(
+                "⚠️  Warnings:", f"[yellow]{warnings}[/yellow]",
+                "", ""
+            )
+        else:
+            summary_table.add_row(
+                "✅ Passed:", f"[green]{passed}[/green]",
+                "❌ Failed:", f"[red]{failed}[/red]"
+            )
         summary_table.add_row(
             "🔴 Critical:", f"[red]{critical_failures}[/red]", 
             "🟡 High:", f"[yellow]{high_failures}[/yellow]"
@@ -299,10 +346,19 @@ class ResultRenderer:
         # Show compliance framework summary
         compliance_frameworks = set()
         failed_frameworks = set()
+        first_result = results[0] if results else None
+        
         for result in results:
             compliance_frameworks.update(result.compliance)
-            if not result.passed:
-                failed_frameworks.update(result.compliance)
+            # Handle both result types for failure detection
+            if hasattr(first_result, 'judgment'):
+                # Agent Judge results
+                if getattr(result, 'judgment', 'fail') != 'pass':
+                    failed_frameworks.update(result.compliance)
+            else:
+                # Standard evaluation results
+                if not getattr(result, 'passed', False):
+                    failed_frameworks.update(result.compliance)
         
         # Compliance Framework Dashboard
         if compliance_frameworks:
@@ -325,23 +381,47 @@ class ResultRenderer:
             for framework in sorted(compliance_frameworks):
                 framework_results = [r for r in results if framework in r.compliance]
                 total_scenarios = len(framework_results)
-                passed_scenarios = sum(1 for r in framework_results if r.passed)
+                
+                # Handle both result types for framework metrics
+                if hasattr(first_result, 'judgment'):
+                    # Agent Judge results
+                    passed_scenarios = sum(1 for r in framework_results if getattr(r, 'judgment', 'fail') == 'pass')
+                else:
+                    # Standard evaluation results
+                    passed_scenarios = sum(1 for r in framework_results if getattr(r, 'passed', False))
+                
                 failed_scenarios = total_scenarios - passed_scenarios
                 pass_rate = (passed_scenarios / total_scenarios * 100) if total_scenarios > 0 else 0
                 
-                # Determine status
+                # Determine status - handle both result types
                 if failed_scenarios == 0:
                     status = "[green]✅ COMPLIANT[/green]"
-                elif any(r.severity == "critical" and not r.passed for r in framework_results):
-                    status = "[red]🔴 CRITICAL[/red]"
-                elif any(r.severity == "high" and not r.passed for r in framework_results):
-                    status = "[yellow]🟡 HIGH RISK[/yellow]"
+                elif hasattr(first_result, 'judgment'):
+                    # Agent Judge results
+                    if any(getattr(r, 'severity', '') == "critical" and getattr(r, 'judgment', 'fail') != 'pass' for r in framework_results):
+                        status = "[red]🔴 CRITICAL[/red]"
+                    elif any(getattr(r, 'severity', '') == "high" and getattr(r, 'judgment', 'fail') != 'pass' for r in framework_results):
+                        status = "[yellow]🟡 HIGH RISK[/yellow]"
+                    else:
+                        status = "[blue]🔵 MEDIUM[/blue]"
                 else:
-                    status = "[blue]🔵 MEDIUM[/blue]"
+                    # Standard evaluation results
+                    if any(getattr(r, 'severity', '') == "critical" and not getattr(r, 'passed', False) for r in framework_results):
+                        status = "[red]🔴 CRITICAL[/red]"
+                    elif any(getattr(r, 'severity', '') == "high" and not getattr(r, 'passed', False) for r in framework_results):
+                        status = "[yellow]🟡 HIGH RISK[/yellow]"
+                    else:
+                        status = "[blue]🔵 MEDIUM[/blue]"
                 
-                # Issue summary
-                critical_issues = sum(1 for r in framework_results if r.severity == "critical" and not r.passed)
-                high_issues = sum(1 for r in framework_results if r.severity == "high" and not r.passed)
+                # Issue summary - handle both result types
+                if hasattr(first_result, 'judgment'):
+                    # Agent Judge results
+                    critical_issues = sum(1 for r in framework_results if getattr(r, 'severity', '') == "critical" and getattr(r, 'judgment', 'fail') != 'pass')
+                    high_issues = sum(1 for r in framework_results if getattr(r, 'severity', '') == "high" and getattr(r, 'judgment', 'fail') != 'pass')
+                else:
+                    # Standard evaluation results
+                    critical_issues = sum(1 for r in framework_results if getattr(r, 'severity', '') == "critical" and not getattr(r, 'passed', False))
+                    high_issues = sum(1 for r in framework_results if getattr(r, 'severity', '') == "high" and not getattr(r, 'passed', False))
                 
                 issue_summary = ""
                 if critical_issues > 0:
