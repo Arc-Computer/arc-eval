@@ -130,7 +130,7 @@ class FlywheelExperiment:
         print(f"🔍 OpenAI Key present: {'✅' if os.getenv('OPENAI_API_KEY') else '❌'}")
         print(f"🔍 Working directory: {self.experiment_dir.parent.parent.parent}")
         print(f"🔍 Input file exists: {'✅' if agent_outputs_file.exists() else '❌'}")
-        print(f"🔍 Input file size: {agent_outputs_file.stat().st_size if agent_outputs_file.exists() else 'N/A'} bytes"
+        print(f"🔍 Input file size: {agent_outputs_file.stat().st_size if agent_outputs_file.exists() else 'N/A'} bytes")
         
         try:
             # Run from project root with API key
