@@ -170,7 +170,7 @@ class APIManager:
                 if self.provider == "anthropic":
                     response = client.messages.create(
                         model=model,
-                        max_tokens=2000,
+                        max_tokens=4000,  # Increased for comprehensive domain analysis
                         temperature=0.1,
                         messages=[
                             {
@@ -193,7 +193,7 @@ class APIManager:
                 elif self.provider == "openai":
                     response = client.chat.completions.create(
                         model=model,
-                        max_tokens=2000,
+                        max_tokens=4000,  # Increased for comprehensive domain analysis
                         temperature=0.1,
                         messages=[
                             {
@@ -378,7 +378,7 @@ class APIManager:
                     "custom_id": f"eval_{i}_{prompt_data.get('scenario_id', 'unknown')}",
                     "params": {
                         "model": model,
-                        "max_tokens": 2000,
+                        "max_tokens": 4000,  # Increased for comprehensive domain analysis
                         "temperature": 0.1,
                         "messages": [
                             {
@@ -441,7 +441,7 @@ class APIManager:
                                 "content": prompt_data["prompt"]
                             }
                         ],
-                        "max_tokens": 2000,
+                        "max_tokens": 4000,  # Increased for comprehensive domain analysis
                         "temperature": 0.1
                     }
                 }
