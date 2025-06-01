@@ -4,6 +4,8 @@ Timeout-aware interactive prompts for automation-friendly CLI.
 
 import os
 import signal
+import platform
+import threading
 from typing import Optional, List, Union
 from rich.prompt import Prompt, Confirm
 from rich.console import Console
@@ -69,49 +71,79 @@ class TimeoutPrompt:
         # Use timeout if specified
         if timeout is None:
             timeout = TimeoutPrompt.get_timeout()
-        
-        # Set up timeout handler
-        import platform
-        import threading
-        
+
+        # Check platform for timeout implementation
         is_windows = platform.system() == "Windows"
-        
+        old_handler = None
+
         if is_windows:
             # Windows implementation using threading.Timer
             timer = None
+            result = None
+            timed_out = False
+
             def timeout_handler():
-                raise TimeoutError(f"Prompt timed out after {timeout} seconds")
-            
-            timer = threading.Timer(timeout, timeout_handler)
-            timer.start()
+                nonlocal timed_out
+                timed_out = True
+
+            try:
+                timer = threading.Timer(timeout, timeout_handler)
+                timer.start()
+                result = Prompt.ask(prompt, choices=choices, default=default)
+
+                if timed_out:
+                    # Use default or first choice on timeout
+                    result = default
+                    if result is None and choices:
+                        result = choices[0]
+                    if result is None:
+                        result = ""
+                    console.print(f"\n[yellow]⏰ Timeout: Using default '{result}'[/yellow]")
+
+                return result
+
+            except KeyboardInterrupt:
+                # Use default or first choice on interrupt
+                result = default
+                if result is None and choices:
+                    result = choices[0]
+                if result is None:
+                    result = ""
+                console.print(f"\n[yellow]⏰ Interrupted: Using default '{result}'[/yellow]")
+                return result
+
+            finally:
+                if timer:
+                    timer.cancel()
         else:
             # Unix implementation using SIGALRM
             def timeout_handler(signum, frame):
                 raise TimeoutError(f"Prompt timed out after {timeout} seconds")
-            
+
             old_handler = signal.signal(signal.SIGALRM, timeout_handler)
             signal.alarm(timeout)
-        
-        try:
-            # Use Rich's Prompt with timeout protection
-            result = Prompt.ask(prompt, choices=choices, default=default)
-            signal.alarm(0)  # Cancel timeout
-            return result
-            
-        except (TimeoutError, KeyboardInterrupt):
-            signal.alarm(0)  # Cancel timeout
-            # Use default or first choice on timeout
-            result = default
-            if result is None and choices:
-                result = choices[0]
-            if result is None:
-                result = ""
-            
-            console.print(f"\n[yellow]⏰ Timeout: Using default '{result}'[/yellow]")
-            return result
-            
-        finally:
-            signal.signal(signal.SIGALRM, old_handler)
+
+            try:
+                # Use Rich's Prompt with timeout protection
+                result = Prompt.ask(prompt, choices=choices, default=default)
+                signal.alarm(0)  # Cancel timeout
+                return result
+
+            except (TimeoutError, KeyboardInterrupt):
+                signal.alarm(0)  # Cancel timeout
+                # Use default or first choice on timeout
+                result = default
+                if result is None and choices:
+                    result = choices[0]
+                if result is None:
+                    result = ""
+
+                console.print(f"\n[yellow]⏰ Timeout: Using default '{result}'[/yellow]")
+                return result
+
+            finally:
+                if old_handler is not None:
+                    signal.signal(signal.SIGALRM, old_handler)
     
     @staticmethod
     def confirm(
@@ -142,27 +174,61 @@ class TimeoutPrompt:
         # Use timeout if specified
         if timeout is None:
             timeout = TimeoutPrompt.get_timeout()
-        
-        # Set up timeout handler
-        def timeout_handler(signum, frame):
-            raise TimeoutError(f"Confirmation timed out after {timeout} seconds")
-        
-        old_handler = signal.signal(signal.SIGALRM, timeout_handler)
-        signal.alarm(timeout)
-        
-        try:
-            # Use Rich's Confirm with timeout protection
-            result = Confirm.ask(prompt, default=default)
-            signal.alarm(0)  # Cancel timeout
-            return result
-            
-        except (TimeoutError, KeyboardInterrupt):
-            signal.alarm(0)  # Cancel timeout
-            console.print(f"\n[yellow]⏰ Timeout: Using default '{default}'[/yellow]")
-            return default
-            
-        finally:
-            signal.signal(signal.SIGALRM, old_handler)
+
+        # Check platform for timeout implementation
+        is_windows = platform.system() == "Windows"
+        old_handler = None
+
+        if is_windows:
+            # Windows implementation using threading.Timer
+            timer = None
+            result = None
+            timed_out = False
+
+            def timeout_handler():
+                nonlocal timed_out
+                timed_out = True
+
+            try:
+                timer = threading.Timer(timeout, timeout_handler)
+                timer.start()
+                result = Confirm.ask(prompt, default=default)
+
+                if timed_out:
+                    console.print(f"\n[yellow]⏰ Timeout: Using default '{default}'[/yellow]")
+                    return default
+
+                return result
+
+            except KeyboardInterrupt:
+                console.print(f"\n[yellow]⏰ Interrupted: Using default '{default}'[/yellow]")
+                return default
+
+            finally:
+                if timer:
+                    timer.cancel()
+        else:
+            # Unix implementation using SIGALRM
+            def timeout_handler(signum, frame):
+                raise TimeoutError(f"Confirmation timed out after {timeout} seconds")
+
+            old_handler = signal.signal(signal.SIGALRM, timeout_handler)
+            signal.alarm(timeout)
+
+            try:
+                # Use Rich's Confirm with timeout protection
+                result = Confirm.ask(prompt, default=default)
+                signal.alarm(0)  # Cancel timeout
+                return result
+
+            except (TimeoutError, KeyboardInterrupt):
+                signal.alarm(0)  # Cancel timeout
+                console.print(f"\n[yellow]⏰ Timeout: Using default '{default}'[/yellow]")
+                return default
+
+            finally:
+                if old_handler is not None:
+                    signal.signal(signal.SIGALRM, old_handler)
     
     @staticmethod
     def _is_automation_mode() -> bool:
