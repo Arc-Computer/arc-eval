@@ -1,73 +1,51 @@
-# ARC-Eval Examples
+# ARC-Eval Examples: Practical Guides & Sample Data
 
-This directory contains example agent outputs and demonstrates how to use ARC-Eval's open-source evaluation scenarios.
+Welcome to the examples directory! This space is designed to help you quickly understand ARC-Eval's capabilities, explore expected input/output formats, and learn how to integrate our evaluation tools into your AI agent development lifecycle.
 
-## What You'll Find Here
+---
+## Contents
 
-### `/quickstart` - Start Here
-**Your complete onboarding guide.** Walk through capturing agent outputs, running evaluations, and implementing improvements. This is your primary resource for getting started.
+### 🚀 `/quickstart`
+*  This guide walks you through installing ARC-Eval, capturing agent outputs, running your first evaluations, and implementing improvements based on the results.
+*   **Contains**: Step-by-step `README.md` and sample data tailored for a smooth onboarding experience.
 
-### Example Agent Outputs
-The JSON files here show example agent outputs - the kind of data your agents produce that ARC-Eval evaluates:
+### 📄 Sample Agent Outputs & Traces
+Explore these files to understand the types of data ARC-Eval processes and how to format your agent's outputs for evaluation.
 
-- **`failed_trace_example.json`** - Example of a failed agent execution with debugging information
-- **`/enhanced-traces`** - Rich agent execution traces with timing, tool calls, and reasoning steps
-- **`/workflow-reliability`** - Framework-specific output examples (LangChain, CrewAI, etc.)
+*   **`/sample-data` & `/demo-data`**: Various JSON files showing basic to moderately complex agent outputs. Useful for understanding the core data structures ARC-Eval expects.
+    *   Includes `failed_trace_example.json`: Illustrates how a failed agent execution with debugging information might look.
+*   **`/enhanced-traces`**: Demonstrates richer agent execution traces. These examples showcase how ARC-Eval can leverage detailed information like timing, multi-step reasoning, and tool call specifics for deeper analysis.
+*   **`/workflow-reliability`**: Contains framework-specific output examples (e.g., LangChain, CrewAI). These are particularly helpful if you're using established agent frameworks and want to see how their native trace formats can be evaluated.
 
-### Evaluation Scenarios
-- **`/complete-datasets`** - Links to the full evaluation scenarios in `/agent_eval/domains/`
-- **378 open-source scenarios** across finance, security, and ML domains
+### 🛡️ Evaluation Scenario Insights
+While the full, up-to-date scenario definitions reside within the core `agent_eval/domains/` directory (as YAML files), this section provides context.
 
-### Integration Templates
-- **`/integration`** - CI/CD templates to add ARC-Eval to your deployment pipeline
+*   **`/complete-datasets/README.md`**: Points you to the canonical location of our **378+ open-source evaluation scenarios** covering Finance, Security, and Machine Learning domains.
+*   **Learn More**: To explore the actual scenarios, you can directly view files like `agent_eval/domains/finance.yaml` or use the CLI command `arc-eval compliance --domain security --list-scenarios`.
 
-## The Domain-Specific Improvement Loop
+### ⚙️ Integration & Automation
+*   **`/integration/ci-cd`**: Contains templates and examples (e.g., `github-actions.yml`) to help you integrate ARC-Eval into your Continuous Integration/Continuous Deployment (CI/CD) pipelines. Automate your agent evaluations to catch regressions and ensure reliability with every code change.
+*   **`/integration/python`**: Shows examples of how to use the ARC-Eval Python SDK for programmatic evaluation and custom scripting within your own applications.
 
-ARC-Eval enables a continuous improvement cycle:
+---
+
+## Iterative Improvement
+
+All these examples support ARC-Eval's core philosophy: a continuous improvement cycle for your AI agents.
 
 ```
-Your Agent → Evaluation → Failure Analysis → Targeted Fixes → Re-evaluation
+Your Agent → ARC-Eval (Debug → Compliance → Improve) → Actionable Insights → Enhanced Agent → Re-evaluate
 ```
 
-## Open Source Evaluation Scenarios
+By testing your agent against realistic scenarios, analyzing failures, and applying guided improvements, you can systematically enhance its reliability, safety, and performance.
 
-All 378 evaluation scenarios are open source and available in `/agent_eval/domains/`:
-- **Finance** (110 scenarios): SOX, KYC, AML, PCI-DSS compliance
-- **Security** (120 scenarios): OWASP Top 10, prompt injection, data leakage
-- **ML** (148 scenarios): Bias detection, MCP attacks, model governance
+---
 
-Explore them:
-```bash
-# View finance scenarios
-cat ../agent_eval/domains/finance.yaml
+## Getting Started with Examples
 
-# List all scenario IDs
-arc-eval compliance --domain security --list-scenarios
-```
+1.  **Begin with `/quickstart/README.md`**: This is the most structured way to learn the basics.
+2.  **Examine Agent Outputs**: Browse the `.json` files in `/sample-data`, `/enhanced-traces`, and `/workflow-reliability` to see how to structure your agent's data for ARC-Eval.
+3.  **Explore Integration Options**: Check out `/integration` to see how to automate evaluations in your CI/CD pipeline or use the Python SDK.
+4.  **Reference Scenario Domains**: While exploring, remember that the actual test scenarios are in `agent_eval/domains/`. Use `arc-eval --list-scenarios` for a specific domain to see all available test IDs and names.
 
-## Quick Example
-
-```bash
-# 1. Upload traces (multiple options)
-arc-eval compliance --domain finance --input your_outputs.json    # Direct file
-arc-eval compliance --domain finance --folder-scan               # Auto-find JSONs
-arc-eval compliance --domain finance --input clipboard           # Paste traces
-
-# 2. Generate improvement plan from failures  
-arc-eval improve --from-evaluation latest
-
-# 3. Implement fixes and re-evaluate
-arc-eval compliance --domain finance --input improved_outputs.json
-
-# Result: 60% → 89% compliance through targeted improvements
-```
-
-## Getting Started
-
-1. Read the `/quickstart/README.md` guide
-2. Explore the evaluation scenarios in `/agent_eval/domains/`
-3. Capture your agent outputs using the formats shown
-4. Run evaluations to identify compliance gaps
-5. Use the improvement workflow to fix issues systematically
-
-This is open source - use it, extend it, contribute back!
+These examples are open-source. We encourage you to use them, adapt them for your specific needs, and even contribute new examples that can help the community!
