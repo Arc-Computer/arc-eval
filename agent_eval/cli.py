@@ -133,12 +133,13 @@ def cli(ctx):
     """
     ARC-Eval: Debug, Comply, Improve - The complete agent improvement lifecycle.
     
-    Three simple commands:
+    Core workflows:
     
     \b
-    • debug      - Why is my agent failing?
-    • compliance - Does it meet requirements?  
-    • improve    - How do I make it better?
+    • debug        - Why is my agent failing?
+    • compliance   - Does it meet requirements?  
+    • improve      - How do I make it better?
+    • export-guide - How to create JSON files from agent outputs
     
     Run 'arc-eval COMMAND --help' for more information on a command.
     """
@@ -182,8 +183,10 @@ def show_workflow_selector():
     
     if choice in ["1", "debug"]:
         console.print("\n[green]Run:[/green] arc-eval debug --input <your_agent_trace.json>")
+        console.print("[dim]💡 Need help creating JSON files? Run: arc-eval export-guide[/dim]")
     elif choice in ["2", "compliance"]:
         console.print("\n[green]Run:[/green] arc-eval compliance --domain [finance|security|ml] --input <outputs.json>")
+        console.print("[dim]💡 Don't have JSON files? Try: arc-eval compliance --domain finance --quick-start[/dim]")
     elif choice in ["3", "improve"]:
         console.print("\n[green]Run:[/green] arc-eval improve --from-evaluation <evaluation_file.json>")
     else:
@@ -331,13 +334,14 @@ def debug(input_file: Path, framework: Optional[str], output_format: str, verbos
 
 @cli.command()
 @click.option('--domain', type=click.Choice(['finance', 'security', 'ml']), required=True, help='Evaluation domain')
-@click.option('--input', 'input_file', type=click.Path(exists=True, path_type=Path), help='Agent outputs to evaluate (optional with --quick-start)')
+@click.option('--input', 'input_file', type=click.Path(path_type=Path), help='Agent outputs to evaluate (file, folder, or "clipboard" for paste)')
+@click.option('--folder-scan', is_flag=True, help='Auto-scan current directory for JSON files')
 @click.option('--export', type=click.Choice(['pdf', 'csv', 'json']), help='Export format (auto-exports PDF by default)')
 @click.option('--no-export', is_flag=True, help='Disable automatic PDF export')
 @click.option('--no-interactive', is_flag=True, help='Skip interactive menu for automation')
 @click.option('--quick-start', is_flag=True, help='Run with sample data (no input file required)')
 @click.option('--verbose', is_flag=True, help='Enable verbose output')
-def compliance(domain: str, input_file: Optional[Path], export: Optional[str], no_export: bool, no_interactive: bool, quick_start: bool, verbose: bool):
+def compliance(domain: str, input_file: Optional[Path], folder_scan: bool, export: Optional[str], no_export: bool, no_interactive: bool, quick_start: bool, verbose: bool):
     """
     Compliance: Does it meet requirements?
     
@@ -352,6 +356,18 @@ def compliance(domain: str, input_file: Optional[Path], export: Optional[str], n
     console.print(f"\n[bold blue]✅ Compliance Evaluation - {domain.upper()}[/bold blue]")
     console.print("=" * 60)
     
+    # Handle special input methods and folder scanning
+    if folder_scan or (input_file and str(input_file) == "scan"):
+        from agent_eval.core.input_helpers import handle_smart_input
+        input_file = handle_smart_input("scan", scan_folder=True)
+        if not input_file:
+            return 1
+    elif input_file and str(input_file) == "clipboard":
+        from agent_eval.core.input_helpers import handle_smart_input
+        input_file = handle_smart_input("clipboard")
+        if not input_file:
+            return 1
+    
     # Validate input
     if not quick_start and not input_file:
         console.print("[red]Error: Must provide --input or use --quick-start[/red]")
@@ -359,6 +375,9 @@ def compliance(domain: str, input_file: Optional[Path], export: Optional[str], n
         console.print(f"  arc-eval compliance --domain {domain} --input your_outputs.json")
         console.print("\nExample with sample data:")
         console.print(f"  arc-eval compliance --domain {domain} --quick-start")
+        console.print("\n[blue]💡 Pilot helpers:[/blue]")
+        console.print(f"  arc-eval compliance --domain {domain} --folder-scan")
+        console.print(f"  arc-eval compliance --domain {domain} --input clipboard")
         return 1
     
     try:
@@ -565,6 +584,284 @@ def _display_list_domains() -> None:
     console.print("3. [yellow]Generate audit report:[/yellow] [green]arc-eval --domain finance --input data.json --export pdf[/green]")
 
 
+@cli.command()
+@click.option('--framework', type=click.Choice(['openai', 'openai_agents', 'anthropic', 'langchain', 'crewai', 'google_adk', 'agno', 'generic']), help='Show export example for specific framework')
+def export_guide(framework: Optional[str]):
+    """
+    Export Guide: How to create JSON files from your agent outputs.
+    
+    Shows code examples for capturing agent responses in JSON format.
+    
+    Example:
+        arc-eval export-guide --framework openai
+    """
+    console.print("\n[bold blue]📤 Agent Output Export Guide[/bold blue]")
+    console.print("=" * 60)
+    
+    if framework:
+        _show_framework_export(framework)
+    else:
+        _show_all_export_methods()
+
+def _show_framework_export(framework: str):
+    """Show export example for specific framework."""
+    examples = {
+        "openai_agents": '''# OpenAI Agents SDK - Latest framework (2025)
+import json
+from agents import Agent, Runner
+
+# Create agent with structured output
+agent = Agent(
+    name="FinanceAgent",
+    instructions="You are a financial compliance assistant",
+    model="gpt-4.1-mini"  # Latest model
+)
+
+responses = []
+for prompt in user_prompts:
+    result = Runner.run_sync(agent, prompt)
+    
+    # Agent SDK response structure (ARC-Eval auto-detects)
+    responses.append({
+        "output": result.final_output,
+        "metadata": {"agent_name": agent.name, "model": "gpt-4.1-mini"}
+    })
+
+# Save to file
+with open("openai_agents_outputs.json", "w") as f:
+    json.dump(responses, f, indent=2)
+
+# Run evaluation: arc-eval compliance --domain finance --input openai_agents_outputs.json''',
+        
+        "google_adk": '''# Google ADK - Agent Development Kit (2025)
+import json
+from google_adk import Agent, create_session
+
+# Google ADK with built-in evaluation framework
+agent = Agent(
+    name="ComplianceAgent",
+    model="gemini-pro",  # Or any model via LiteLLM
+    streaming=True
+)
+
+responses = []
+for prompt in user_prompts:
+    session = create_session(agent)
+    result = session.run(prompt)
+    
+    # ADK response with artifact handling
+    responses.append({
+        "output": result.content,
+        "author": result.author,  # ADK format
+        "metadata": {"session_id": session.id, "framework": "google_adk"}
+    })
+
+# Save to file  
+with open("google_adk_outputs.json", "w") as f:
+    json.dump(responses, f, indent=2)
+
+# Run evaluation: arc-eval compliance --domain finance --input google_adk_outputs.json''',
+        
+        "agno": '''# Agno (formerly Phidata) - High-performance agents (2025)
+import json
+from agno import Agent
+
+# Agno: ~3μs instantiation, ~5Kib memory, built-in monitoring
+agent = Agent(
+    model="gpt-4.1-mini",
+    monitoring=True,  # Built-in tracking
+    reasoning=True    # Chain-of-thought reasoning
+)
+
+responses = []
+for prompt in user_prompts:
+    response = agent.run(prompt)
+    
+    # Agno structured output format
+    responses.append({
+        "response": response.content,  # Main output
+        "structured_output": response.structured_output,  # If available
+        "tools_used": response.tools_used,  # Tool tracking
+        "metadata": {"agent_id": agent.id, "framework": "agno"}
+    })
+
+# Save to file
+with open("agno_outputs.json", "w") as f:
+    json.dump(responses, f, indent=2)
+
+# Run evaluation: arc-eval compliance --domain finance --input agno_outputs.json''',
+        
+        "openai": '''# OpenAI API - Latest models GPT-4.1 family (May 2025)
+import json
+from openai import OpenAI
+
+client = OpenAI()
+responses = []
+
+for prompt in user_prompts:
+    response = client.chat.completions.create(
+        model="gpt-4.1-mini",  # Latest: gpt-4.1, gpt-4.1-mini, gpt-4.1-nano, o4-mini
+        max_tokens=4096,
+        messages=[{"role": "user", "content": prompt}]
+    )
+    
+    # Save the raw API response (ARC-Eval auto-detects this format)
+    # Structure: {id, choices: [{message: {content, role}}], model, usage, object}
+    responses.append(response.model_dump())
+
+# Save to file
+with open("openai_outputs.json", "w") as f:
+    json.dump(responses, f, indent=2)
+
+# Run evaluation: arc-eval compliance --domain finance --input openai_outputs.json''',
+        
+        "anthropic": '''# Anthropic API - Claude 4 models (May 2025 release)
+import json
+import anthropic
+
+client = anthropic.Anthropic()
+responses = []
+
+for prompt in user_prompts:
+    response = client.messages.create(
+        model="claude-4-sonnet-20250522",  # Latest: claude-4-opus, claude-4-sonnet
+        max_tokens=8192,  # Claude 4 supports up to 1M token context
+        messages=[{"role": "user", "content": prompt}]
+    )
+    
+    # Save the raw API response (ARC-Eval auto-detects this format)
+    # Claude 4 hybrid model with extended thinking capabilities
+    # Structure: {id, type, role, content: [{"type": "text", "text": "..."}], model, stop_reason, usage}
+    responses.append(response.model_dump())
+
+# Save to file
+with open("anthropic_outputs.json", "w") as f:
+    json.dump(responses, f, indent=2)
+
+# Run evaluation: arc-eval compliance --domain finance --input anthropic_outputs.json''',
+        
+        "langchain": '''# LangChain - Use callbacks to capture outputs (2024-2025 versions)
+import json
+from langchain_core.callbacks import BaseCallbackHandler
+
+class OutputCapture(BaseCallbackHandler):
+    def __init__(self):
+        self.outputs = []
+    
+    def on_chain_end(self, outputs, **kwargs):
+        # outputs is Dict[str, Any] containing chain results
+        self.outputs.append(outputs)
+
+# Use the callback with your agent
+capture = OutputCapture()
+agent = create_your_agent()
+
+for input_data in user_inputs:
+    # LangChain v0.3+ invoke method with callback configuration
+    result = agent.invoke(input_data, config={"callbacks": [capture]})
+
+# Save outputs (automatically JSON-serializable from on_chain_end)
+with open("langchain_outputs.json", "w") as f:
+    json.dump(capture.outputs, f, indent=2)
+
+# Run evaluation: arc-eval compliance --domain finance --input langchain_outputs.json''',
+        
+        "crewai": '''# CrewAI - Save crew outputs (2024-2025 CrewOutput structure)
+import json
+from crewai import Crew
+
+crew = Crew(agents=[your_agents], tasks=[your_tasks])
+outputs = []
+
+for input_data in user_inputs:
+    # crew.kickoff() returns CrewOutput object
+    crew_result = crew.kickoff(inputs=input_data)
+    
+    # CrewOutput has .raw, .json_dict, .pydantic, .tasks_output, .token_usage
+    output_data = {
+        "crew_output": crew_result.raw,  # Raw string output
+        "tasks_output": crew_result.tasks_output,  # Individual task results
+        "token_usage": crew_result.token_usage,    # Resource tracking
+        "metadata": {"input": input_data}
+    }
+    
+    # Include structured output if available
+    if crew_result.json_dict:
+        output_data["json_dict"] = crew_result.json_dict
+    
+    outputs.append(output_data)
+
+# Save outputs
+with open("crewai_outputs.json", "w") as f:
+    json.dump(outputs, f, indent=2)
+
+# Run evaluation: arc-eval compliance --domain finance --input crewai_outputs.json''',
+        
+        "generic": '''# Generic - Universal format for any agent (2024-2025 best practices)
+import json
+from datetime import datetime
+
+def log_agent_output(user_input, agent_response, **metadata):
+    """Universal logging function - works with any agent framework."""
+    return {
+        "output": str(agent_response),  # Required: agent's text response
+        "input": str(user_input),       # Recommended: user's input for context
+        "timestamp": datetime.now().isoformat(),  # ISO format timestamp
+        "metadata": metadata            # Any additional context (optional)
+    }
+
+# Use with any agent framework
+outputs = []
+for user_input in user_inputs:
+    response = your_agent.process(user_input)  # Your existing agent code
+    
+    # Add minimal logging (one line addition)
+    outputs.append(log_agent_output(
+        user_input=user_input,
+        agent_response=response,
+        agent_version="1.0",
+        framework="your_framework"
+    ))
+
+# Save outputs (with proper JSON formatting)
+with open("agent_outputs.json", "w") as f:
+    json.dump(outputs, f, indent=2, ensure_ascii=False)
+
+# Run evaluation: arc-eval compliance --domain finance --input agent_outputs.json'''
+    }
+    
+    console.print(f"\n[bold cyan]{framework.upper()} Export Example:[/bold cyan]")
+    console.print(f"[dim]{examples[framework]}[/dim]")
+
+def _show_all_export_methods():
+    """Show all export methods."""
+    console.print("\n[bold green]✅ Three Ways to Create JSON Files:[/bold green]")
+    
+    console.print("\n[yellow]1. Minimal Universal Format (Recommended):[/yellow]")
+    console.print('[dim]{"output": "your agent response"}[/dim]')
+    console.print("   Works with any agent - just save responses as JSON")
+    
+    console.print("\n[yellow]2. Use Existing API Logs:[/yellow]")
+    console.print("   Latest models: GPT-4.1, Claude 4, o4-mini")
+    console.print("   [green]OpenAI/Anthropic logs work directly![/green]")
+    
+    console.print("\n[yellow]3. Add Simple Logging:[/yellow]")
+    console.print("   One-line wrapper around your existing agent")
+    
+    console.print("\n[bold blue]🚀 Quick Test:[/bold blue]")
+    console.print('echo \'[{"output": "Test response"}]\' > test.json')
+    console.print("arc-eval compliance --domain finance --input test.json")
+    
+    console.print("\n[bold blue]📚 Framework Examples (May 2025):[/bold blue]")
+    console.print("arc-eval export-guide --framework openai        # GPT-4.1, o4-mini")
+    console.print("arc-eval export-guide --framework openai_agents # OpenAI Agents SDK")
+    console.print("arc-eval export-guide --framework anthropic     # Claude 4 Opus/Sonnet") 
+    console.print("arc-eval export-guide --framework langchain     # v0.3+ callbacks")
+    console.print("arc-eval export-guide --framework crewai        # CrewOutput structure")
+    console.print("arc-eval export-guide --framework google_adk    # Google Agent Dev Kit")
+    console.print("arc-eval export-guide --framework agno          # Agno (ex-Phidata)")
+    console.print("arc-eval export-guide --framework generic       # Universal format")
+
 def _display_help_input() -> None:
     """Display detailed input format documentation."""
     console.print("\n[bold blue]📖 Input Format Documentation[/bold blue]")
@@ -596,10 +893,10 @@ def _display_help_input() -> None:
 }"""
     console.print(f"[dim]{example}[/dim]")
     
-    console.print("\n[bold blue]🚀 Quick Testing:[/bold blue]")
-    console.print("• Validate format: [green]arc-eval --validate --input your_file.json[/green]")
-    console.print("• Test with demo: [green]arc-eval --quick-start --domain finance[/green]")
-    console.print("• Pipe input: [green]echo '{\"output\": \"test\"}' | arc-eval --domain finance --stdin[/green]")
+    console.print("\n[bold blue]🚀 Need Help Creating JSON?[/bold blue]")
+    console.print("• Export guide: [green]arc-eval export-guide[/green]")
+    console.print("• Test with demo: [green]arc-eval compliance --domain finance --quick-start[/green]")
+    console.print("• Framework examples: [green]arc-eval export-guide --framework openai[/green]")
 
 
 # ==================== Main Entry Point ====================
