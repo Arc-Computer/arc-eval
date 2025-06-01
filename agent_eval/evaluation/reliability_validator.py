@@ -1690,3 +1690,718 @@ Required parameters:
             return "medium"
         else:
             return "low"
+    
+    # ==================== Planning Failure Detection Methods ====================
+    
+    def detect_planning_failures(self, agent_outputs: List[Any]) -> Dict[str, Any]:
+        """Detect goal drift and planning consistency issues."""
+        planning_issues = {
+            'goal_drift_detected': False,
+            'plan_execution_misalignment': [],
+            'reflection_loop_failures': [],
+            'overconfident_assertions': [],
+            'planning_consistency_score': 0.0,
+            'goal_tracking_score': 0.0,
+            'total_outputs_analyzed': len(agent_outputs)
+        }
+        
+        if not agent_outputs:
+            return planning_issues
+        
+        goal_drift_count = 0
+        misalignment_count = 0
+        loop_failure_count = 0
+        overconfident_count = 0
+        
+        for i, output in enumerate(agent_outputs):
+            # Track goal drift across conversation turns
+            if self._detect_goal_drift(output):
+                planning_issues['goal_drift_detected'] = True
+                goal_drift_count += 1
+            
+            # Identify reflection loop failures  
+            if self._detect_reflection_loops(output):
+                planning_issues['reflection_loop_failures'].append({
+                    'output_index': i,
+                    'output': str(output)[:200] + "..." if len(str(output)) > 200 else str(output),
+                    'loop_type': 'circular_reasoning'
+                })
+                loop_failure_count += 1
+            
+            # Measure plan-execution alignment
+            alignment_score = self._measure_plan_execution_alignment(output)
+            if alignment_score < 0.7:
+                planning_issues['plan_execution_misalignment'].append({
+                    'output_index': i,
+                    'output': str(output)[:200] + "..." if len(str(output)) > 200 else str(output),
+                    'alignment_score': alignment_score,
+                    'issue_type': 'low_alignment'
+                })
+                misalignment_count += 1
+            
+            # Detect overconfident assertions
+            if self._detect_overconfident_assertions(output):
+                planning_issues['overconfident_assertions'].append({
+                    'output_index': i,
+                    'output': str(output)[:200] + "..." if len(str(output)) > 200 else str(output),
+                    'confidence_issue': 'overconfident_assertion'
+                })
+                overconfident_count += 1
+        
+        # Calculate overall scores
+        total_outputs = len(agent_outputs)
+        planning_issues['planning_consistency_score'] = max(0.0, 1.0 - (misalignment_count + loop_failure_count) / total_outputs)
+        planning_issues['goal_tracking_score'] = max(0.0, 1.0 - goal_drift_count / total_outputs)
+        
+        # Add summary statistics
+        planning_issues['summary'] = {
+            'goal_drift_rate': goal_drift_count / total_outputs if total_outputs > 0 else 0.0,
+            'misalignment_rate': misalignment_count / total_outputs if total_outputs > 0 else 0.0,
+            'reflection_loop_rate': loop_failure_count / total_outputs if total_outputs > 0 else 0.0,
+            'overconfidence_rate': overconfident_count / total_outputs if total_outputs > 0 else 0.0
+        }
+        
+        return planning_issues
+    
+    def _detect_goal_drift(self, output: Any) -> bool:
+        """Detect when agent loses track of original goals."""
+        output_str = str(output).lower()
+        
+        # Patterns indicating goal drift
+        goal_drift_patterns = [
+            r"i'm not sure what we were trying to accomplish",
+            r"what was the original question",
+            r"let me start over",
+            r"i've lost track of",
+            r"going back to the beginning",
+            r"what were we talking about",
+            r"i forgot what we were doing",
+            r"let me reconsider the task",
+            r"i'm confused about the goal",
+            r"what was the purpose again"
+        ]
+        
+        # Check for explicit goal drift indicators
+        for pattern in goal_drift_patterns:
+            if re.search(pattern, output_str):
+                return True
+        
+        # Check for multiple contradictory statements within the same output
+        contradiction_indicators = [
+            (r"i will.*", r"actually, i won't"),
+            (r"the answer is.*", r"wait, the answer is actually"),
+            (r"we should.*", r"on second thought, we shouldn't"),
+            (r"first.*then", r"actually, let's skip")
+        ]
+        
+        for first_pattern, contradiction_pattern in contradiction_indicators:
+            if re.search(first_pattern, output_str) and re.search(contradiction_pattern, output_str):
+                return True
+        
+        return False
+    
+    def _detect_reflection_loops(self, output: Any) -> bool:
+        """Detect circular reasoning patterns."""
+        output_str = str(output).lower()
+        
+        # Patterns indicating circular reasoning or reflection loops
+        loop_patterns = [
+            r"as i mentioned before.*as i mentioned before",
+            r"like i said.*like i said",
+            r"going back to.*going back to",
+            r"as discussed.*as discussed.*as discussed",
+            r"i already explained.*i already explained",
+            r"repeating myself",
+            r"circular logic",
+            r"endless loop",
+            r"keep going in circles",
+            r"same conclusion again",
+            r"this brings us back to"
+        ]
+        
+        # Check for explicit loop indicators
+        for pattern in loop_patterns:
+            if re.search(pattern, output_str):
+                return True
+        
+        # Check for repeated phrases (simple heuristic)
+        sentences = re.split(r'[.!?]', output_str)
+        sentence_counts = Counter(sentence.strip() for sentence in sentences if len(sentence.strip()) > 10)
+        
+        # If any sentence appears more than twice, it might be a loop
+        for sentence, count in sentence_counts.items():
+            if count >= 3:
+                return True
+        
+        return False
+    
+    def _measure_plan_execution_alignment(self, output: Any) -> float:
+        """Measure how well execution aligns with stated plans."""
+        output_str = str(output).lower()
+        
+        # Look for planning language
+        planning_patterns = [
+            r"first.*then.*finally",
+            r"step \d+",
+            r"next, i will",
+            r"my plan is",
+            r"i will.*then.*then",
+            r"the steps are",
+            r"here's what i'll do"
+        ]
+        
+        # Look for execution language  
+        execution_patterns = [
+            r"i am now",
+            r"currently",
+            r"executing",
+            r"implementing",
+            r"doing",
+            r"working on",
+            r"completed"
+        ]
+        
+        # Count planning vs execution indicators
+        plan_count = sum(1 for pattern in planning_patterns if re.search(pattern, output_str))
+        execution_count = sum(1 for pattern in execution_patterns if re.search(pattern, output_str))
+        
+        # Check for contradictions between plan and execution
+        contradiction_patterns = [
+            (r"i will use.*", r"instead i used"),
+            (r"my plan is to.*", r"but actually"),
+            (r"first.*", r"skipping to"),
+            (r"step \d+.*", r"jumping to step")
+        ]
+        
+        contradiction_count = 0
+        for plan_pattern, contradiction_pattern in contradiction_patterns:
+            if re.search(plan_pattern, output_str) and re.search(contradiction_pattern, output_str):
+                contradiction_count += 1
+        
+        # Calculate alignment score
+        if plan_count == 0 and execution_count == 0:
+            return 0.8  # Neutral score when no clear planning/execution language
+        
+        total_indicators = plan_count + execution_count
+        if total_indicators == 0:
+            return 0.8
+        
+        # Penalize contradictions
+        contradiction_penalty = contradiction_count * 0.2
+        
+        # Higher scores when execution follows planning
+        if plan_count > 0 and execution_count > 0:
+            base_score = min(execution_count / plan_count, 1.0)
+        elif execution_count > 0:
+            base_score = 0.6  # Execution without clear planning
+        else:
+            base_score = 0.4  # Planning without execution
+        
+        return max(0.0, base_score - contradiction_penalty)
+    
+    def _detect_overconfident_assertions(self, output: Any) -> bool:
+        """Detect overconfident assertions without proper reasoning."""
+        output_str = str(output).lower()
+        
+        # Patterns indicating overconfidence
+        overconfidence_patterns = [
+            r"definitely",
+            r"absolutely certain",
+            r"100% sure",
+            r"without a doubt",
+            r"certainly",
+            r"obviously",
+            r"clearly",
+            r"undoubtedly",
+            r"guaranteed",
+            r"impossible to be wrong"
+        ]
+        
+        # Patterns indicating lack of reasoning
+        weak_reasoning_patterns = [
+            r"because i said so",
+            r"trust me",
+            r"just because",
+            r"it's obvious",
+            r"everyone knows",
+            r"common sense",
+            r"no need to explain"
+        ]
+        
+        confidence_count = sum(1 for pattern in overconfidence_patterns if re.search(pattern, output_str))
+        weak_reasoning_count = sum(1 for pattern in weak_reasoning_patterns if re.search(pattern, output_str))
+        
+        # Look for reasoning indicators
+        reasoning_patterns = [
+            r"because",
+            r"since",
+            r"due to",
+            r"as a result",
+            r"therefore",
+            r"given that",
+            r"based on",
+            r"evidence shows",
+            r"analysis indicates"
+        ]
+        
+        reasoning_count = sum(1 for pattern in reasoning_patterns if re.search(pattern, output_str))
+        
+        # Overconfident if high confidence with low reasoning or weak reasoning
+        if confidence_count >= 2 and (reasoning_count == 0 or weak_reasoning_count > 0):
+            return True
+        
+        # Also check for absolute statements without qualifying language
+        absolute_patterns = [
+            r"never",
+            r"always",
+            r"all.*are",
+            r"none.*are",
+            r"every.*will",
+            r"no.*can"
+        ]
+        
+        absolute_count = sum(1 for pattern in absolute_patterns if re.search(pattern, output_str))
+        
+        # Check for qualifying language that would moderate absolute statements
+        qualifying_patterns = [
+            r"might",
+            r"could",
+            r"possibly",
+            r"potentially", 
+            r"likely",
+            r"probably",
+            r"seems",
+            r"appears",
+            r"suggests",
+            r"indicates"
+        ]
+        
+        qualifying_count = sum(1 for pattern in qualifying_patterns if re.search(pattern, output_str))
+        
+        # Overconfident if many absolute statements without qualifying language
+        if absolute_count >= 2 and qualifying_count == 0:
+            return True
+        
+        return False
+    
+    # ==================== Reflection Quality Analysis Methods ====================
+    
+    def analyze_reflection_quality(self, agent_reasoning: List[str]) -> Dict[str, Any]:
+        """Enhanced metacognitive analysis."""
+        reflection_analysis = {
+            'circular_reasoning_detected': False,
+            'self_correction_effectiveness': 0.0,
+            'overconfident_assertions': [],
+            'reflection_depth_score': 0.0,
+            'metacognitive_awareness_score': 0.0,
+            'reasoning_coherence_score': 0.0,
+            'total_reasoning_analyzed': len(agent_reasoning)
+        }
+        
+        if not agent_reasoning:
+            return reflection_analysis
+        
+        circular_count = 0
+        correction_scores = []
+        overconfident_count = 0
+        depth_scores = []
+        metacognitive_scores = []
+        coherence_scores = []
+        
+        for i, reasoning in enumerate(agent_reasoning):
+            # Detect circular reasoning patterns
+            if self._detect_circular_reasoning(reasoning):
+                reflection_analysis['circular_reasoning_detected'] = True
+                circular_count += 1
+            
+            # Measure self-correction effectiveness
+            correction_score = self._measure_self_correction(reasoning)
+            correction_scores.append(correction_score)
+            
+            # Flag overconfident assertions
+            if self._detect_overconfidence_in_reasoning(reasoning):
+                reflection_analysis['overconfident_assertions'].append({
+                    'reasoning_index': i,
+                    'reasoning': reasoning[:200] + "..." if len(reasoning) > 200 else reasoning,
+                    'issue_type': 'overconfident_reasoning'
+                })
+                overconfident_count += 1
+            
+            # Score reflection depth
+            depth_score = self._score_reflection_depth(reasoning)
+            depth_scores.append(depth_score)
+            
+            # Score metacognitive awareness
+            metacognitive_score = self._score_metacognitive_awareness(reasoning)
+            metacognitive_scores.append(metacognitive_score)
+            
+            # Score reasoning coherence
+            coherence_score = self._score_reasoning_coherence(reasoning)
+            coherence_scores.append(coherence_score)
+        
+        # Calculate overall scores
+        total_reasoning = len(agent_reasoning)
+        reflection_analysis['self_correction_effectiveness'] = sum(correction_scores) / total_reasoning if total_reasoning > 0 else 0.0
+        reflection_analysis['reflection_depth_score'] = sum(depth_scores) / total_reasoning if total_reasoning > 0 else 0.0
+        reflection_analysis['metacognitive_awareness_score'] = sum(metacognitive_scores) / total_reasoning if total_reasoning > 0 else 0.0
+        reflection_analysis['reasoning_coherence_score'] = sum(coherence_scores) / total_reasoning if total_reasoning > 0 else 0.0
+        
+        # Add summary statistics
+        reflection_analysis['summary'] = {
+            'circular_reasoning_rate': circular_count / total_reasoning if total_reasoning > 0 else 0.0,
+            'overconfidence_rate': overconfident_count / total_reasoning if total_reasoning > 0 else 0.0,
+            'avg_correction_effectiveness': reflection_analysis['self_correction_effectiveness'],
+            'avg_reflection_depth': reflection_analysis['reflection_depth_score'],
+            'avg_metacognitive_awareness': reflection_analysis['metacognitive_awareness_score'],
+            'avg_reasoning_coherence': reflection_analysis['reasoning_coherence_score']
+        }
+        
+        return reflection_analysis
+    
+    def _detect_circular_reasoning(self, reasoning: str) -> bool:
+        """Detect circular reasoning patterns in agent reasoning."""
+        reasoning_lower = reasoning.lower()
+        
+        # Patterns indicating circular reasoning
+        circular_patterns = [
+            r"because.*because.*because",  # Repeated "because" without progression
+            r"therefore.*therefore.*therefore",  # Repeated conclusions
+            r"which means.*which means.*which means",  # Circular definitions
+            r"this proves.*this proves.*this proves",  # Circular proof attempts
+            r"leading to.*leading to.*leading to",  # Circular chains
+            r"results in.*results in.*results in",
+            r"due to the fact that.*due to the fact that.*due to the fact that"
+        ]
+        
+        # Check for explicit circular patterns
+        for pattern in circular_patterns:
+            if re.search(pattern, reasoning_lower):
+                return True
+        
+        # Check for A->B->A logical loops
+        # Look for statements that reference back to earlier premises
+        sentences = re.split(r'[.!?]', reasoning_lower)
+        sentences = [s.strip() for s in sentences if len(s.strip()) > 10]
+        
+        if len(sentences) < 3:
+            return False
+        
+        # Simple heuristic: check if first and last sentences are very similar
+        first_sentence = sentences[0]
+        last_sentence = sentences[-1]
+        
+        # Calculate word overlap
+        first_words = set(first_sentence.split())
+        last_words = set(last_sentence.split())
+        
+        if len(first_words) > 0 and len(last_words) > 0:
+            overlap = len(first_words.intersection(last_words)) / len(first_words.union(last_words))
+            if overlap > 0.7:  # High overlap suggests circular reasoning
+                return True
+        
+        return False
+    
+    def _measure_self_correction(self, reasoning: str) -> float:
+        """Measure self-correction effectiveness in reasoning."""
+        reasoning_lower = reasoning.lower()
+        
+        # Positive self-correction patterns
+        positive_correction_patterns = [
+            r"wait,? let me reconsider",
+            r"actually,? i made an error",
+            r"on second thought",
+            r"i need to correct",
+            r"let me revise",
+            r"i was wrong",
+            r"that's not right",
+            r"let me think again",
+            r"i should reconsider",
+            r"upon reflection"
+        ]
+        
+        # Negative self-correction patterns (poor corrections)
+        poor_correction_patterns = [
+            r"never mind,? forget that",
+            r"ignore what i just said",
+            r"disregard my previous",
+            r"scratch that,? new plan",
+            r"completely starting over"
+        ]
+        
+        # Evidence-based correction patterns (best)
+        evidence_based_patterns = [
+            r"given the new information",
+            r"based on further analysis",
+            r"after considering",
+            r"looking at this more carefully",
+            r"reviewing the evidence",
+            r"taking into account",
+            r"with additional context"
+        ]
+        
+        positive_count = sum(1 for pattern in positive_correction_patterns if re.search(pattern, reasoning_lower))
+        poor_count = sum(1 for pattern in poor_correction_patterns if re.search(pattern, reasoning_lower))
+        evidence_count = sum(1 for pattern in evidence_based_patterns if re.search(pattern, reasoning_lower))
+        
+        # Calculate correction effectiveness score
+        if evidence_count > 0:
+            return min(1.0, 0.8 + evidence_count * 0.1)  # High score for evidence-based corrections
+        elif positive_count > 0 and poor_count == 0:
+            return min(1.0, 0.6 + positive_count * 0.1)  # Good score for positive corrections
+        elif positive_count > poor_count:
+            return 0.4  # Moderate score when positive > poor
+        elif poor_count > 0:
+            return 0.2  # Low score for poor corrections
+        else:
+            return 0.5  # Neutral score when no corrections detected
+    
+    def _detect_overconfidence_in_reasoning(self, reasoning: str) -> bool:
+        """Detect overconfident assertions specifically in reasoning chains."""
+        reasoning_lower = reasoning.lower()
+        
+        # Overconfidence in reasoning patterns
+        reasoning_overconfidence_patterns = [
+            r"this logic is flawless",
+            r"undeniably true",
+            r"impossible to argue",
+            r"logically perfect",
+            r"cannot be disputed",
+            r"absolute certainty",
+            r"beyond question",
+            r"indisputable fact",
+            r"without any doubt",
+            r"definitely proves"
+        ]
+        
+        # Lack of uncertainty acknowledgment
+        uncertainty_patterns = [
+            r"might be",
+            r"could indicate",
+            r"seems to suggest",
+            r"appears that",
+            r"possibly",
+            r"potentially",
+            r"likely",
+            r"probably",
+            r"uncertain",
+            r"unclear"
+        ]
+        
+        overconfidence_count = sum(1 for pattern in reasoning_overconfidence_patterns if re.search(pattern, reasoning_lower))
+        uncertainty_count = sum(1 for pattern in uncertainty_patterns if re.search(pattern, reasoning_lower))
+        
+        # Overconfident if high confidence assertions with no uncertainty acknowledgment
+        if overconfidence_count >= 1 and uncertainty_count == 0:
+            return True
+        
+        # Also check for absolute logical claims
+        absolute_logic_patterns = [
+            r"always leads to",
+            r"never results in",
+            r"must be",
+            r"has to be",
+            r"cannot be anything else",
+            r"only possible explanation",
+            r"proves beyond doubt"
+        ]
+        
+        absolute_count = sum(1 for pattern in absolute_logic_patterns if re.search(pattern, reasoning_lower))
+        
+        # Overconfident if multiple absolute claims without hedging
+        if absolute_count >= 2 and uncertainty_count == 0:
+            return True
+        
+        return False
+    
+    def _score_reflection_depth(self, reasoning: str) -> float:
+        """Score the depth of reflection in reasoning."""
+        reasoning_lower = reasoning.lower()
+        
+        # Surface-level indicators (lower depth)
+        surface_patterns = [
+            r"because",
+            r"so",
+            r"then",
+            r"therefore"
+        ]
+        
+        # Medium-depth indicators
+        medium_patterns = [
+            r"this suggests",
+            r"which implies",
+            r"leading me to think",
+            r"considering that",
+            r"given this",
+            r"as a result"
+        ]
+        
+        # Deep reflection indicators
+        deep_patterns = [
+            r"upon deeper consideration",
+            r"examining the underlying",
+            r"questioning my assumption",
+            r"alternative explanation",
+            r"multiple perspectives",
+            r"exploring the implications",
+            r"what if",
+            r"on the other hand",
+            r"contradictory evidence",
+            r"nuanced view"
+        ]
+        
+        # Metacognitive indicators (deepest)
+        metacognitive_patterns = [
+            r"i realize that i",
+            r"my thinking process",
+            r"how i arrived at",
+            r"questioning my reasoning",
+            r"aware of my bias",
+            r"limitations of my analysis",
+            r"need to think differently",
+            r"my mental model"
+        ]
+        
+        surface_count = sum(1 for pattern in surface_patterns if re.search(pattern, reasoning_lower))
+        medium_count = sum(1 for pattern in medium_patterns if re.search(pattern, reasoning_lower))
+        deep_count = sum(1 for pattern in deep_patterns if re.search(pattern, reasoning_lower))
+        metacognitive_count = sum(1 for pattern in metacognitive_patterns if re.search(pattern, reasoning_lower))
+        
+        # Calculate depth score
+        total_indicators = surface_count + medium_count + deep_count + metacognitive_count
+        
+        if total_indicators == 0:
+            return 0.3  # Low score for no depth indicators
+        
+        # Weighted scoring: metacognitive > deep > medium > surface
+        weighted_score = (
+            surface_count * 0.1 +
+            medium_count * 0.3 +
+            deep_count * 0.6 +
+            metacognitive_count * 1.0
+        ) / total_indicators
+        
+        return min(1.0, weighted_score)
+    
+    def _score_metacognitive_awareness(self, reasoning: str) -> float:
+        """Score metacognitive awareness in reasoning."""
+        reasoning_lower = reasoning.lower()
+        
+        # Self-awareness patterns
+        self_awareness_patterns = [
+            r"i'm thinking",
+            r"my approach is",
+            r"i notice that i",
+            r"i tend to",
+            r"my bias might be",
+            r"i could be wrong",
+            r"i'm assuming",
+            r"my perspective",
+            r"i need to be careful",
+            r"i should consider"
+        ]
+        
+        # Process awareness patterns
+        process_awareness_patterns = [
+            r"my reasoning process",
+            r"how i'm thinking",
+            r"the way i analyze",
+            r"my mental approach",
+            r"thinking step by step",
+            r"my methodology",
+            r"my logic",
+            r"the process i use"
+        ]
+        
+        # Limitation awareness patterns
+        limitation_awareness_patterns = [
+            r"i don't know",
+            r"beyond my knowledge",
+            r"i'm uncertain",
+            r"i might be missing",
+            r"limitations of",
+            r"i cannot be sure",
+            r"unclear to me",
+            r"i lack information",
+            r"outside my expertise",
+            r"i could be overlooking"
+        ]
+        
+        self_count = sum(1 for pattern in self_awareness_patterns if re.search(pattern, reasoning_lower))
+        process_count = sum(1 for pattern in process_awareness_patterns if re.search(pattern, reasoning_lower))
+        limitation_count = sum(1 for pattern in limitation_awareness_patterns if re.search(pattern, reasoning_lower))
+        
+        total_metacognitive = self_count + process_count + limitation_count
+        
+        if total_metacognitive == 0:
+            return 0.2  # Low score for no metacognitive awareness
+        
+        # Normalize by reasoning length (longer reasoning should have more indicators)
+        reasoning_length = len(reasoning.split())
+        normalized_score = min(1.0, total_metacognitive / max(1, reasoning_length / 100))
+        
+        return normalized_score
+    
+    def _score_reasoning_coherence(self, reasoning: str) -> float:
+        """Score the coherence and logical flow of reasoning."""
+        reasoning_lower = reasoning.lower()
+        
+        # Logical connectors (positive for coherence)
+        logical_connectors = [
+            r"therefore",
+            r"because",
+            r"since",
+            r"as a result",
+            r"consequently",
+            r"thus",
+            r"hence",
+            r"so",
+            r"given that",
+            r"due to",
+            r"leads to",
+            r"implies",
+            r"suggests"
+        ]
+        
+        # Coherence disruptors (negative for coherence)
+        disruptors = [
+            r"wait, no",
+            r"actually, ignore",
+            r"never mind",
+            r"completely different",
+            r"unrelated",
+            r"random thought",
+            r"by the way",
+            r"off topic",
+            r"tangent"
+        ]
+        
+        # Contradiction indicators
+        contradictions = [
+            r"but earlier i said",
+            r"contradicting myself",
+            r"opposite of what",
+            r"inconsistent with",
+            r"conflicts with my",
+            r"doesn't match"
+        ]
+        
+        connector_count = sum(1 for pattern in logical_connectors if re.search(pattern, reasoning_lower))
+        disruptor_count = sum(1 for pattern in disruptors if re.search(pattern, reasoning_lower))
+        contradiction_count = sum(1 for pattern in contradictions if re.search(pattern, reasoning_lower))
+        
+        # Calculate base coherence score
+        sentences = re.split(r'[.!?]', reasoning)
+        sentence_count = len([s for s in sentences if len(s.strip()) > 5])
+        
+        if sentence_count == 0:
+            return 0.5  # Neutral for very short reasoning
+        
+        # Coherence score based on logical flow
+        connector_density = connector_count / sentence_count
+        disruptor_penalty = disruptor_count * 0.2
+        contradiction_penalty = contradiction_count * 0.3
+        
+        base_score = min(1.0, 0.5 + connector_density)
+        final_score = max(0.0, base_score - disruptor_penalty - contradiction_penalty)
+        
+        return final_score
