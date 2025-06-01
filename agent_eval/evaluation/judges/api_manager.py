@@ -43,8 +43,8 @@ class APIManager:
             if not self.api_key:
                 raise ValueError("ANTHROPIC_API_KEY environment variable not set")
         elif self.provider == "openai":
-            self.primary_model = "gpt-4o-mini"  # Updated model names
-            self.fallback_model = "gpt-4o-mini"
+            self.primary_model = "gpt-4.1-2025-04-14"  # Latest GPT-4.1
+            self.fallback_model = "gpt-4.1-mini-2025-04-14"  # Latest GPT-4.1-mini
             self.api_key = os.getenv("OPENAI_API_KEY")
             if not self.api_key:
                 raise ValueError("OPENAI_API_KEY environment variable not set")
@@ -58,7 +58,7 @@ class APIManager:
             # Validate model for provider (using supported batch models)
             if self.provider == "anthropic" and preferred_model in ["claude-sonnet-4-20250514", "claude-3-5-sonnet-20241022", "claude-3-5-haiku-20241022"]:
                 self.preferred_model = preferred_model
-            elif self.provider == "openai" and preferred_model in ["gpt-4o", "gpt-4o-mini"]:
+            elif self.provider == "openai" and preferred_model in ["gpt-4.1-2025-04-14", "gpt-4.1-mini-2025-04-14"]:
                 self.preferred_model = preferred_model
             else:
                 logger.warning(f"Unknown model {preferred_model} for provider {self.provider}, using auto selection")
@@ -106,7 +106,7 @@ class APIManager:
                 # Use cl100k_base for approximation until Claude tokenizer is available
                 self.tokenizer = tiktoken.get_encoding("cl100k_base")
             else:  # openai
-                self.tokenizer = tiktoken.encoding_for_model("gpt-4o")
+                self.tokenizer = tiktoken.encoding_for_model("gpt-4")
         except ImportError:
             logger.warning("tiktoken not available, using rough token estimation")
             self.tokenizer = None
@@ -133,10 +133,12 @@ class APIManager:
                 # Claude Haiku 3.5 pricing: $0.40 input / $2.00 output per MTok
                 cost = (input_tokens * 0.4 + output_tokens * 2.0) / 1_000_000
         elif self.provider == "openai":
-            # Updated OpenAI pricing (December 2024)
-            if "gpt-4o" in model and "mini" not in model:
+            # Updated OpenAI pricing (April 2025)
+            if "gpt-4.1-2025-04-14" in model and "mini" not in model:
+                # GPT-4.1 pricing: $2.50 input / $10.00 output per MTok
                 cost = (input_tokens * 2.5 + output_tokens * 10.0) / 1_000_000
-            elif "gpt-4o-mini" in model:
+            elif "gpt-4.1-mini-2025-04-14" in model:
+                # GPT-4.1-mini pricing: $0.15 input / $0.60 output per MTok
                 cost = (input_tokens * 0.15 + output_tokens * 0.6) / 1_000_000
             else:
                 # Default to mini pricing if unknown
@@ -467,9 +469,13 @@ class APIManager:
             total_input_tokens = sum(self._count_tokens(p["prompt"]) for p in prompts)
             estimated_output_tokens = total_input_tokens  # Rough estimate
             
-            if "gpt-4o" in model and "mini" not in model:
+            if "gpt-4.1-2025-04-14" in model and "mini" not in model:
+                # GPT-4.1 batch pricing
                 estimated_cost = (total_input_tokens * 2.5 + estimated_output_tokens * 10.0) / 1_000_000
-            else:  # gpt-4o-mini
+            elif "gpt-4.1-mini-2025-04-14" in model:
+                # GPT-4.1-mini batch pricing
+                estimated_cost = (total_input_tokens * 0.15 + estimated_output_tokens * 0.6) / 1_000_000
+            else:  # unknown model
                 estimated_cost = (total_input_tokens * 0.15 + estimated_output_tokens * 0.6) / 1_000_000
             
             # Apply 50% batch discount
