@@ -19,7 +19,7 @@ from agent_eval.core.engine import EvaluationEngine
 class ResearchBaselineValidator:
     """Validate baseline against research paper requirements."""
     
-    def __init__(self, baseline_file: str = "realistic_baseline_outputs.json"):
+    def __init__(self, baseline_file: str = "baseline_outputs.json"):
         self.baseline_file = Path(__file__).parent / baseline_file
         self.plan_requirements = {
             "target_improvement": "42% → 91%",
