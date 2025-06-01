@@ -125,8 +125,9 @@ def show_workflow_selector():
 @click.option('--input', 'input_file', type=click.Path(exists=True, path_type=Path), required=True, help='Agent outputs to analyze')
 @click.option('--domain', type=click.Choice(['finance', 'security', 'ml']), required=True, help='Evaluation domain')
 @click.option('--quick', is_flag=True, help='Quick analysis without agent-judge')
+@click.option('--no-interactive', is_flag=True, help='Skip interactive menu for automation')
 @click.option('--verbose', is_flag=True, help='Enable verbose output')
-def analyze(input_file: Path, domain: str, quick: bool, verbose: bool):
+def analyze(input_file: Path, domain: str, quick: bool, no_interactive: bool, verbose: bool):
     """
     Unified analysis workflow that chains debug → compliance → improve.
 
@@ -136,15 +137,16 @@ def analyze(input_file: Path, domain: str, quick: bool, verbose: bool):
         arc-eval analyze --input agent_outputs.json --domain finance
     """
     command = AnalyzeCommand()
-    return command.execute(input_file, domain, quick, verbose)
+    return command.execute(input_file, domain, quick, no_interactive, verbose)
 
 
 @cli.command()
 @click.option('--input', 'input_file', type=click.Path(exists=True, path_type=Path), required=True, help='Agent trace or output file to debug')
 @click.option('--framework', type=click.Choice(['langchain', 'langgraph', 'crewai', 'autogen', 'openai', 'anthropic', 'generic']), help='Framework (auto-detected if not specified)')
 @click.option('--output-format', type=click.Choice(['console', 'json', 'html']), default='console', help='Output format')
+@click.option('--no-interactive', is_flag=True, help='Skip interactive menu for automation')
 @click.option('--verbose', is_flag=True, help='Enable verbose output')
-def debug(input_file: Path, framework: Optional[str], output_format: str, verbose: bool):
+def debug(input_file: Path, framework: Optional[str], output_format: str, no_interactive: bool, verbose: bool):
     """
     Debug: Why is my agent failing?
 
@@ -158,7 +160,7 @@ def debug(input_file: Path, framework: Optional[str], output_format: str, verbos
         arc-eval debug --input agent_trace.json
     """
     command = DebugCommand()
-    return command.execute(input_file, framework, output_format, verbose)
+    return command.execute(input_file, framework, output_format, no_interactive, verbose)
 
 
 @cli.command()

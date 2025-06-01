@@ -23,10 +23,11 @@ class DebugCommand:
         self.handler = ReliabilityCommandHandler()
     
     def execute(
-        self, 
-        input_file: Path, 
-        framework: Optional[str] = None, 
-        output_format: str = 'console', 
+        self,
+        input_file: Path,
+        framework: Optional[str] = None,
+        output_format: str = 'console',
+        no_interactive: bool = False,
         verbose: bool = False
     ) -> int:
         """
@@ -65,6 +66,7 @@ class DebugCommand:
                 schema_validation=True,  # Enable schema validation
                 verbose=verbose,
                 output=output_format,
+                no_interaction=no_interactive,  # Pass no_interactive flag
                 # Disable other features not needed for debug
                 domain=None,
                 agent_judge=False,

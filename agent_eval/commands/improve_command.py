@@ -114,7 +114,7 @@ class ImproveCommand:
     
     def _show_evaluation_help(self) -> None:
         """Show helpful guidance when no evaluation files are found."""
-        self.console.print("[red]Error:[/red] No evaluation files found!")
+        self.console.print("[red]❌ Error: No evaluation files found![/red]")
         self.console.print("\n[yellow]To use the improve workflow, you need to run a compliance evaluation first:[/yellow]")
         self.console.print("\nExample commands:")
         self.console.print("  arc-eval compliance --domain finance --quick-start")

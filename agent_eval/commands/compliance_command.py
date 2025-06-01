@@ -6,11 +6,13 @@ Separated from main CLI for better maintainability and testing.
 """
 
 import os
+import sys
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Tuple
 from datetime import datetime
 
 from rich.console import Console
+from rich.progress import Progress, SpinnerColumn, TextColumn
 from agent_eval.commands.compliance import ComplianceCommandHandler
 from agent_eval.core.workflow_state import update_workflow_progress
 
@@ -62,11 +64,11 @@ class ComplianceCommand:
             if domain not in ['finance', 'security', 'ml']:
                 raise ValueError(f"Invalid domain: {domain}. Must be one of: finance, security, ml")
             
-            # Handle special input methods
-            input_file = self._handle_input_methods(input_file, folder_scan)
-            
+            # Handle special input methods and stdin auto-detection
+            input_file, stdin_detected = self._handle_input_methods(input_file, folder_scan)
+
             # Validate input requirements
-            if not quick_start and not input_file:
+            if not quick_start and not input_file and not stdin_detected:
                 self._show_input_help(domain)
                 return 1
             
@@ -83,6 +85,7 @@ class ComplianceCommand:
             exit_code = self.handler.execute(
                 domain=domain,
                 input_file=input_file,
+                stdin=stdin_detected,  # Pass stdin detection flag
                 quick_start=quick_start,
                 agent_judge=not quick_start,  # Disable agent-judge for quick-start to speed up demo
                 export=export,
@@ -90,6 +93,7 @@ class ComplianceCommand:
                 workflow=True,  # Enable workflow mode
                 verbose=verbose,
                 output='table',
+                no_interactive=no_interactive,  # Pass no_interactive flag
                 # Performance tracking for compliance
                 performance=True,
                 timing=True,
@@ -115,26 +119,44 @@ class ComplianceCommand:
                 self.console.print_exception()
             return 1
     
-    def _handle_input_methods(self, input_file: Optional[Path], folder_scan: bool) -> Optional[Path]:
-        """Handle special input methods like folder scanning and clipboard."""
+    def _handle_input_methods(self, input_file: Optional[Path], folder_scan: bool) -> Tuple[Optional[Path], bool]:
+        """Handle special input methods like folder scanning, clipboard, and stdin auto-detection."""
+        # Auto-detect stdin input for CI/CD pipelines
+        stdin_available = not sys.stdin.isatty() and not input_file and not folder_scan
+
         if folder_scan or (input_file and str(input_file) == "scan"):
             from agent_eval.core.input_helpers import handle_smart_input
-            return handle_smart_input("scan", scan_folder=True)
+            return handle_smart_input("scan", scan_folder=True), False
         elif input_file and str(input_file) == "clipboard":
             from agent_eval.core.input_helpers import handle_smart_input
-            return handle_smart_input("clipboard")
-        return input_file
+            return handle_smart_input("clipboard"), False
+        elif stdin_available:
+            # Return None for input_file but True for stdin flag
+            return None, True
+        return input_file, False
     
     def _show_input_help(self, domain: str) -> None:
-        """Show helpful input guidance when no input is provided."""
-        self.console.print("[red]Error: Must provide --input or use --quick-start[/red]")
-        self.console.print("\nExample with your own data:")
-        self.console.print(f"  arc-eval compliance --domain {domain} --input your_outputs.json")
-        self.console.print("\nExample with sample data:")
-        self.console.print(f"  arc-eval compliance --domain {domain} --quick-start")
-        self.console.print("\n[blue]💡 Pilot helpers:[/blue]")
-        self.console.print(f"  arc-eval compliance --domain {domain} --folder-scan")
-        self.console.print(f"  arc-eval compliance --domain {domain} --input clipboard")
+        """Show enhanced input guidance with progressive disclosure."""
+        self.console.print("\n[bold blue]📤 Choose Your Upload Method:[/bold blue]")
+
+        # Option 1: Simplest (auto-discovery)
+        self.console.print("\n[yellow]1. Auto-discover files (recommended):[/yellow]")
+        self.console.print(f"   arc-eval compliance --domain {domain} --folder-scan")
+
+        # Option 2: Direct upload
+        self.console.print("\n[yellow]2. Upload specific file:[/yellow]")
+        self.console.print(f"   arc-eval compliance --domain {domain} --input your_traces.json")
+
+        # Option 3: Try demo first
+        self.console.print("\n[yellow]3. Try with sample data first:[/yellow]")
+        self.console.print(f"   arc-eval compliance --domain {domain} --quick-start")
+
+        # Progressive disclosure: Show advanced options
+        self.console.print("\n[dim]💡 Advanced Options:[/dim]")
+        self.console.print(f"[dim]   • Pipe data: echo '{{\"output\": \"test\"}}' | arc-eval compliance --domain {domain}[/dim]")
+        self.console.print(f"[dim]   • From clipboard: arc-eval compliance --domain {domain} --input clipboard[/dim]")
+
+        self.console.print("\n[blue]💡 Need help creating JSON files? Run: arc-eval export-guide[/blue]")
     
     def _update_workflow_progress(self, domain: str, input_file: Optional[Path]) -> None:
         """Update workflow progress and save evaluation file path."""
