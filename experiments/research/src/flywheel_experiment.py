@@ -369,6 +369,30 @@ Be thorough, specific, and focus on actionable compliance insights."""
         """Fallback CLI evaluation method (original implementation)."""
         print("⚠️  Using fallback CLI evaluation - this may experience the 20% hang issue")
         
+        # Set up environment with API keys
+        env_vars = {**os.environ, "ANTHROPIC_API_KEY": self.api_key}
+        env_vars["ARC_EVAL_NO_INTERACTION"] = "1"
+        env_vars["PYTHONUNBUFFERED"] = "1"
+        
+        # Try OpenAI if API key available
+        if os.getenv("OPENAI_API_KEY"):
+            env_vars["LLM_PROVIDER"] = "openai"
+            env_vars["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
+            print("🔄 Using OpenAI GPT-4.1 as Agent-as-a-Judge")
+        else:
+            print("🔄 Using Anthropic Claude as Agent-as-a-Judge")
+        
+        # Use actual arc-eval CLI with Agent-as-a-Judge
+        cmd = [
+            sys.executable, "-m", "agent_eval",
+            "compliance",
+            "--domain", domain, 
+            "--input", str(agent_outputs_file),
+            "--no-export",  # Skip PDF generation for speed
+            "--no-interactive",  # Skip interactive menu for automation
+            "--verbose"
+        ]
+        
         try:
             # Handle baseline data based on research mode
             if str(agent_outputs_file).endswith("baseline_outputs.json"):
