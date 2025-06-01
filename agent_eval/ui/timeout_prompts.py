@@ -71,11 +71,26 @@ class TimeoutPrompt:
             timeout = TimeoutPrompt.get_timeout()
         
         # Set up timeout handler
-        def timeout_handler(signum, frame):
-            raise TimeoutError(f"Prompt timed out after {timeout} seconds")
+        import platform
+        import threading
         
-        old_handler = signal.signal(signal.SIGALRM, timeout_handler)
-        signal.alarm(timeout)
+        is_windows = platform.system() == "Windows"
+        
+        if is_windows:
+            # Windows implementation using threading.Timer
+            timer = None
+            def timeout_handler():
+                raise TimeoutError(f"Prompt timed out after {timeout} seconds")
+            
+            timer = threading.Timer(timeout, timeout_handler)
+            timer.start()
+        else:
+            # Unix implementation using SIGALRM
+            def timeout_handler(signum, frame):
+                raise TimeoutError(f"Prompt timed out after {timeout} seconds")
+            
+            old_handler = signal.signal(signal.SIGALRM, timeout_handler)
+            signal.alarm(timeout)
         
         try:
             # Use Rich's Prompt with timeout protection
