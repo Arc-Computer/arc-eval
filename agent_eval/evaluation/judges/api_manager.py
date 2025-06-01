@@ -581,12 +581,11 @@ class APIManager:
         raise TimeoutError(f"OpenAI batch {batch_id} did not complete in time")
     
     def process_batch_cascade(self, prompts: List[Dict[str, Any]]) -> Dict[str, Any]:
-        """Process evaluations using cascade approach: Haiku batch → filter → Sonnet batch.
+        """DEPRECATED: Use DualTrackEvaluator instead.
         
-        This implements the cost-efficient cascade strategy:
-        1. Run all evaluations through Haiku in batch
-        2. Identify low-confidence results
-        3. Re-run low-confidence cases through Sonnet
+        This method is deprecated and replaced by the new DualTrackEvaluator system
+        which provides true batch processing via Anthropic Message Batches API
+        and fast track processing with real-time progress.
         
         Args:
             prompts: List of evaluation prompts with metadata
@@ -594,146 +593,51 @@ class APIManager:
         Returns:
             Dictionary with results and telemetry
         """
-        from agent_eval.core.constants import BATCH_CONFIDENCE_THRESHOLD, BATCH_API_DISCOUNT
+        logger.warning("process_batch_cascade is deprecated. Use DualTrackEvaluator for optimal performance.")
+        
+        # Import the new evaluator
+        from agent_eval.evaluation.judges.dual_track_evaluator import DualTrackEvaluator, EvaluationMode
+        
+        # Create evaluator instance
+        evaluator = DualTrackEvaluator(self)
+        
+        # Progress callback for logging
+        def progress_callback(update):
+            logger.info(f"Progress: {update.current}/{update.total} ({update.progress_percent:.1f}%) - {update.status}")
+        
+        # Run evaluation using new system
+        summary = evaluator.evaluate_scenarios(prompts, mode=EvaluationMode.AUTO, progress_callback=progress_callback)
+        
+        # Convert to legacy format for backward compatibility
+        final_results = {}
+        for result in summary.results:
+            if result.error is None:
+                final_results[result.scenario_id] = {
+                    "response": result.response,
+                    "model": result.model_used,
+                    "confidence": result.confidence
+                }
         
         telemetry = {
-            "total_evaluations": len(prompts),
-            "fallback_evaluations": 0,
-            "primary_evaluations": 0,
-            "total_cost": 0.0,
-            "cost_savings": 0.0,
-            "start_time": datetime.now()
+            "total_evaluations": summary.total_scenarios,
+            "fallback_evaluations": summary.completed,
+            "primary_evaluations": 0,  # Not applicable to new system
+            "total_cost": summary.total_cost,
+            "cost_savings": 0.0,  # Calculated differently in new system
+            "start_time": datetime.now(),
+            "end_time": datetime.now(),
+            "duration": summary.total_time,
+            "mode_used": summary.mode_used.value,
+            "average_confidence": summary.average_confidence
         }
         
-        try:
-            # Until batch API is available, process synchronously with simulated batching
-            logger.info(f"Processing {len(prompts)} scenarios with cascade strategy (simulated batch)")
-            
-            # Phase 1: Process all with fallback model
-            client, fallback_model = self.get_client(prefer_primary=False)
-            fallback_results = []
-            
-            for prompt_data in prompts:
-                try:
-                    if self.provider == "anthropic":
-                        response = client.messages.create(
-                            model=fallback_model,
-                            max_tokens=2000,
-                            temperature=0.1,
-                            messages=[{"role": "user", "content": prompt_data["prompt"]}]
-                        )
-                        response_text = response.content[0].text
-                    elif self.provider == "openai":
-                        response = client.chat.completions.create(
-                            model=fallback_model,
-                            max_tokens=2000,
-                            temperature=0.1,
-                            messages=[{"role": "user", "content": prompt_data["prompt"]}]
-                        )
-                        response_text = response.choices[0].message.content
-                    
-                    # Track cost with accurate token counting
-                    input_tokens = self._count_tokens(prompt_data["prompt"])
-                    output_tokens = self._count_tokens(response_text)
-                    self.track_cost(input_tokens, output_tokens, fallback_model)
-                    
-                    fallback_results.append({
-                        "response": response_text,
-                        "error": None,
-                        "prompt_data": prompt_data
-                    })
-                except Exception as e:
-                    fallback_results.append({
-                        "response": None,
-                        "error": str(e),
-                        "prompt_data": prompt_data
-                    })
-            
-            telemetry["fallback_evaluations"] = len(prompts)
-            
-            # Phase 2: Identify low-confidence results
-            low_confidence_prompts = []
-            final_results = {}
-            
-            for result in fallback_results:
-                prompt_data = result["prompt_data"]
-                scenario_id = prompt_data.get("scenario_id", "unknown")
-                
-                if result["error"]:
-                    low_confidence_prompts.append(prompt_data)
-                    continue
-                
-                confidence = self._extract_confidence_from_response(result["response"])
-                
-                if confidence < BATCH_CONFIDENCE_THRESHOLD:
-                    low_confidence_prompts.append(prompt_data)
-                else:
-                    final_results[scenario_id] = {
-                        "response": result["response"],
-                        "model": fallback_model,
-                        "confidence": confidence
-                    }
-            
-            # Phase 3: Re-evaluate low confidence with primary model
-            if low_confidence_prompts:
-                logger.info(f"Re-evaluating {len(low_confidence_prompts)} low-confidence scenarios with primary model")
-                client, primary_model = self.get_client(prefer_primary=True)
-                
-                for prompt_data in low_confidence_prompts:
-                    try:
-                        if self.provider == "anthropic":
-                            response = client.messages.create(
-                                model=primary_model,
-                                max_tokens=2000,
-                                temperature=0.1,
-                                messages=[{"role": "user", "content": prompt_data["prompt"]}]
-                            )
-                            response_text = response.content[0].text
-                        elif self.provider == "openai":
-                            response = client.chat.completions.create(
-                                model=primary_model,
-                                max_tokens=2000,
-                                temperature=0.1,
-                                messages=[{"role": "user", "content": prompt_data["prompt"]}]
-                            )
-                            response_text = response.choices[0].message.content
-                        
-                        # Track cost with accurate token counting
-                        input_tokens = self._count_tokens(prompt_data["prompt"])
-                        output_tokens = self._count_tokens(response_text)
-                        self.track_cost(input_tokens, output_tokens, primary_model)
-                        
-                        scenario_id = prompt_data.get("scenario_id", "unknown")
-                        final_results[scenario_id] = {
-                            "response": response_text,
-                            "model": primary_model,
-                            "confidence": self._extract_confidence_from_response(response_text)
-                        }
-                    except Exception as e:
-                        logger.error(f"Sonnet evaluation failed: {e}")
-                
-                telemetry["primary_evaluations"] = len(low_confidence_prompts)
-            
-            # Calculate telemetry
-            telemetry["end_time"] = datetime.now()
-            telemetry["duration"] = (telemetry["end_time"] - telemetry["start_time"]).total_seconds()
-            
-            # Calculate cost savings vs all-Sonnet approach
-            all_sonnet_cost = len(prompts) * (3.0 + 15.0) * 2000 / 1_000_000
-            telemetry["cost_savings"] = all_sonnet_cost - telemetry["total_cost"]
-            telemetry["savings_percentage"] = (telemetry["cost_savings"] / all_sonnet_cost) * 100 if all_sonnet_cost > 0 else 0
-            
-            logger.info(f"Cascade complete. Cost: ${telemetry['total_cost']:.2f}, "
-                       f"Savings: ${telemetry['cost_savings']:.2f} ({telemetry['savings_percentage']:.1f}%)")
-            
-            return {
-                "results": final_results,
-                "telemetry": telemetry
-            }
-            
-        except Exception as e:
-            logger.error(f"Batch cascade processing failed: {e}")
-            raise
+        logger.info(f"Evaluation complete via {summary.mode_used.value}: {summary.completed}/{summary.total_scenarios} scenarios, "
+                   f"${summary.total_cost:.2f}, {summary.total_time:.1f}s")
+        
+        return {
+            "results": final_results,
+            "telemetry": telemetry
+        }
     
     def _extract_confidence_from_response(self, response_text: str) -> float:
         """Extract confidence score from evaluation response.
