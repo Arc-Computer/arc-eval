@@ -79,25 +79,12 @@ arc-eval improve --from-evaluation latest # Uses insights from your last evaluat
 
 ```mermaid
 graph LR
-    A[Agent Output <br/>(Your Agent's Trace)] --> B(Debug Workflow);
-    B -- Identifies Failures & Bottlenecks --> C(Compliance Workflow);
-    C -- Measures Against <br/> 378+ Scenarios --> D(Learning Dashboard <br/> & PDF Report);
-    D -- Surfaces Insights & <br/> Prioritized Issues --> E(Improvement Plan);
-    E -- Suggests Actionable <br/> Fixes & Retests --> F(Re-evaluate Agent);
-    F -- Feeds Performance <br/> Data Back --> B;
-
-    subgraph "ARC-Eval Engine"
-        B; C; D; E; F;
-    end
-
-    style A fill:#f0f4f8,stroke:#546e7a,stroke-width:2px
-    style B fill:#e8f5e9,stroke:#66bb6a,stroke-width:2px
-    style C fill:#e3f2fd,stroke:#42a5f5,stroke-width:2px
-    style D fill:#fff3e0,stroke:#ffa726,stroke-width:2px
-    style E fill:#fce4ec,stroke:#ec407a,stroke-width:2px
-    style F fill:#f3e5f5,stroke:#ab47bc,stroke-width:2px
-
-    classDef default fill:#fff,stroke:#333,stroke-width:2px;
+    A[Agent Output (Your Agent's Trace)] --> B(Debug)
+    B --> C(Compliance)
+    C --> D(Learning Dashboard & PDF Report)
+    D --> E(Improvement Plan)
+    E --> F(Re-evaluate Agent)
+    F --> B
 ```
 
 **The Arc Loop: ARC-Eval learns from every failure to build smarter, more reliable agents.**
