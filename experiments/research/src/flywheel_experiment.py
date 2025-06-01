@@ -413,7 +413,6 @@ class FlywheelExperiment:
         print(f"🧠 Analyzing failures and creating improvement strategy...")
         
         agent_id = "research_agent"
-        domain = "finance"
         
         # Record results in real self-improvement engine - all components required for research validity
         try:
