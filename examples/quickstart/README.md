@@ -4,22 +4,31 @@ ARC-Eval automatically ingests traces from **any agent framework** and delivers 
 
 ## Prerequisites
 
-1. Install ARC-Eval:
 ```bash
+# 1. Install
 pip install arc-eval
-```
 
-2. Set up Agent-as-a-Judge evaluation (optional but recommended):
-```bash
+# 2. Set API key for Agent-as-a-Judge (optional but recommended)
 export ANTHROPIC_API_KEY="your-api-key"
-# Or add to .env file: ANTHROPIC_API_KEY=your-api-key
+
+# 3. Verify installation
+arc-eval --version
 ```
 
-3. Verify installation:
+## Three Ways to Upload Your Traces
+
 ```bash
-arc-eval --version
-# Output: arc-eval, version 0.2.7
+# Option 1: Direct file input
+arc-eval compliance --domain finance --input your_traces.json
+
+# Option 2: Auto-scan for JSON files in current directory
+arc-eval compliance --domain finance --folder-scan
+
+# Option 3: Paste traces from clipboard
+arc-eval compliance --domain finance --input clipboard
 ```
+
+**No setup required** - works with existing agent logs from any framework.
 
 ## Part 1: Agent Data Collection & Processing
 

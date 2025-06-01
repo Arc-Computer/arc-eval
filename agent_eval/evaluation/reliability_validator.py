@@ -105,6 +105,9 @@ class ComprehensiveReliabilityAnalysis:
     insights_summary: List[str]  # Key insights for user
     next_steps: List[str]       # Recommended actions
     
+    # Cognitive Analysis (NEW - Task 8)
+    cognitive_analysis: Optional[Any]  # CognitiveAnalyzer results
+    
     # Evidence and Confidence
     analysis_confidence: float
     evidence_quality: str      # "high", "medium", "low"
@@ -1342,10 +1345,21 @@ Required parameters:
             workflow_metrics
         )
         
-        next_steps = self._generate_next_steps(
+        # 6.1. Analyze Migration Opportunities (NEW - Task 7)
+        migration_analysis = self._analyze_migration_opportunities(
             detected_framework,
             framework_performance,
             workflow_metrics
+        )
+        
+        # 6.2. Cognitive Analysis Integration (NEW - Task 8)
+        cognitive_analysis = self._perform_cognitive_analysis(agent_outputs)
+        
+        next_steps = self._generate_next_steps(
+            detected_framework,
+            framework_performance,
+            workflow_metrics,
+            migration_analysis
         )
         
         # 7. Calculate Overall Analysis Confidence
@@ -1368,6 +1382,7 @@ Required parameters:
             reliability_dashboard=reliability_dashboard,
             insights_summary=insights_summary,
             next_steps=next_steps,
+            cognitive_analysis=cognitive_analysis,  # NEW - Task 8
             analysis_confidence=analysis_confidence,
             evidence_quality=evidence_quality,
             sample_size=sample_size
@@ -1402,6 +1417,7 @@ Required parameters:
             reliability_dashboard="❌ No data available for analysis",
             insights_summary=["No agent outputs provided for analysis"],
             next_steps=["Provide agent output data for analysis"],
+            cognitive_analysis=None,  # NEW - Task 8
             analysis_confidence=0.0,
             evidence_quality="none",
             sample_size=0
@@ -1623,7 +1639,8 @@ Required parameters:
         self,
         detected_framework: Optional[str],
         framework_performance: Optional[FrameworkPerformanceAnalysis],
-        workflow_metrics: WorkflowReliabilityMetrics
+        workflow_metrics: WorkflowReliabilityMetrics,
+        migration_analysis: Optional[Dict[str, Any]] = None
     ) -> List[str]:
         """Generate recommended next steps."""
         next_steps = []
@@ -1648,6 +1665,24 @@ Required parameters:
         if framework_performance and framework_performance.framework_alternatives:
             alternatives = ', '.join(framework_performance.framework_alternatives[:2])
             next_steps.append(f"5. Consider framework alternatives: {alternatives}")
+        
+        # Migration recommendations (NEW - Task 7)
+        if migration_analysis and migration_analysis.get("migration_recommended"):
+            recommended_framework = migration_analysis.get("recommended_framework")
+            improvement_estimate = migration_analysis.get("improvement_estimate", 0)
+            migration_priority = migration_analysis.get("priority", "medium")
+            
+            if migration_priority == "high":
+                next_steps.append(f"🚀 HIGH PRIORITY: Migrate to {recommended_framework} for {improvement_estimate}% performance improvement")
+            elif migration_priority == "medium":
+                next_steps.append(f"⚡ Consider migrating to {recommended_framework} for {improvement_estimate}% improvement")
+            else:
+                next_steps.append(f"📊 Evaluate migration to {recommended_framework} for potential {improvement_estimate}% gains")
+            
+            # Add specific migration steps
+            migration_steps = migration_analysis.get("migration_steps", [])
+            for step in migration_steps[:2]:  # Add top 2 migration steps
+                next_steps.append(f"   • {step}")
         
         # Always include compliance evaluation
         next_steps.append("6. Run enterprise compliance evaluation for production readiness")
@@ -1690,3 +1725,1146 @@ Required parameters:
             return "medium"
         else:
             return "low"
+    
+    # ==================== Planning Failure Detection Methods ====================
+    
+    def detect_planning_failures(self, agent_outputs: List[Any]) -> Dict[str, Any]:
+        """Detect goal drift and planning consistency issues."""
+        planning_issues = {
+            'goal_drift_detected': False,
+            'plan_execution_misalignment': [],
+            'reflection_loop_failures': [],
+            'overconfident_assertions': [],
+            'planning_consistency_score': 0.0,
+            'goal_tracking_score': 0.0,
+            'total_outputs_analyzed': len(agent_outputs)
+        }
+        
+        if not agent_outputs:
+            return planning_issues
+        
+        goal_drift_count = 0
+        misalignment_count = 0
+        loop_failure_count = 0
+        overconfident_count = 0
+        
+        for i, output in enumerate(agent_outputs):
+            # Track goal drift across conversation turns
+            if self._detect_goal_drift(output):
+                planning_issues['goal_drift_detected'] = True
+                goal_drift_count += 1
+            
+            # Identify reflection loop failures  
+            if self._detect_reflection_loops(output):
+                planning_issues['reflection_loop_failures'].append({
+                    'output_index': i,
+                    'output': str(output)[:200] + "..." if len(str(output)) > 200 else str(output),
+                    'loop_type': 'circular_reasoning'
+                })
+                loop_failure_count += 1
+            
+            # Measure plan-execution alignment
+            alignment_score = self._measure_plan_execution_alignment(output)
+            if alignment_score < 0.7:
+                planning_issues['plan_execution_misalignment'].append({
+                    'output_index': i,
+                    'output': str(output)[:200] + "..." if len(str(output)) > 200 else str(output),
+                    'alignment_score': alignment_score,
+                    'issue_type': 'low_alignment'
+                })
+                misalignment_count += 1
+            
+            # Detect overconfident assertions
+            if self._detect_overconfident_assertions(output):
+                planning_issues['overconfident_assertions'].append({
+                    'output_index': i,
+                    'output': str(output)[:200] + "..." if len(str(output)) > 200 else str(output),
+                    'confidence_issue': 'overconfident_assertion'
+                })
+                overconfident_count += 1
+        
+        # Calculate overall scores
+        total_outputs = len(agent_outputs)
+        planning_issues['planning_consistency_score'] = max(0.0, 1.0 - (misalignment_count + loop_failure_count) / total_outputs)
+        planning_issues['goal_tracking_score'] = max(0.0, 1.0 - goal_drift_count / total_outputs)
+        
+        # Add summary statistics
+        planning_issues['summary'] = {
+            'goal_drift_rate': goal_drift_count / total_outputs if total_outputs > 0 else 0.0,
+            'misalignment_rate': misalignment_count / total_outputs if total_outputs > 0 else 0.0,
+            'reflection_loop_rate': loop_failure_count / total_outputs if total_outputs > 0 else 0.0,
+            'overconfidence_rate': overconfident_count / total_outputs if total_outputs > 0 else 0.0
+        }
+        
+        return planning_issues
+    
+    def _detect_goal_drift(self, output: Any) -> bool:
+        """Detect when agent loses track of original goals."""
+        output_str = str(output).lower()
+        
+        # Patterns indicating goal drift
+        goal_drift_patterns = [
+            r"i'm not sure what we were trying to accomplish",
+            r"what was the original question",
+            r"let me start over",
+            r"i've lost track of",
+            r"going back to the beginning",
+            r"what were we talking about",
+            r"i forgot what we were doing",
+            r"let me reconsider the task",
+            r"i'm confused about the goal",
+            r"what was the purpose again"
+        ]
+        
+        # Check for explicit goal drift indicators
+        for pattern in goal_drift_patterns:
+            if re.search(pattern, output_str):
+                return True
+        
+        # Check for multiple contradictory statements within the same output
+        contradiction_indicators = [
+            (r"i will.*", r"actually, i won't"),
+            (r"the answer is.*", r"wait, the answer is actually"),
+            (r"we should.*", r"on second thought, we shouldn't"),
+            (r"first.*then", r"actually, let's skip")
+        ]
+        
+        for first_pattern, contradiction_pattern in contradiction_indicators:
+            if re.search(first_pattern, output_str) and re.search(contradiction_pattern, output_str):
+                return True
+        
+        return False
+    
+    def _detect_reflection_loops(self, output: Any) -> bool:
+        """Detect circular reasoning patterns."""
+        output_str = str(output).lower()
+        
+        # Patterns indicating circular reasoning or reflection loops
+        loop_patterns = [
+            r"as i mentioned before.*as i mentioned before",
+            r"like i said.*like i said",
+            r"going back to.*going back to",
+            r"as discussed.*as discussed.*as discussed",
+            r"i already explained.*i already explained",
+            r"repeating myself",
+            r"circular logic",
+            r"endless loop",
+            r"keep going in circles",
+            r"same conclusion again",
+            r"this brings us back to"
+        ]
+        
+        # Check for explicit loop indicators
+        for pattern in loop_patterns:
+            if re.search(pattern, output_str):
+                return True
+        
+        # Check for repeated phrases (simple heuristic)
+        sentences = re.split(r'[.!?]', output_str)
+        sentence_counts = Counter(sentence.strip() for sentence in sentences if len(sentence.strip()) > 10)
+        
+        # If any sentence appears more than twice, it might be a loop
+        for sentence, count in sentence_counts.items():
+            if count >= 3:
+                return True
+        
+        return False
+    
+    def _measure_plan_execution_alignment(self, output: Any) -> float:
+        """Measure how well execution aligns with stated plans."""
+        output_str = str(output).lower()
+        
+        # Look for planning language
+        planning_patterns = [
+            r"first.*then.*finally",
+            r"step \d+",
+            r"next, i will",
+            r"my plan is",
+            r"i will.*then.*then",
+            r"the steps are",
+            r"here's what i'll do"
+        ]
+        
+        # Look for execution language  
+        execution_patterns = [
+            r"i am now",
+            r"currently",
+            r"executing",
+            r"implementing",
+            r"doing",
+            r"working on",
+            r"completed"
+        ]
+        
+        # Count planning vs execution indicators
+        plan_count = sum(1 for pattern in planning_patterns if re.search(pattern, output_str))
+        execution_count = sum(1 for pattern in execution_patterns if re.search(pattern, output_str))
+        
+        # Check for contradictions between plan and execution
+        contradiction_patterns = [
+            (r"i will use.*", r"instead i used"),
+            (r"my plan is to.*", r"but actually"),
+            (r"first.*", r"skipping to"),
+            (r"step \d+.*", r"jumping to step")
+        ]
+        
+        contradiction_count = 0
+        for plan_pattern, contradiction_pattern in contradiction_patterns:
+            if re.search(plan_pattern, output_str) and re.search(contradiction_pattern, output_str):
+                contradiction_count += 1
+        
+        # Calculate alignment score
+        if plan_count == 0 and execution_count == 0:
+            return 0.8  # Neutral score when no clear planning/execution language
+        
+        total_indicators = plan_count + execution_count
+        if total_indicators == 0:
+            return 0.8
+        
+        # Penalize contradictions
+        contradiction_penalty = contradiction_count * 0.2
+        
+        # Higher scores when execution follows planning
+        if plan_count > 0 and execution_count > 0:
+            base_score = min(execution_count / plan_count, 1.0)
+        elif execution_count > 0:
+            base_score = 0.6  # Execution without clear planning
+        else:
+            base_score = 0.4  # Planning without execution
+        
+        return max(0.0, base_score - contradiction_penalty)
+    
+    def _detect_overconfident_assertions(self, output: Any) -> bool:
+        """Detect overconfident assertions without proper reasoning."""
+        output_str = str(output).lower()
+        
+        # Patterns indicating overconfidence
+        overconfidence_patterns = [
+            r"definitely",
+            r"absolutely certain",
+            r"100% sure",
+            r"without a doubt",
+            r"certainly",
+            r"obviously",
+            r"clearly",
+            r"undoubtedly",
+            r"guaranteed",
+            r"impossible to be wrong"
+        ]
+        
+        # Patterns indicating lack of reasoning
+        weak_reasoning_patterns = [
+            r"because i said so",
+            r"trust me",
+            r"just because",
+            r"it's obvious",
+            r"everyone knows",
+            r"common sense",
+            r"no need to explain"
+        ]
+        
+        confidence_count = sum(1 for pattern in overconfidence_patterns if re.search(pattern, output_str))
+        weak_reasoning_count = sum(1 for pattern in weak_reasoning_patterns if re.search(pattern, output_str))
+        
+        # Look for reasoning indicators
+        reasoning_patterns = [
+            r"because",
+            r"since",
+            r"due to",
+            r"as a result",
+            r"therefore",
+            r"given that",
+            r"based on",
+            r"evidence shows",
+            r"analysis indicates"
+        ]
+        
+        reasoning_count = sum(1 for pattern in reasoning_patterns if re.search(pattern, output_str))
+        
+        # Overconfident if high confidence with low reasoning or weak reasoning
+        if confidence_count >= 2 and (reasoning_count == 0 or weak_reasoning_count > 0):
+            return True
+        
+        # Also check for absolute statements without qualifying language
+        absolute_patterns = [
+            r"never",
+            r"always",
+            r"all.*are",
+            r"none.*are",
+            r"every.*will",
+            r"no.*can"
+        ]
+        
+        absolute_count = sum(1 for pattern in absolute_patterns if re.search(pattern, output_str))
+        
+        # Check for qualifying language that would moderate absolute statements
+        qualifying_patterns = [
+            r"might",
+            r"could",
+            r"possibly",
+            r"potentially", 
+            r"likely",
+            r"probably",
+            r"seems",
+            r"appears",
+            r"suggests",
+            r"indicates"
+        ]
+        
+        qualifying_count = sum(1 for pattern in qualifying_patterns if re.search(pattern, output_str))
+        
+        # Overconfident if many absolute statements without qualifying language
+        if absolute_count >= 2 and qualifying_count == 0:
+            return True
+        
+        return False
+    
+    # ==================== Reflection Quality Analysis Methods ====================
+    
+    def analyze_reflection_quality(self, agent_reasoning: List[str]) -> Dict[str, Any]:
+        """Enhanced metacognitive analysis."""
+        reflection_analysis = {
+            'circular_reasoning_detected': False,
+            'self_correction_effectiveness': 0.0,
+            'overconfident_assertions': [],
+            'reflection_depth_score': 0.0,
+            'metacognitive_awareness_score': 0.0,
+            'reasoning_coherence_score': 0.0,
+            'total_reasoning_analyzed': len(agent_reasoning)
+        }
+        
+        if not agent_reasoning:
+            return reflection_analysis
+        
+        circular_count = 0
+        correction_scores = []
+        overconfident_count = 0
+        depth_scores = []
+        metacognitive_scores = []
+        coherence_scores = []
+        
+        for i, reasoning in enumerate(agent_reasoning):
+            # Detect circular reasoning patterns
+            if self._detect_circular_reasoning(reasoning):
+                reflection_analysis['circular_reasoning_detected'] = True
+                circular_count += 1
+            
+            # Measure self-correction effectiveness
+            correction_score = self._measure_self_correction(reasoning)
+            correction_scores.append(correction_score)
+            
+            # Flag overconfident assertions
+            if self._detect_overconfidence_in_reasoning(reasoning):
+                reflection_analysis['overconfident_assertions'].append({
+                    'reasoning_index': i,
+                    'reasoning': reasoning[:200] + "..." if len(reasoning) > 200 else reasoning,
+                    'issue_type': 'overconfident_reasoning'
+                })
+                overconfident_count += 1
+            
+            # Score reflection depth
+            depth_score = self._score_reflection_depth(reasoning)
+            depth_scores.append(depth_score)
+            
+            # Score metacognitive awareness
+            metacognitive_score = self._score_metacognitive_awareness(reasoning)
+            metacognitive_scores.append(metacognitive_score)
+            
+            # Score reasoning coherence
+            coherence_score = self._score_reasoning_coherence(reasoning)
+            coherence_scores.append(coherence_score)
+        
+        # Calculate overall scores
+        total_reasoning = len(agent_reasoning)
+        reflection_analysis['self_correction_effectiveness'] = sum(correction_scores) / total_reasoning if total_reasoning > 0 else 0.0
+        reflection_analysis['reflection_depth_score'] = sum(depth_scores) / total_reasoning if total_reasoning > 0 else 0.0
+        reflection_analysis['metacognitive_awareness_score'] = sum(metacognitive_scores) / total_reasoning if total_reasoning > 0 else 0.0
+        reflection_analysis['reasoning_coherence_score'] = sum(coherence_scores) / total_reasoning if total_reasoning > 0 else 0.0
+        
+        # Add summary statistics
+        reflection_analysis['summary'] = {
+            'circular_reasoning_rate': circular_count / total_reasoning if total_reasoning > 0 else 0.0,
+            'overconfidence_rate': overconfident_count / total_reasoning if total_reasoning > 0 else 0.0,
+            'avg_correction_effectiveness': reflection_analysis['self_correction_effectiveness'],
+            'avg_reflection_depth': reflection_analysis['reflection_depth_score'],
+            'avg_metacognitive_awareness': reflection_analysis['metacognitive_awareness_score'],
+            'avg_reasoning_coherence': reflection_analysis['reasoning_coherence_score']
+        }
+        
+        return reflection_analysis
+    
+    def _detect_circular_reasoning(self, reasoning: str) -> bool:
+        """Detect circular reasoning patterns in agent reasoning."""
+        reasoning_lower = reasoning.lower()
+        
+        # Patterns indicating circular reasoning
+        circular_patterns = [
+            r"because.*because.*because",  # Repeated "because" without progression
+            r"therefore.*therefore.*therefore",  # Repeated conclusions
+            r"which means.*which means.*which means",  # Circular definitions
+            r"this proves.*this proves.*this proves",  # Circular proof attempts
+            r"leading to.*leading to.*leading to",  # Circular chains
+            r"results in.*results in.*results in",
+            r"due to the fact that.*due to the fact that.*due to the fact that"
+        ]
+        
+        # Check for explicit circular patterns
+        for pattern in circular_patterns:
+            if re.search(pattern, reasoning_lower):
+                return True
+        
+        # Check for A->B->A logical loops
+        # Look for statements that reference back to earlier premises
+        sentences = re.split(r'[.!?]', reasoning_lower)
+        sentences = [s.strip() for s in sentences if len(s.strip()) > 10]
+        
+        if len(sentences) < 3:
+            return False
+        
+        # Simple heuristic: check if first and last sentences are very similar
+        first_sentence = sentences[0]
+        last_sentence = sentences[-1]
+        
+        # Calculate word overlap
+        first_words = set(first_sentence.split())
+        last_words = set(last_sentence.split())
+        
+        if len(first_words) > 0 and len(last_words) > 0:
+            overlap = len(first_words.intersection(last_words)) / len(first_words.union(last_words))
+            if overlap > 0.7:  # High overlap suggests circular reasoning
+                return True
+        
+        return False
+    
+    def _measure_self_correction(self, reasoning: str) -> float:
+        """Measure self-correction effectiveness in reasoning."""
+        reasoning_lower = reasoning.lower()
+        
+        # Positive self-correction patterns
+        positive_correction_patterns = [
+            r"wait,? let me reconsider",
+            r"actually,? i made an error",
+            r"on second thought",
+            r"i need to correct",
+            r"let me revise",
+            r"i was wrong",
+            r"that's not right",
+            r"let me think again",
+            r"i should reconsider",
+            r"upon reflection"
+        ]
+        
+        # Negative self-correction patterns (poor corrections)
+        poor_correction_patterns = [
+            r"never mind,? forget that",
+            r"ignore what i just said",
+            r"disregard my previous",
+            r"scratch that,? new plan",
+            r"completely starting over"
+        ]
+        
+        # Evidence-based correction patterns (best)
+        evidence_based_patterns = [
+            r"given the new information",
+            r"based on further analysis",
+            r"after considering",
+            r"looking at this more carefully",
+            r"reviewing the evidence",
+            r"taking into account",
+            r"with additional context"
+        ]
+        
+        positive_count = sum(1 for pattern in positive_correction_patterns if re.search(pattern, reasoning_lower))
+        poor_count = sum(1 for pattern in poor_correction_patterns if re.search(pattern, reasoning_lower))
+        evidence_count = sum(1 for pattern in evidence_based_patterns if re.search(pattern, reasoning_lower))
+        
+        # Calculate correction effectiveness score
+        if evidence_count > 0:
+            return min(1.0, 0.8 + evidence_count * 0.1)  # High score for evidence-based corrections
+        elif positive_count > 0 and poor_count == 0:
+            return min(1.0, 0.6 + positive_count * 0.1)  # Good score for positive corrections
+        elif positive_count > poor_count:
+            return 0.4  # Moderate score when positive > poor
+        elif poor_count > 0:
+            return 0.2  # Low score for poor corrections
+        else:
+            return 0.5  # Neutral score when no corrections detected
+    
+    def _detect_overconfidence_in_reasoning(self, reasoning: str) -> bool:
+        """Detect overconfident assertions specifically in reasoning chains."""
+        reasoning_lower = reasoning.lower()
+        
+        # Overconfidence in reasoning patterns
+        reasoning_overconfidence_patterns = [
+            r"this logic is flawless",
+            r"undeniably true",
+            r"impossible to argue",
+            r"logically perfect",
+            r"cannot be disputed",
+            r"absolute certainty",
+            r"beyond question",
+            r"indisputable fact",
+            r"without any doubt",
+            r"definitely proves"
+        ]
+        
+        # Lack of uncertainty acknowledgment
+        uncertainty_patterns = [
+            r"might be",
+            r"could indicate",
+            r"seems to suggest",
+            r"appears that",
+            r"possibly",
+            r"potentially",
+            r"likely",
+            r"probably",
+            r"uncertain",
+            r"unclear"
+        ]
+        
+        overconfidence_count = sum(1 for pattern in reasoning_overconfidence_patterns if re.search(pattern, reasoning_lower))
+        uncertainty_count = sum(1 for pattern in uncertainty_patterns if re.search(pattern, reasoning_lower))
+        
+        # Overconfident if high confidence assertions with no uncertainty acknowledgment
+        if overconfidence_count >= 1 and uncertainty_count == 0:
+            return True
+        
+        # Also check for absolute logical claims
+        absolute_logic_patterns = [
+            r"always leads to",
+            r"never results in",
+            r"must be",
+            r"has to be",
+            r"cannot be anything else",
+            r"only possible explanation",
+            r"proves beyond doubt"
+        ]
+        
+        absolute_count = sum(1 for pattern in absolute_logic_patterns if re.search(pattern, reasoning_lower))
+        
+        # Overconfident if multiple absolute claims without hedging
+        if absolute_count >= 2 and uncertainty_count == 0:
+            return True
+        
+        return False
+    
+    def _score_reflection_depth(self, reasoning: str) -> float:
+        """Score the depth of reflection in reasoning."""
+        reasoning_lower = reasoning.lower()
+        
+        # Surface-level indicators (lower depth)
+        surface_patterns = [
+            r"because",
+            r"so",
+            r"then",
+            r"therefore"
+        ]
+        
+        # Medium-depth indicators
+        medium_patterns = [
+            r"this suggests",
+            r"which implies",
+            r"leading me to think",
+            r"considering that",
+            r"given this",
+            r"as a result"
+        ]
+        
+        # Deep reflection indicators
+        deep_patterns = [
+            r"upon deeper consideration",
+            r"examining the underlying",
+            r"questioning my assumption",
+            r"alternative explanation",
+            r"multiple perspectives",
+            r"exploring the implications",
+            r"what if",
+            r"on the other hand",
+            r"contradictory evidence",
+            r"nuanced view"
+        ]
+        
+        # Metacognitive indicators (deepest)
+        metacognitive_patterns = [
+            r"i realize that i",
+            r"my thinking process",
+            r"how i arrived at",
+            r"questioning my reasoning",
+            r"aware of my bias",
+            r"limitations of my analysis",
+            r"need to think differently",
+            r"my mental model"
+        ]
+        
+        surface_count = sum(1 for pattern in surface_patterns if re.search(pattern, reasoning_lower))
+        medium_count = sum(1 for pattern in medium_patterns if re.search(pattern, reasoning_lower))
+        deep_count = sum(1 for pattern in deep_patterns if re.search(pattern, reasoning_lower))
+        metacognitive_count = sum(1 for pattern in metacognitive_patterns if re.search(pattern, reasoning_lower))
+        
+        # Calculate depth score
+        total_indicators = surface_count + medium_count + deep_count + metacognitive_count
+        
+        if total_indicators == 0:
+            return 0.3  # Low score for no depth indicators
+        
+        # Weighted scoring: metacognitive > deep > medium > surface
+        weighted_score = (
+            surface_count * 0.1 +
+            medium_count * 0.3 +
+            deep_count * 0.6 +
+            metacognitive_count * 1.0
+        ) / total_indicators
+        
+        return min(1.0, weighted_score)
+    
+    def _score_metacognitive_awareness(self, reasoning: str) -> float:
+        """Score metacognitive awareness in reasoning."""
+        reasoning_lower = reasoning.lower()
+        
+        # Self-awareness patterns
+        self_awareness_patterns = [
+            r"i'm thinking",
+            r"my approach is",
+            r"i notice that i",
+            r"i tend to",
+            r"my bias might be",
+            r"i could be wrong",
+            r"i'm assuming",
+            r"my perspective",
+            r"i need to be careful",
+            r"i should consider"
+        ]
+        
+        # Process awareness patterns
+        process_awareness_patterns = [
+            r"my reasoning process",
+            r"how i'm thinking",
+            r"the way i analyze",
+            r"my mental approach",
+            r"thinking step by step",
+            r"my methodology",
+            r"my logic",
+            r"the process i use"
+        ]
+        
+        # Limitation awareness patterns
+        limitation_awareness_patterns = [
+            r"i don't know",
+            r"beyond my knowledge",
+            r"i'm uncertain",
+            r"i might be missing",
+            r"limitations of",
+            r"i cannot be sure",
+            r"unclear to me",
+            r"i lack information",
+            r"outside my expertise",
+            r"i could be overlooking"
+        ]
+        
+        self_count = sum(1 for pattern in self_awareness_patterns if re.search(pattern, reasoning_lower))
+        process_count = sum(1 for pattern in process_awareness_patterns if re.search(pattern, reasoning_lower))
+        limitation_count = sum(1 for pattern in limitation_awareness_patterns if re.search(pattern, reasoning_lower))
+        
+        total_metacognitive = self_count + process_count + limitation_count
+        
+        if total_metacognitive == 0:
+            return 0.2  # Low score for no metacognitive awareness
+        
+        # Normalize by reasoning length (longer reasoning should have more indicators)
+        reasoning_length = len(reasoning.split())
+        normalized_score = min(1.0, total_metacognitive / max(1, reasoning_length / 100))
+        
+        return normalized_score
+    
+    def _score_reasoning_coherence(self, reasoning: str) -> float:
+        """Score the coherence and logical flow of reasoning."""
+        reasoning_lower = reasoning.lower()
+        
+        # Logical connectors (positive for coherence)
+        logical_connectors = [
+            r"therefore",
+            r"because",
+            r"since",
+            r"as a result",
+            r"consequently",
+            r"thus",
+            r"hence",
+            r"so",
+            r"given that",
+            r"due to",
+            r"leads to",
+            r"implies",
+            r"suggests"
+        ]
+        
+        # Coherence disruptors (negative for coherence)
+        disruptors = [
+            r"wait, no",
+            r"actually, ignore",
+            r"never mind",
+            r"completely different",
+            r"unrelated",
+            r"random thought",
+            r"by the way",
+            r"off topic",
+            r"tangent"
+        ]
+        
+        # Contradiction indicators
+        contradictions = [
+            r"but earlier i said",
+            r"contradicting myself",
+            r"opposite of what",
+            r"inconsistent with",
+            r"conflicts with my",
+            r"doesn't match"
+        ]
+        
+        connector_count = sum(1 for pattern in logical_connectors if re.search(pattern, reasoning_lower))
+        disruptor_count = sum(1 for pattern in disruptors if re.search(pattern, reasoning_lower))
+        contradiction_count = sum(1 for pattern in contradictions if re.search(pattern, reasoning_lower))
+        
+        # Calculate base coherence score
+        sentences = re.split(r'[.!?]', reasoning)
+        sentence_count = len([s for s in sentences if len(s.strip()) > 5])
+        
+        if sentence_count == 0:
+            return 0.5  # Neutral for very short reasoning
+        
+        # Coherence score based on logical flow
+        connector_density = connector_count / sentence_count
+        disruptor_penalty = disruptor_count * 0.2
+        contradiction_penalty = contradiction_count * 0.3
+        
+        base_score = min(1.0, 0.5 + connector_density)
+        final_score = max(0.0, base_score - disruptor_penalty - contradiction_penalty)
+        
+        return final_score
+    
+    # ==================== Migration Analysis Methods (Task 7) ====================
+    
+    def _analyze_migration_opportunities(
+        self,
+        detected_framework: Optional[str],
+        framework_performance: Optional[FrameworkPerformanceAnalysis],
+        workflow_metrics: WorkflowReliabilityMetrics
+    ) -> Dict[str, Any]:
+        """Analyze framework migration opportunities based on performance thresholds."""
+        
+        if not detected_framework or not framework_performance:
+            return {"migration_recommended": False, "reason": "Insufficient framework data"}
+        
+        # Define performance thresholds for migration recommendation
+        migration_thresholds = {
+            "success_rate": 0.85,           # Below 85% success rate
+            "tool_failure_rate": 0.15,     # Above 15% tool failure rate
+            "timeout_frequency": 0.10,     # Above 10% timeout rate
+            "workflow_reliability": 0.75,   # Below 75% workflow reliability
+            "schema_mismatch_rate": 0.10    # Above 10% schema mismatches
+        }
+        
+        # Evaluate current performance against thresholds
+        performance_issues = []
+        severity_score = 0
+        
+        if framework_performance.success_rate < migration_thresholds["success_rate"]:
+            gap = migration_thresholds["success_rate"] - framework_performance.success_rate
+            performance_issues.append(f"Low success rate: {framework_performance.success_rate:.1%}")
+            severity_score += gap * 100  # Convert to percentage points
+        
+        if framework_performance.tool_call_failure_rate > migration_thresholds["tool_failure_rate"]:
+            gap = framework_performance.tool_call_failure_rate - migration_thresholds["tool_failure_rate"]
+            performance_issues.append(f"High tool failure rate: {framework_performance.tool_call_failure_rate:.1%}")
+            severity_score += gap * 100
+        
+        if framework_performance.timeout_frequency > migration_thresholds["timeout_frequency"]:
+            gap = framework_performance.timeout_frequency - migration_thresholds["timeout_frequency"]
+            performance_issues.append(f"Frequent timeouts: {framework_performance.timeout_frequency:.1%}")
+            severity_score += gap * 50  # Timeouts are less critical
+        
+        if workflow_metrics.workflow_success_rate < migration_thresholds["workflow_reliability"]:
+            gap = migration_thresholds["workflow_reliability"] - workflow_metrics.workflow_success_rate
+            performance_issues.append(f"Poor workflow reliability: {workflow_metrics.workflow_success_rate:.1%}")
+            severity_score += gap * 100
+        
+        if workflow_metrics.schema_mismatch_rate > migration_thresholds["schema_mismatch_rate"]:
+            gap = workflow_metrics.schema_mismatch_rate - migration_thresholds["schema_mismatch_rate"]
+            performance_issues.append(f"Schema mismatches: {workflow_metrics.schema_mismatch_rate:.1%}")
+            severity_score += gap * 75  # Schema issues are quite critical
+        
+        # Determine if migration is recommended based on severity
+        migration_recommended = len(performance_issues) >= 2 or severity_score > 20
+        
+        if not migration_recommended:
+            return {
+                "migration_recommended": False,
+                "reason": "Performance within acceptable thresholds",
+                "current_framework": detected_framework,
+                "performance_score": max(0, 100 - severity_score)
+            }
+        
+        # Generate migration recommendation
+        recommended_framework = self._get_recommended_migration_target(
+            detected_framework, performance_issues, framework_performance
+        )
+        
+        improvement_estimate = self._estimate_migration_improvement(
+            performance_issues, severity_score
+        )
+        
+        migration_priority = self._determine_migration_priority(severity_score, performance_issues)
+        
+        migration_steps = self._generate_migration_steps(detected_framework, recommended_framework)
+        
+        return {
+            "migration_recommended": True,
+            "current_framework": detected_framework,
+            "recommended_framework": recommended_framework,
+            "improvement_estimate": improvement_estimate,
+            "priority": migration_priority,
+            "performance_issues": performance_issues,
+            "severity_score": severity_score,
+            "migration_steps": migration_steps,
+            "estimated_migration_time": self._estimate_migration_time(detected_framework, recommended_framework),
+            "migration_risks": self._assess_migration_risks(detected_framework, recommended_framework)
+        }
+    
+    def _get_recommended_migration_target(
+        self,
+        current_framework: str,
+        performance_issues: List[str],
+        framework_performance: FrameworkPerformanceAnalysis
+    ) -> str:
+        """Get recommended migration target framework based on current issues."""
+        
+        # Framework migration matrix based on common issue patterns
+        migration_matrix = {
+            "langchain": {
+                "default": "openai",  # Direct API often more reliable
+                "timeout": "anthropic",  # Claude often faster for complex reasoning
+                "tool_failure": "openai",  # Better tool call reliability
+                "complexity": "agno"  # Simpler, lighter framework
+            },
+            "crewai": {
+                "default": "autogen",  # Better multi-agent support
+                "performance": "langchain",  # More mature ecosystem
+                "tool_failure": "openai",  # Direct API reliability
+                "complexity": "anthropic"  # Simpler agent interactions
+            },
+            "autogen": {
+                "default": "crewai",  # Specialized for agent crews
+                "performance": "openai",  # Direct API performance
+                "tool_failure": "anthropic",  # Better tool integration
+                "reliability": "langchain"  # More stable ecosystem
+            },
+            "openai": {
+                "default": "anthropic",  # Alternative provider
+                "performance": "langchain",  # Local optimization possible
+                "reliability": "anthropic",  # Different failure modes
+                "cost": "agno"  # More cost-effective
+            },
+            "anthropic": {
+                "default": "openai",  # Alternative provider
+                "tool_failure": "langchain",  # Better tool ecosystem
+                "performance": "openai",  # Faster API responses
+                "cost": "agno"  # More cost-effective
+            },
+            "generic": {
+                "default": "openai",  # Move to structured framework
+                "reliability": "langchain",  # Full framework support
+                "simplicity": "anthropic",  # Easy to implement
+                "cost": "agno"  # Lightweight option
+            },
+            "agno": {
+                "default": "openai",  # More features
+                "complexity": "langchain",  # Full framework capabilities
+                "reliability": "anthropic",  # Enterprise reliability
+                "performance": "openai"  # Faster responses
+            }
+        }
+        
+        # Determine primary issue type
+        primary_issue = "default"
+        if any("timeout" in issue.lower() for issue in performance_issues):
+            primary_issue = "timeout"
+        elif any("tool" in issue.lower() for issue in performance_issues):
+            primary_issue = "tool_failure"
+        elif any("reliability" in issue.lower() or "success" in issue.lower() for issue in performance_issues):
+            primary_issue = "reliability"
+        elif framework_performance.avg_response_time > 5.0:
+            primary_issue = "performance"
+        
+        # Get recommendation
+        framework_options = migration_matrix.get(current_framework, {"default": "openai"})
+        return framework_options.get(primary_issue, framework_options["default"])
+    
+    def _estimate_migration_improvement(
+        self,
+        performance_issues: List[str],
+        severity_score: float
+    ) -> int:
+        """Estimate performance improvement percentage from migration."""
+        
+        # Base improvement estimate based on severity
+        base_improvement = min(50, int(severity_score))  # Cap at 50% improvement
+        
+        # Issue-specific improvements
+        issue_bonuses = {
+            "timeout": 15,      # Migration often reduces timeouts significantly
+            "tool": 20,         # Better frameworks have better tool integration
+            "success": 25,      # Core reliability improvements
+            "schema": 10        # Better schema handling
+        }
+        
+        additional_improvement = 0
+        for issue in performance_issues:
+            for issue_type, bonus in issue_bonuses.items():
+                if issue_type in issue.lower():
+                    additional_improvement += bonus
+                    break
+        
+        # Total improvement estimate
+        total_improvement = min(60, base_improvement + additional_improvement)  # Cap at 60%
+        
+        return max(10, total_improvement)  # Minimum 10% improvement
+    
+    def _determine_migration_priority(
+        self,
+        severity_score: float,
+        performance_issues: List[str]
+    ) -> str:
+        """Determine migration priority based on severity and issues."""
+        
+        critical_indicators = ["success", "reliability", "failure"]
+        has_critical_issues = any(
+            any(indicator in issue.lower() for indicator in critical_indicators)
+            for issue in performance_issues
+        )
+        
+        if severity_score > 40 or has_critical_issues:
+            return "high"
+        elif severity_score > 20 or len(performance_issues) >= 3:
+            return "medium"
+        else:
+            return "low"
+    
+    def _generate_migration_steps(
+        self,
+        current_framework: str,
+        target_framework: str
+    ) -> List[str]:
+        """Generate specific migration steps."""
+        
+        migration_steps_map = {
+            ("langchain", "openai"): [
+                "Migrate to direct OpenAI API calls for better reliability",
+                "Replace LangChain chains with custom function orchestration",
+                "Implement OpenAI function calling for tool integration",
+                "Add custom retry logic and error handling"
+            ],
+            ("crewai", "autogen"): [
+                "Migrate crew workflows to AutoGen conversation patterns",
+                "Replace CrewAI tasks with AutoGen agent roles",
+                "Implement AutoGen group chat for multi-agent coordination",
+                "Add custom agent memory management"
+            ],
+            ("openai", "anthropic"): [
+                "Migrate OpenAI function calls to Claude tool use format",
+                "Replace OpenAI-specific prompting with Claude best practices",
+                "Implement Anthropic's structured output patterns",
+                "Add Claude-optimized error handling"
+            ],
+            ("generic", "openai"): [
+                "Structure agent outputs using OpenAI API format",
+                "Implement OpenAI function calling for tool integration",
+                "Add OpenAI-compatible streaming and async support",
+                "Integrate with OpenAI ecosystem tools"
+            ]
+        }
+        
+        # Get specific steps or generate generic ones
+        migration_key = (current_framework, target_framework)
+        if migration_key in migration_steps_map:
+            return migration_steps_map[migration_key]
+        
+        # Generic migration steps
+        return [
+            f"Plan migration from {current_framework} to {target_framework}",
+            f"Set up {target_framework} development environment",
+            f"Implement core functionality using {target_framework} patterns",
+            f"Test migration with parallel {current_framework} and {target_framework} runs",
+            f"Validate performance improvements and deploy {target_framework} solution"
+        ]
+    
+    def _estimate_migration_time(
+        self,
+        current_framework: str,
+        target_framework: str
+    ) -> str:
+        """Estimate migration time based on framework complexity."""
+        
+        # Framework complexity scores (higher = more complex to migrate from/to)
+        complexity_scores = {
+            "generic": 1,
+            "openai": 2,
+            "anthropic": 2,
+            "agno": 3,
+            "autogen": 4,
+            "langchain": 5,
+            "crewai": 4,
+            "langgraph": 6
+        }
+        
+        source_complexity = complexity_scores.get(current_framework, 3)
+        target_complexity = complexity_scores.get(target_framework, 3)
+        
+        # Calculate migration effort (days)
+        base_effort = 3  # Minimum 3 days
+        complexity_effort = (source_complexity + target_complexity) * 1.5
+        total_days = int(base_effort + complexity_effort)
+        
+        if total_days <= 5:
+            return "3-5 days"
+        elif total_days <= 10:
+            return "1-2 weeks"
+        elif total_days <= 20:
+            return "2-3 weeks"
+        else:
+            return "3-4 weeks"
+    
+    def _assess_migration_risks(
+        self,
+        current_framework: str,
+        target_framework: str
+    ) -> List[str]:
+        """Assess risks associated with framework migration."""
+        
+        risks = []
+        
+        # Framework-specific risks
+        framework_risks = {
+            "langchain": ["Complex dependency chain", "Custom chain compatibility"],
+            "crewai": ["Multi-agent coordination complexity", "Task workflow dependencies"],
+            "autogen": ["Conversation state management", "Agent memory handling"],
+            "openai": ["API rate limits", "Function calling compatibility"],
+            "anthropic": ["Tool use format changes", "Context window differences"],
+            "agno": ["Limited ecosystem", "Documentation gaps"],
+            "generic": ["Lack of structure", "Custom implementation dependencies"]
+        }
+        
+        # Add source framework risks
+        source_risks = framework_risks.get(current_framework, [])
+        for risk in source_risks:
+            risks.append(f"From {current_framework}: {risk}")
+        
+        # Add target framework risks
+        target_risks = framework_risks.get(target_framework, [])
+        for risk in target_risks:
+            risks.append(f"To {target_framework}: {risk}")
+        
+        # Add general migration risks
+        risks.extend([
+            "Temporary performance degradation during transition",
+            "Need for parallel testing and validation",
+            "Potential integration issues with existing systems"
+        ])
+        
+        return risks[:5]  # Return top 5 risks
+    
+    # ==================== Cognitive Analysis Integration (Task 8) ====================
+    
+    def _perform_cognitive_analysis(self, agent_outputs: List[Any]) -> Optional[Any]:
+        """Perform cognitive analysis using CognitiveAnalyzer."""
+        
+        try:
+            from agent_eval.analysis.cognitive_analyzer import CognitiveAnalyzer
+            
+            if not agent_outputs:
+                return None
+            
+            # Initialize cognitive analyzer
+            cognitive_analyzer = CognitiveAnalyzer()
+            
+            # Extract reasoning chains from agent outputs for analysis
+            reasoning_chains = self._extract_reasoning_chains_for_cognitive_analysis(agent_outputs)
+            
+            if not reasoning_chains:
+                # Fallback: use agent outputs directly if no reasoning chains found
+                logger.info("No reasoning chains found, performing cognitive analysis on agent outputs directly")
+                return cognitive_analyzer.generate_comprehensive_cognitive_analysis(
+                    agent_outputs=agent_outputs,
+                    reasoning_chains=None
+                )
+            
+            # Perform comprehensive cognitive analysis
+            cognitive_analysis = cognitive_analyzer.generate_comprehensive_cognitive_analysis(
+                agent_outputs=agent_outputs,
+                reasoning_chains=reasoning_chains
+            )
+            
+            logger.info(f"Cognitive analysis completed: health_score={cognitive_analysis.cognitive_health_score:.2f}")
+            
+            return cognitive_analysis
+            
+        except ImportError as e:
+            logger.warning(f"CognitiveAnalyzer not available: {e}")
+            return None
+        except Exception as e:
+            logger.warning(f"Cognitive analysis failed: {e}")
+            return None
+    
+    def _extract_reasoning_chains_for_cognitive_analysis(self, agent_outputs: List[Any]) -> List[str]:
+        """Extract reasoning chains from agent outputs for cognitive analysis."""
+        
+        reasoning_chains = []
+        
+        for output in agent_outputs:
+            try:
+                # Convert output to string for analysis
+                output_str = str(output)
+                
+                # Look for reasoning indicators in the output
+                reasoning_patterns = [
+                    r"(?:because|since|therefore|thus|hence|consequently).*?[.!?]",
+                    r"(?:reasoning|thinking|analysis|consideration)[:.].*?[.!?]",
+                    r"(?:let me think|my analysis|i believe|i think).*?[.!?]",
+                    r"(?:step \d+|first|second|third|next|then|finally).*?[.!?]",
+                    r"(?:based on|considering|given that|due to).*?[.!?]"
+                ]
+                
+                # Extract reasoning segments
+                for pattern in reasoning_patterns:
+                    matches = re.findall(pattern, output_str, re.IGNORECASE | re.DOTALL)
+                    for match in matches:
+                        # Clean up the reasoning text
+                        cleaned_reasoning = match.strip()
+                        if len(cleaned_reasoning) > 20:  # Only include substantial reasoning
+                            reasoning_chains.append(cleaned_reasoning)
+                
+                # If no pattern matches, look for longer coherent text segments
+                if not reasoning_chains:
+                    # Extract sentences that might contain reasoning
+                    sentences = re.split(r'[.!?]+', output_str)
+                    for sentence in sentences:
+                        sentence = sentence.strip()
+                        # Include sentences that are substantive and might contain reasoning
+                        if (len(sentence) > 50 and 
+                            any(word in sentence.lower() for word in 
+                                ['because', 'therefore', 'analysis', 'considering', 'reasoning', 'think', 'believe'])):
+                            reasoning_chains.append(sentence)
+                            
+            except Exception as e:
+                logger.debug(f"Error extracting reasoning from output: {e}")
+                continue
+        
+        # Remove duplicates while preserving order
+        unique_reasoning = []
+        seen = set()
+        for reasoning in reasoning_chains:
+            if reasoning not in seen:
+                unique_reasoning.append(reasoning)
+                seen.add(reasoning)
+        
+        logger.debug(f"Extracted {len(unique_reasoning)} reasoning chains from {len(agent_outputs)} outputs")
+        
+        return unique_reasoning[:20]  # Limit to top 20 for performance
