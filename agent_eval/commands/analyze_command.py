@@ -21,10 +21,11 @@ class AnalyzeCommand:
         self.console = Console()
     
     def execute(
-        self, 
-        input_file: Path, 
-        domain: str, 
-        quick: bool = False, 
+        self,
+        input_file: Path,
+        domain: str,
+        quick: bool = False,
+        no_interactive: bool = False,
         verbose: bool = False
     ) -> int:
         """
@@ -62,8 +63,9 @@ class AnalyzeCommand:
             # Step 2: Compliance Check
             compliance_result = self._execute_compliance_step(input_file, domain, quick, verbose)
             
-            # Step 3: Show unified menu with all options
-            self._show_unified_menu(domain)
+            # Step 3: Show unified menu with all options (unless no_interactive)
+            if not no_interactive:
+                self._show_unified_menu(domain)
             
             return 0
             

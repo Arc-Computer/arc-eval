@@ -46,23 +46,23 @@ class TestCLICommands:
     def test_debug_command_help(self):
         """Test debug command help."""
         result = self.runner.invoke(cli, ['debug', '--help'])
-        
+
         assert result.exit_code == 0
-        assert "Debug agent failures" in result.output
+        assert "Debug: Why is my agent failing?" in result.output
     
     def test_compliance_command_help(self):
         """Test compliance command help."""
         result = self.runner.invoke(cli, ['compliance', '--help'])
-        
+
         assert result.exit_code == 0
-        assert "Evaluate agent compliance" in result.output
+        assert "Compliance: Does it meet requirements?" in result.output
     
     def test_improve_command_help(self):
         """Test improve command help."""
         result = self.runner.invoke(cli, ['improve', '--help'])
-        
+
         assert result.exit_code == 0
-        assert "Generate and track improvement plans" in result.output
+        assert "Improve: How do I make it better?" in result.output
     
     def test_compliance_quick_start(self):
         """Test compliance command with quick-start."""

@@ -8,6 +8,7 @@ from rich.prompt import Prompt, Confirm
 from rich.table import Table
 from rich.panel import Panel
 from rich.columns import Columns
+from .timeout_prompts import TimeoutPrompt
 
 
 console = Console()
@@ -141,10 +142,10 @@ class InteractiveMenu:
         console.print("• 'We built a fraud detection model for credit cards'")
         console.print("• 'Our system processes loan applications automatically'\n")
         
-        use_description = Confirm.ask("Would you like to describe your AI system?", default=True)
+        use_description = TimeoutPrompt.confirm("Would you like to describe your AI system?", default=True, automation_default=False)
         
         if use_description:
-            description = Prompt.ask("[bold]Describe your AI system")
+            description = TimeoutPrompt.ask("[bold]Describe your AI system", automation_default="finance chatbot")
             recommended_domain = self._recommend_domain_from_description(description)
             
             if recommended_domain:
@@ -152,7 +153,7 @@ class InteractiveMenu:
                 console.print(f"\n[green]✨ Recommended Domain: {domain_info['icon']} {domain_info['name']}[/green]")
                 console.print(f"[dim]Based on your description, this domain covers: {domain_info['description']}[/dim]")
                 
-                use_recommendation = Confirm.ask(f"Use {recommended_domain} domain?", default=True)
+                use_recommendation = TimeoutPrompt.confirm(f"Use {recommended_domain} domain?", default=True, automation_default=True)
                 if use_recommendation:
                     return recommended_domain
         
@@ -205,10 +206,11 @@ class InteractiveMenu:
         
         # Get user selection
         while True:
-            choice = Prompt.ask(
+            choice = TimeoutPrompt.ask(
                 "[bold]Select domain[/bold]",
                 choices=domain_choices + ["details"],
-                default=domain_choices[0]
+                default=domain_choices[0],
+                automation_default=domain_choices[0]
             )
             
             if choice == "details":

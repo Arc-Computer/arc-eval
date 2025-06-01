@@ -95,8 +95,8 @@ class BenchmarkCommandHandler(BaseCommandHandler):
             
             # Validate benchmark
             if not adapter.validate_benchmark_name(benchmark):
-                console.print(f"[red]Error:[/red] Unsupported benchmark: {benchmark}")
-                console.print(f"Supported benchmarks: {', '.join(adapter.get_supported_benchmarks())}")
+                console.print(f"[bold red]❌ Error:[/bold red] Unsupported benchmark: {benchmark}")
+                console.print(f"[yellow]💡 Supported benchmarks:[/yellow] {', '.join(adapter.get_supported_benchmarks())}")
                 return 1
             
             # Load benchmark scenarios
@@ -106,7 +106,7 @@ class BenchmarkCommandHandler(BaseCommandHandler):
                 scenarios = adapter.load_benchmark(benchmark, subset=subset, limit=limit)
                 
                 if not scenarios:
-                    console.print(f"[red]Error:[/red] No scenarios loaded from {benchmark}")
+                    console.print(f"[bold red]❌ Error:[/bold red] No scenarios loaded from {benchmark}")
                     return 1
                 
                 console.print(f"[green]✅ Loaded {len(scenarios)} scenarios from {benchmark.upper()}[/green]")
@@ -332,7 +332,7 @@ class BenchmarkCommandHandler(BaseCommandHandler):
                 
                 exporter = exporters.get(export)
                 if not exporter:
-                    console.print(f"[red]Error:[/red] Unsupported export format: {export}")
+                    console.print(f"[bold red]❌ Error:[/bold red] Unsupported export format: {export}")
                     return 1
                     
                 exporter.export(results, str(filepath), f"{benchmark.upper()}-{domain}", format_template=format_template, summary_only=summary_only)
@@ -422,8 +422,8 @@ class BenchmarkCommandHandler(BaseCommandHandler):
         }
         
         if demo_domain not in sample_data:
-            console.print(f"[red]Error:[/red] Domain '{demo_domain}' not available for quick-start")
-            console.print("Available domains: finance, security, ml")
+            console.print(f"[bold red]❌ Error:[/bold red] Domain '{demo_domain}' not available for quick-start")
+            console.print("[yellow]💡 Available domains:[/yellow] finance, security, ml")
             return 1
         
         demo_info = sample_data[demo_domain]
@@ -444,8 +444,8 @@ class BenchmarkCommandHandler(BaseCommandHandler):
         console.print()
         
         if not sample_file.exists():
-            console.print(f"[red]Error:[/red] Sample file not found: {sample_file}")
-            console.print("Please ensure the examples directory is present")
+            console.print(f"[bold red]❌ Error:[/bold red] Sample file not found: {sample_file}")
+            console.print("[yellow]💡 Please ensure the examples directory is present[/yellow]")
             return 1
         
         try:

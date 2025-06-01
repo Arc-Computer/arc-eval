@@ -248,22 +248,26 @@ class ComplianceCommandHandler(BaseCommandHandler):
         return sample_data.get(domain, [])
     
     def _load_agent_outputs_with_validation(self, input_file: Optional[Path], stdin: bool, verbose: bool, dev: bool) -> List[Dict[str, Any]]:
-        """Load and validate agent outputs from file or stdin."""
+        """Load and validate agent outputs from file or stdin with enhanced feedback."""
         from agent_eval.evaluation.validators import InputValidator, ValidationError, format_validation_error
-        
+
         try:
             if input_file:
-                if verbose:
-                    console.print(f"[cyan]Verbose:[/cyan] Processing input file: {input_file}")
+                # Show upload validation feedback
+                self._show_upload_validation_feedback(input_file, verbose)
+
                 try:
                     with open(input_file, 'r') as f:
                         raw_data = f.read()
                     agent_outputs, warnings = InputValidator.validate_json_input(raw_data, str(input_file))
-                    
+
                     # Display warnings if any
                     for warning in warnings:
                         console.print(f"[yellow]Warning:[/yellow] {warning}")
-                    
+
+                    # Show upload success summary
+                    self._show_upload_success_summary(input_file, agent_outputs, verbose)
+
                     if dev:
                         console.print(f"[blue]Debug:[/blue] Loaded {len(agent_outputs) if isinstance(agent_outputs, list) else 1} outputs from {input_file}")
                 except ValidationError as e:
@@ -922,3 +926,46 @@ class ComplianceCommandHandler(BaseCommandHandler):
             if verbose:
                 console.print(f"[yellow]Warning:[/yellow] Could not save evaluation results: {e}")
             logger.warning(f"Failed to save evaluation results: {e}")
+
+    def _show_upload_validation_feedback(self, input_file: Path, verbose: bool) -> None:
+        """Provide clear feedback during upload validation."""
+        from rich.progress import Progress, SpinnerColumn, TextColumn
+
+        with Progress(SpinnerColumn(), TextColumn("[bold blue]{task.description}"), console=console) as progress:
+            task = progress.add_task("📤 Validating uploaded file...", total=100)
+
+            # File size check
+            progress.update(task, advance=25, description="📤 Checking file size...")
+            size_mb = input_file.stat().st_size / (1024 * 1024)
+
+            # File existence and readability
+            progress.update(task, advance=25, description="📤 Verifying file access...")
+
+            # JSON format validation (will be done by InputValidator)
+            progress.update(task, advance=25, description="📤 Validating JSON format...")
+
+            # Framework detection preparation
+            progress.update(task, advance=25, description="📤 Preparing framework detection...")
+
+            if verbose:
+                console.print(f"[cyan]Verbose:[/cyan] Processing input file: {input_file} ({size_mb:.2f} MB)")
+
+    def _show_upload_success_summary(self, input_file: Path, agent_outputs: List[Dict[str, Any]], verbose: bool) -> None:
+        """Show upload summary after successful validation."""
+        from agent_eval.core.parser_registry import FrameworkDetector
+
+        # Detect framework
+        detected_framework = FrameworkDetector.detect_framework(agent_outputs)
+
+        # Calculate file stats
+        size_mb = input_file.stat().st_size / (1024 * 1024)
+        entry_count = len(agent_outputs) if isinstance(agent_outputs, list) else 1
+
+        console.print(f"\n[green]✅ Upload Summary:[/green]")
+        console.print(f"   📁 File: {input_file.name}")
+        console.print(f"   📊 Size: {size_mb:.1f} MB")
+        console.print(f"   🔧 Framework: {detected_framework}")
+        console.print(f"   📝 Entries: {entry_count}")
+
+        if verbose:
+            console.print(f"[cyan]Verbose:[/cyan] Upload validation completed successfully")
