@@ -28,6 +28,20 @@ class StreamingEvaluator:
         self.current_scenario_index = 0
         self.patterns_captured = 0
         self.scenarios_generated = 0
+    
+    def reset_evaluation_context(self) -> None:
+        """Reset evaluation context to prevent domain state corruption during transitions."""
+        # Clear domain-specific user context data
+        domain_keys = ['domain', 'domain_info', 'current_domain', 'domain_specific_data']
+        for key in domain_keys:
+            if key in self.user_context:
+                del self.user_context[key]
+        
+        # Reset evaluation state
+        self.results = []
+        self.current_scenario_index = 0
+        self.patterns_captured = 0
+        self.scenarios_generated = 0
         
     def stream_evaluation(self, agent_outputs: List[Any], callback: Optional[Callable] = None) -> List[EvaluationResult]:
         """Run evaluation with real-time streaming updates."""

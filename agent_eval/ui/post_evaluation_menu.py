@@ -35,6 +35,16 @@ class PostEvaluationMenu:
         self.improvement_report = improvement_report
         self.learning_metrics = learning_metrics
         self.workflow_type = workflow_type  # "debug", "compliance", or "improve"
+    
+    def reset_domain_state(self) -> None:
+        """Reset domain-specific state to prevent corruption during domain transitions."""
+        # Clear domain-specific cached data
+        self.domain = None
+        self.evaluation_results = {}
+        self.judge_results = None
+        self.improvement_report = None
+        self.learning_metrics = None
+        self.workflow_type = "compliance"  # Reset to default
         
     def display_menu(self) -> str:
         """Display the post-evaluation menu and get user choice."""
