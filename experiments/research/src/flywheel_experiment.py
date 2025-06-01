@@ -351,8 +351,8 @@ Be thorough, specific, and focus on actionable compliance insights."""
         
         # Fallback to text analysis
         response_lower = response.lower()
-        pass_indicators = ["pass": true", "\"pass\": true", "compliance: passed", "result: pass"]
-        fail_indicators = ["pass": false", "\"pass\": false", "compliance: failed", "result: fail", "violation"]
+        pass_indicators = ['"pass": true', '"pass":true', "compliance: passed", "result: pass"]
+        fail_indicators = ['"pass": false', '"pass":false', "compliance: failed", "result: fail", "violation"]
         
         for indicator in pass_indicators:
             if indicator in response_lower:
