@@ -225,7 +225,7 @@ class SelfImprovementEngine:
             Learning progress score [0.0, 1.0] where higher indicates more learning
         """
         if not self.history_file.exists():
-            return 0.5  # Default moderate progress for new agents
+            return 0.0 
         
         recent_rewards = []
         historical_rewards = []
@@ -236,7 +236,7 @@ class SelfImprovementEngine:
                              json.loads(line)['domain'] == domain]
         
         if len(all_entries) < window_size:
-            return 0.5  # Insufficient data, moderate progress
+            return 0.0
         
         # Split into recent and historical windows
         recent_entries = all_entries[-window_size:]
@@ -252,7 +252,7 @@ class SelfImprovementEngine:
             historical_rewards.append(reward_avg)
         
         if not recent_rewards or not historical_rewards:
-            return 0.5
+            return 0.0
             
         # Calculate TD-error based learning progress
         import numpy as np
