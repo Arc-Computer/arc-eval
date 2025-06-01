@@ -106,6 +106,8 @@ class APIManager:
                 # Use cl100k_base for approximation until Claude tokenizer is available
                 self.tokenizer = tiktoken.get_encoding("cl100k_base")
             else:  # openai
+                # Use gpt-4 encoding as closest approximation for GPT-4.1 models
+                # GPT-4.1 uses same tokenizer as GPT-4
                 self.tokenizer = tiktoken.encoding_for_model("gpt-4")
         except ImportError:
             logger.warning("tiktoken not available, using rough token estimation")
