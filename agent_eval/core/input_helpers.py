@@ -141,9 +141,9 @@ class InputHelper:
         if not candidates:
             console.print("[yellow]❌ No JSON files found in current directory[/yellow]")
             console.print("\n[blue]💡 Tips:[/blue]")
-            console.print("• Copy agent output to clipboard, then run: [green]arc-eval compliance --domain finance --input clipboard[/green]")
+            console.print("• Copy agent output to clipboard, then run: [green]arc-eval compliance --domain <your-domain> --input clipboard[/green]")
             console.print("• Save agent output to a .json file")
-            console.print("• Try quick-start mode: [green]arc-eval compliance --domain finance --quick-start[/green]")
+            console.print("• Try quick-start mode: [green]arc-eval compliance --domain <your-domain> --quick-start[/green]")
             return
         
         console.print(f"[green]🔍 Found {len(candidates)} potential trace files:[/green]\n")
@@ -181,7 +181,7 @@ class InputHelper:
         
         if candidates:
             console.print(f"\n[blue]💡 To use file #1:[/blue]")
-            console.print(f"  [green]arc-eval compliance --domain finance --input {candidates[0]}[/green]")
+            console.print(f"  [green]arc-eval compliance --domain <your-domain> --input {candidates[0]}[/green]")
 
 
 def handle_smart_input(input_value: str, scan_folder: bool = False) -> Optional[Path]:
