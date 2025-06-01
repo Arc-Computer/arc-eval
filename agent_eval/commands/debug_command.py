@@ -87,13 +87,26 @@ class DebugCommand:
             return exit_code
             
         except FileNotFoundError as e:
-            self.console.print(f"[red]File Error:[/red] {e}")
+            self.console.print(f"[red]❌ File not found:[/red] {input_file}")
+            self.console.print("\n[yellow]💡 Quick fixes:[/yellow]")
+            self.console.print("  1. Check file path: [green]ls -la *.json[/green]")
+            self.console.print("  2. Create sample file: [green]echo '[{\"output\": \"test\"}]' > test.json[/green]")
+            self.console.print("  3. Try export guide: [green]arc-eval export-guide[/green]")
+            self.console.print("  4. Use quick-start: [green]arc-eval compliance --domain finance --quick-start[/green]")
             return 1
         except ValueError as e:
-            self.console.print(f"[red]Invalid Input:[/red] {e}")
+            self.console.print(f"[red]❌ Invalid input:[/red] {e}")
+            self.console.print("\n[yellow]💡 Common fixes:[/yellow]")
+            self.console.print("  • Ensure file is valid JSON format")
+            self.console.print("  • Check file contains agent outputs")
+            self.console.print("  • Try: [green]python -m json.tool your_file.json[/green]")
             return 1
         except Exception as e:
-            self.console.print(f"[red]Debug failed:[/red] {e}")
+            self.console.print(f"[red]❌ Debug failed:[/red] {e}")
+            self.console.print("\n[yellow]💡 Get help:[/yellow]")
+            self.console.print("  • Try with --verbose flag for details")
+            self.console.print("  • Check examples: [green]arc-eval export-guide[/green]")
+            self.console.print("  • Use quick-start: [green]arc-eval compliance --domain finance --quick-start[/green]")
             if verbose:
                 self.console.print_exception()
             return 1
@@ -101,13 +114,22 @@ class DebugCommand:
     def _show_next_step_suggestion(self) -> None:
         """Show suggested next workflow step."""
         from agent_eval.core.workflow_state import WorkflowStateManager
-        
+
         workflow_manager = WorkflowStateManager()
         state = workflow_manager.load_state()
         cycle = state.get('current_cycle', {})
-        
+
+        self.console.print("\n[bold green]✅ Debug analysis complete![/bold green]")
+        self.console.print("[green]━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[/green]")
+
         if cycle.get('debug', {}).get('input_file'):
             input_file = cycle['debug']['input_file']
-            self.console.print(f"\n🔄 Next Step: Run 'arc-eval compliance --domain [finance|security|ml] --input {input_file}' to continue the improvement cycle")
+            self.console.print(f"\n[bold blue]🎯 RECOMMENDED NEXT STEP:[/bold blue]")
+            self.console.print(f"[green]arc-eval compliance --domain finance --input {input_file}[/green]")
+            self.console.print("\n[dim]This will test your agent against 110 finance compliance scenarios[/dim]")
         else:
-            self.console.print("\n🔄 Next Step: Run 'arc-eval compliance --domain [finance|security|ml] --input <your_outputs.json>' to continue the improvement cycle")
+            self.console.print(f"\n[bold blue]🎯 RECOMMENDED NEXT STEP:[/bold blue]")
+            self.console.print("[green]arc-eval compliance --domain finance --input your_outputs.json[/green]")
+            self.console.print("\n[dim]Or try with sample data: arc-eval compliance --domain finance --quick-start[/dim]")
+
+        self.console.print("\n[yellow]💡 TIP:[/yellow] The compliance check will identify regulatory violations and security risks")
