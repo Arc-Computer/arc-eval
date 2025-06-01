@@ -212,6 +212,67 @@ class SelfImprovementEngine:
         
         return needs_retraining, recommendation
     
+    def calculate_learning_progress(self, agent_id: str, domain: str, window_size: int = 10) -> float:
+        """
+        Calculate TD-error based learning progress for more stable curriculum decisions.
+        
+        Args:
+            agent_id: Agent identifier
+            domain: Domain (e.g., 'finance')
+            window_size: Number of recent evaluations to consider
+            
+        Returns:
+            Learning progress score [0.0, 1.0] where higher indicates more learning
+        """
+        if not self.history_file.exists():
+            return 0.0 
+        
+        recent_rewards = []
+        historical_rewards = []
+        
+        with open(self.history_file, 'r') as f:
+            all_entries = [json.loads(line) for line in f 
+                          if json.loads(line)['agent_id'] == agent_id and 
+                             json.loads(line)['domain'] == domain]
+        
+        if len(all_entries) < window_size:
+            return 0.0
+        
+        # Split into recent and historical windows
+        recent_entries = all_entries[-window_size:]
+        historical_entries = all_entries[-(window_size*2):-window_size] if len(all_entries) >= window_size*2 else all_entries[:-window_size]
+        
+        # Extract average reward signals
+        for entry in recent_entries:
+            reward_avg = sum(entry['reward_signals'].values()) / len(entry['reward_signals'])
+            recent_rewards.append(reward_avg)
+            
+        for entry in historical_entries:
+            reward_avg = sum(entry['reward_signals'].values()) / len(entry['reward_signals'])
+            historical_rewards.append(reward_avg)
+        
+        if not recent_rewards or not historical_rewards:
+            return 0.0
+            
+        # Calculate TD-error based learning progress
+        import numpy as np
+        recent_mean = np.mean(recent_rewards)
+        historical_mean = np.mean(historical_rewards)
+        
+        # TD-error represents how much the agent is learning (improving)
+        td_error = abs(recent_mean - historical_mean)
+        
+        # Normalize to [0,1] and add direction bias (improvement vs decline)
+        normalized_progress = min(td_error, 1.0)
+        
+        # Boost if improving, reduce if declining
+        if recent_mean > historical_mean:
+            normalized_progress = min(normalized_progress * 1.2, 1.0)  # 20% boost for improvement
+        else:
+            normalized_progress = max(normalized_progress * 0.8, 0.0)  # 20% reduction for decline
+            
+        return normalized_progress
+    
     # Helper methods
     def _get_recent_failures(self, agent_id: str, domain: str, threshold: float) -> List[Dict]:
         """Load recent evaluation failures below threshold."""
@@ -373,6 +434,250 @@ class SelfImprovementEngine:
                 recommendations.append(f"Targeted training for {area_name} improvement")
         
         return recommendations
+    
+    def get_scenario_specific_performance(self, agent_id: str, domain: str) -> Dict[str, Any]:
+        """
+        Get performance breakdown by individual scenarios and compliance areas.
+        
+        Returns detailed performance metrics for ACL-based adaptive curriculum.
+        """
+        history = self._load_performance_history(agent_id, domain, lookback_days=90)
+        
+        if not history:
+            return {
+                "scenario_performance": {},
+                "compliance_area_performance": {},
+                "weakness_areas": [],
+                "mastered_areas": [],
+                "overall_pass_rate": 0.0
+            }
+        
+        # Track performance per scenario ID
+        scenario_performance = {}
+        compliance_performance = {}
+        
+        total_evaluations = 0
+        total_passed = 0
+        
+        for entry in history:
+            scenario_id = entry.get('scenario_id', 'unknown')
+            reward_signals = entry.get('reward_signals', {})
+            compliance_gaps = entry.get('compliance_gaps', [])
+            
+            # Aggregate scenario performance
+            if scenario_id not in scenario_performance:
+                scenario_performance[scenario_id] = {
+                    'attempts': 0,
+                    'successes': 0,
+                    'pass_rate': 0.0,
+                    'avg_confidence': 0.0,
+                    'recent_trend': 'stable'
+                }
+            
+            scenario_performance[scenario_id]['attempts'] += 1
+            
+            # Consider successful if average reward signal > 0.7
+            avg_reward = sum(reward_signals.values()) / len(reward_signals) if reward_signals else 0.0
+            if avg_reward > 0.7:
+                scenario_performance[scenario_id]['successes'] += 1
+                total_passed += 1
+            
+            total_evaluations += 1
+            scenario_performance[scenario_id]['avg_confidence'] = avg_reward
+            
+            # Track compliance area performance
+            for compliance_area in compliance_gaps:
+                if compliance_area not in compliance_performance:
+                    compliance_performance[compliance_area] = {
+                        'violations': 0,
+                        'total_checks': 0,
+                        'violation_rate': 0.0
+                    }
+                compliance_performance[compliance_area]['violations'] += 1
+                compliance_performance[compliance_area]['total_checks'] += 1
+        
+        # Calculate pass rates
+        for scenario_id, perf in scenario_performance.items():
+            perf['pass_rate'] = perf['successes'] / perf['attempts'] if perf['attempts'] > 0 else 0.0
+        
+        for comp_area, perf in compliance_performance.items():
+            perf['violation_rate'] = perf['violations'] / perf['total_checks'] if perf['total_checks'] > 0 else 0.0
+        
+        # Identify weakness and mastered areas
+        weakness_areas = [
+            area for area, perf in compliance_performance.items()
+            if perf['violation_rate'] > 0.3  # More than 30% violation rate
+        ]
+        
+        mastered_areas = [
+            area for area, perf in compliance_performance.items()
+            if perf['violation_rate'] < 0.1  # Less than 10% violation rate
+        ]
+        
+        overall_pass_rate = total_passed / total_evaluations if total_evaluations > 0 else 0.0
+        
+        return {
+            "scenario_performance": scenario_performance,
+            "compliance_area_performance": compliance_performance,
+            "weakness_areas": weakness_areas,
+            "mastered_areas": mastered_areas,
+            "overall_pass_rate": overall_pass_rate,
+            "total_evaluations": total_evaluations,
+            "recent_trend": self._calculate_recent_trend(history)
+        }
+    
+    def recommend_next_scenarios(self, agent_id: str, domain: str, 
+                               current_pass_rate: float) -> List[str]:
+        """
+        Recommend scenarios for next iteration based on mastery progression.
+        
+        Uses ACL principles to select scenarios in the optimal learning zone.
+        """
+        performance_data = self.get_scenario_specific_performance(agent_id, domain)
+        scenario_performance = performance_data.get('scenario_performance', {})
+        
+        # Find scenarios in the "learning zone" (60-80% pass rate)
+        learning_zone_scenarios = []
+        review_scenarios = []  # Low performance scenarios
+        mastery_scenarios = []  # High performance scenarios
+        
+        for scenario_id, perf in scenario_performance.items():
+            pass_rate = perf['pass_rate']
+            attempts = perf['attempts']
+            
+            # Only consider scenarios with sufficient data
+            if attempts >= 2:
+                if 0.6 <= pass_rate <= 0.8:
+                    learning_zone_scenarios.append(scenario_id)
+                elif pass_rate < 0.6:
+                    review_scenarios.append(scenario_id)
+                elif pass_rate > 0.8:
+                    mastery_scenarios.append(scenario_id)
+        
+        # Prioritize learning zone, then review scenarios
+        recommendations = learning_zone_scenarios[:3]
+        
+        if len(recommendations) < 3:
+            remaining = 3 - len(recommendations)
+            recommendations.extend(review_scenarios[:remaining])
+        
+        # If still not enough, include some mastery scenarios for confidence
+        if len(recommendations) < 3:
+            remaining = 3 - len(recommendations)
+            recommendations.extend(mastery_scenarios[:remaining])
+        
+        return recommendations
+    
+    def calculate_readiness_for_difficulty(self, agent_id: str, domain: str) -> str:
+        """
+        Determine if agent is ready for next difficulty level.
+        
+        Returns: 'basic', 'intermediate', or 'advanced'
+        """
+        performance_data = self.get_scenario_specific_performance(agent_id, domain)
+        overall_pass_rate = performance_data.get('overall_pass_rate', 0.0)
+        recent_trend = performance_data.get('recent_trend', 'stable')
+        weakness_areas = performance_data.get('weakness_areas', [])
+        
+        # ACL-based progression thresholds
+        if overall_pass_rate >= 0.85 and len(weakness_areas) <= 1 and recent_trend in ['improving', 'stable']:
+            return 'advanced'
+        elif overall_pass_rate >= 0.65 and len(weakness_areas) <= 3 and recent_trend in ['improving', 'stable']:
+            return 'intermediate'
+        elif overall_pass_rate < 0.4 or recent_trend == 'declining':
+            return 'basic'  # Step back if struggling
+        else:
+            return 'basic'  # Conservative default
+    
+    def get_adaptive_curriculum_data(self, agent_id: str, domain: str) -> Dict[str, Any]:
+        """
+        Get comprehensive data for adaptive curriculum generation.
+        
+        Combines performance trends, scenario analysis, and readiness assessment
+        for use with adaptive scenario selection in flywheel experiments.
+        """
+        performance_data = self.get_scenario_specific_performance(agent_id, domain)
+        trends = self.get_performance_trends(agent_id, domain)
+        readiness = self.calculate_readiness_for_difficulty(agent_id, domain)
+        recommendations = self.recommend_next_scenarios(agent_id, domain, 
+                                                      performance_data.get('overall_pass_rate', 0.0))
+        
+        # Calculate learning progress for enhanced curriculum decisions
+        learning_progress = self.calculate_learning_progress(agent_id, domain)
+        
+        return {
+            "performance_summary": {
+                "overall_pass_rate": performance_data.get('overall_pass_rate', 0.0),
+                "total_evaluations": performance_data.get('total_evaluations', 0),
+                "recent_trend": performance_data.get('recent_trend', 'stable'),
+                "weakness_areas": performance_data.get('weakness_areas', []),
+                "mastered_areas": performance_data.get('mastered_areas', []),
+                "learning_progress": learning_progress
+            },
+            "scenario_readiness": {
+                "recommended_difficulty": readiness,
+                "recommended_scenarios": recommendations,
+                "learning_zone_count": len([
+                    s for s, p in performance_data.get('scenario_performance', {}).items()
+                    if 0.6 <= p.get('pass_rate', 0.0) <= 0.8
+                ])
+            },
+            "detailed_performance": {
+                "scenario_performance": performance_data.get('scenario_performance', {}),
+                "compliance_area_performance": performance_data.get('compliance_area_performance', {})
+            },
+            "trends": trends.get('reward_trends', {}),
+            "timestamp": datetime.now().isoformat()
+        }
+    
+    def _calculate_recent_trend(self, history: List[Dict], lookback_count: int = 5) -> str:
+        """
+        Calculate recent performance trend from evaluation history.
+        
+        Returns: 'improving', 'declining', or 'stable'
+        """
+        if len(history) < 3:
+            return 'stable'
+        
+        # Get recent evaluations
+        recent_history = history[-lookback_count:] if len(history) >= lookback_count else history
+        
+        # Calculate average rewards for first and second half
+        mid_point = len(recent_history) // 2
+        first_half = recent_history[:mid_point]
+        second_half = recent_history[mid_point:]
+        
+        if not first_half or not second_half:
+            return 'stable'
+        
+        # Calculate average performance for each half
+        first_avg = self._calculate_average_performance(first_half)
+        second_avg = self._calculate_average_performance(second_half)
+        
+        improvement_threshold = 0.05  # 5% improvement threshold
+        
+        if second_avg - first_avg > improvement_threshold:
+            return 'improving'
+        elif first_avg - second_avg > improvement_threshold:
+            return 'declining'
+        else:
+            return 'stable'
+    
+    def _calculate_average_performance(self, evaluations: List[Dict]) -> float:
+        """
+        Calculate average performance across evaluations.
+        """
+        total_performance = 0.0
+        count = 0
+        
+        for eval_data in evaluations:
+            reward_signals = eval_data.get('reward_signals', {})
+            if reward_signals:
+                avg_reward = sum(reward_signals.values()) / len(reward_signals)
+                total_performance += avg_reward
+                count += 1
+        
+        return total_performance / count if count > 0 else 0.0
 
 
 # Usage Example API
@@ -399,3 +704,7 @@ class AgentSelfImprovementAPI:
         """Generate training examples from recent failures."""
         examples = self.engine.generate_training_examples(agent_id, domain)
         return [ex.to_dict() for ex in examples]
+    
+    def get_adaptive_curriculum(self, agent_id: str, domain: str) -> Dict[str, Any]:
+        """Get adaptive curriculum data for ACL-based learning."""
+        return self.engine.get_adaptive_curriculum_data(agent_id, domain)

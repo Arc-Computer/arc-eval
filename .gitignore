@@ -69,7 +69,11 @@ custom_scenarios/
 # Generated training data
 retraining_data/
 
+# Experiment outputs (keep clean test environment)
+experiments/research/outputs/
+
 # Internal documentation (not for public release)
+docs/
 .claude/
 CLAUDE.md
 PROJECT_OVERVIEW.md
