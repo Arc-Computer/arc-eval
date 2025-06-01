@@ -36,10 +36,12 @@ class PostEvaluationMenu:
         self.learning_metrics = learning_metrics
         self.workflow_type = workflow_type  # "debug", "compliance", or "improve"
     
-    def reset_domain_state(self) -> None:
+    def reset_domain_state(self, new_domain: Optional[str] = None) -> None:
         """Reset domain-specific state to prevent corruption during domain transitions."""
-        # Clear domain-specific cached data
-        self.domain = None
+        # Clear domain-specific cached data but preserve domain for cycling
+        if new_domain is not None:
+            self.domain = new_domain  # Transition to new domain
+        # Don't set domain to None - that breaks cycling logic
         self.evaluation_results = {}
         self.judge_results = None
         self.improvement_report = None

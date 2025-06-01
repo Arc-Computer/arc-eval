@@ -20,6 +20,12 @@ class InteractiveMenu:
         self.domain_info = self._get_domain_info()
         self.use_case_mapping = self._get_use_case_mapping()
     
+    def reset_domain_state(self) -> None:
+        """Reset domain-specific state to prevent corruption during domain transitions."""
+        # Reinitialize domain info and use case mapping
+        self.domain_info = self._get_domain_info()
+        self.use_case_mapping = self._get_use_case_mapping()
+    
     def _get_domain_info(self) -> Dict[str, Dict[str, any]]:
         """Get detailed domain information for interactive selection."""
         return {
@@ -281,14 +287,9 @@ class InteractiveMenu:
             default="intermediate"
         )
         
-        # Primary goal
+        # Primary goal - dynamic based on domain
         console.print(f"\n[bold]What's your primary goal with {domain} evaluation?[/bold]")
-        if domain == "finance":
-            goal_choices = ["compliance_audit", "risk_assessment", "model_validation", "regulatory_reporting"]
-        elif domain == "security":
-            goal_choices = ["security_testing", "vulnerability_assessment", "ai_safety", "penetration_testing"]
-        else:  # ml
-            goal_choices = ["bias_detection", "model_governance", "fairness_assessment", "ethics_compliance"]
+        goal_choices = self._get_domain_goal_choices(domain)
         
         goal = Prompt.ask(
             "Select primary goal",
@@ -304,3 +305,12 @@ class InteractiveMenu:
             "show_technical_details": experience in ["intermediate", "expert"],
             "show_business_context": role in ["compliance_officers", "risk_managers", "other"]
         }
+    
+    def _get_domain_goal_choices(self, domain: str) -> List[str]:
+        """Get goal choices dynamically based on domain."""
+        domain_goals = {
+            "finance": ["compliance_audit", "risk_assessment", "model_validation", "regulatory_reporting"],
+            "security": ["security_testing", "vulnerability_assessment", "ai_safety", "penetration_testing"],
+            "ml": ["bias_detection", "model_governance", "fairness_assessment", "ethics_compliance"]
+        }
+        return domain_goals.get(domain, ["general_evaluation", "compliance_check", "model_validation"])
