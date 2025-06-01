@@ -37,8 +37,8 @@ class APIManager:
         
         # Initialize provider-specific settings
         if self.provider == "anthropic":
-            self.primary_model = "claude-3-5-sonnet-20241022"
-            self.fallback_model = "claude-3-5-haiku-20241022"
+            self.primary_model = "claude-sonnet-4-20250514"  # Latest Claude Sonnet 4
+            self.fallback_model = "claude-3-5-haiku-20241022"  # Latest Claude Haiku 3.5
             self.api_key = os.getenv("ANTHROPIC_API_KEY")
             if not self.api_key:
                 raise ValueError("ANTHROPIC_API_KEY environment variable not set")
@@ -55,8 +55,8 @@ class APIManager:
         if preferred_model == "auto":
             self.preferred_model = self.primary_model
         else:
-            # Validate model for provider
-            if self.provider == "anthropic" and preferred_model in ["claude-3-5-sonnet-20241022", "claude-3-5-haiku-20241022"]:
+            # Validate model for provider (using supported batch models)
+            if self.provider == "anthropic" and preferred_model in ["claude-sonnet-4-20250514", "claude-3-5-sonnet-20241022", "claude-3-5-haiku-20241022"]:
                 self.preferred_model = preferred_model
             elif self.provider == "openai" and preferred_model in ["gpt-4o", "gpt-4o-mini"]:
                 self.preferred_model = preferred_model
@@ -122,11 +122,16 @@ class APIManager:
     def track_cost(self, input_tokens: int, output_tokens: int, model: str):
         """Track API costs for enterprise cost management with accurate pricing."""
         if self.provider == "anthropic":
-            # Updated Claude pricing (December 2024)
-            if "sonnet" in model.lower():
-                cost = (input_tokens * 3.0 + output_tokens * 15.0) / 1_000_000
+            # Updated Claude pricing (January 2025) - from Anthropic batch docs
+            if "sonnet-4" in model.lower():
+                # Claude Sonnet 4 pricing: $1.50 input / $7.50 output per MTok
+                cost = (input_tokens * 1.5 + output_tokens * 7.5) / 1_000_000
+            elif "sonnet" in model.lower():
+                # Claude Sonnet 3.5 pricing: $1.50 input / $7.50 output per MTok  
+                cost = (input_tokens * 1.5 + output_tokens * 7.5) / 1_000_000
             else:  # haiku
-                cost = (input_tokens * 0.25 + output_tokens * 1.25) / 1_000_000
+                # Claude Haiku 3.5 pricing: $0.40 input / $2.00 output per MTok
+                cost = (input_tokens * 0.4 + output_tokens * 2.0) / 1_000_000
         elif self.provider == "openai":
             # Updated OpenAI pricing (December 2024)
             if "gpt-4o" in model and "mini" not in model:
@@ -382,7 +387,7 @@ class APIManager:
                 batch_requests.append(request)
             
             # Create batch using Anthropic's Message Batches API
-            batch_response = client.beta.messages.batches.create(
+            batch_response = client.messages.batches.create(
                 requests=batch_requests
             )
             batch_id = batch_response.id
@@ -391,10 +396,15 @@ class APIManager:
             total_input_tokens = sum(self._count_tokens(p["prompt"]) for p in prompts)
             estimated_output_tokens = total_input_tokens  # Rough estimate
             
-            if "sonnet" in model.lower():
-                estimated_cost = (total_input_tokens * 3.0 + estimated_output_tokens * 15.0) / 1_000_000
+            if "sonnet-4" in model.lower():
+                # Claude Sonnet 4 batch pricing (50% discount already applied in docs)
+                estimated_cost = (total_input_tokens * 1.5 + estimated_output_tokens * 7.5) / 1_000_000
+            elif "sonnet" in model.lower():
+                # Claude Sonnet 3.5 batch pricing
+                estimated_cost = (total_input_tokens * 1.5 + estimated_output_tokens * 7.5) / 1_000_000
             else:  # haiku
-                estimated_cost = (total_input_tokens * 0.25 + estimated_output_tokens * 1.25) / 1_000_000
+                # Claude Haiku 3.5 batch pricing
+                estimated_cost = (total_input_tokens * 0.4 + estimated_output_tokens * 2.0) / 1_000_000
             
             # Apply 50% batch discount
             estimated_cost *= 0.5
@@ -506,18 +516,13 @@ class APIManager:
         
         while remaining_timeout > 0:
             try:
-                batch = client.beta.messages.batches.retrieve(batch_id)
+                batch = client.messages.batches.retrieve(batch_id)
                 
                 if batch.processing_status == "ended":
-                    # Download results
-                    results_content = client.beta.messages.batches.results(batch_id)
-                    
-                    # Parse results
+                    # Download results - use the streaming results method
                     results = []
-                    for line in results_content.split('\n'):
-                        if line.strip():
-                            result = json.loads(line)
-                            results.append(result)
+                    for result in client.messages.batches.results(batch_id):
+                        results.append(result)
                     
                     logger.info(f"Anthropic batch {batch_id} completed with {len(results)} results")
                     return results
