@@ -105,6 +105,9 @@ class ComprehensiveReliabilityAnalysis:
     insights_summary: List[str]  # Key insights for user
     next_steps: List[str]       # Recommended actions
     
+    # Cognitive Analysis (NEW - Task 8)
+    cognitive_analysis: Optional[Any]  # CognitiveAnalyzer results
+    
     # Evidence and Confidence
     analysis_confidence: float
     evidence_quality: str      # "high", "medium", "low"
@@ -1342,10 +1345,21 @@ Required parameters:
             workflow_metrics
         )
         
-        next_steps = self._generate_next_steps(
+        # 6.1. Analyze Migration Opportunities (NEW - Task 7)
+        migration_analysis = self._analyze_migration_opportunities(
             detected_framework,
             framework_performance,
             workflow_metrics
+        )
+        
+        # 6.2. Cognitive Analysis Integration (NEW - Task 8)
+        cognitive_analysis = self._perform_cognitive_analysis(agent_outputs)
+        
+        next_steps = self._generate_next_steps(
+            detected_framework,
+            framework_performance,
+            workflow_metrics,
+            migration_analysis
         )
         
         # 7. Calculate Overall Analysis Confidence
@@ -1368,6 +1382,7 @@ Required parameters:
             reliability_dashboard=reliability_dashboard,
             insights_summary=insights_summary,
             next_steps=next_steps,
+            cognitive_analysis=cognitive_analysis,  # NEW - Task 8
             analysis_confidence=analysis_confidence,
             evidence_quality=evidence_quality,
             sample_size=sample_size
@@ -1402,6 +1417,7 @@ Required parameters:
             reliability_dashboard="❌ No data available for analysis",
             insights_summary=["No agent outputs provided for analysis"],
             next_steps=["Provide agent output data for analysis"],
+            cognitive_analysis=None,  # NEW - Task 8
             analysis_confidence=0.0,
             evidence_quality="none",
             sample_size=0
@@ -1623,7 +1639,8 @@ Required parameters:
         self,
         detected_framework: Optional[str],
         framework_performance: Optional[FrameworkPerformanceAnalysis],
-        workflow_metrics: WorkflowReliabilityMetrics
+        workflow_metrics: WorkflowReliabilityMetrics,
+        migration_analysis: Optional[Dict[str, Any]] = None
     ) -> List[str]:
         """Generate recommended next steps."""
         next_steps = []
@@ -1648,6 +1665,24 @@ Required parameters:
         if framework_performance and framework_performance.framework_alternatives:
             alternatives = ', '.join(framework_performance.framework_alternatives[:2])
             next_steps.append(f"5. Consider framework alternatives: {alternatives}")
+        
+        # Migration recommendations (NEW - Task 7)
+        if migration_analysis and migration_analysis.get("migration_recommended"):
+            recommended_framework = migration_analysis.get("recommended_framework")
+            improvement_estimate = migration_analysis.get("improvement_estimate", 0)
+            migration_priority = migration_analysis.get("priority", "medium")
+            
+            if migration_priority == "high":
+                next_steps.append(f"🚀 HIGH PRIORITY: Migrate to {recommended_framework} for {improvement_estimate}% performance improvement")
+            elif migration_priority == "medium":
+                next_steps.append(f"⚡ Consider migrating to {recommended_framework} for {improvement_estimate}% improvement")
+            else:
+                next_steps.append(f"📊 Evaluate migration to {recommended_framework} for potential {improvement_estimate}% gains")
+            
+            # Add specific migration steps
+            migration_steps = migration_analysis.get("migration_steps", [])
+            for step in migration_steps[:2]:  # Add top 2 migration steps
+                next_steps.append(f"   • {step}")
         
         # Always include compliance evaluation
         next_steps.append("6. Run enterprise compliance evaluation for production readiness")
@@ -2405,3 +2440,431 @@ Required parameters:
         final_score = max(0.0, base_score - disruptor_penalty - contradiction_penalty)
         
         return final_score
+    
+    # ==================== Migration Analysis Methods (Task 7) ====================
+    
+    def _analyze_migration_opportunities(
+        self,
+        detected_framework: Optional[str],
+        framework_performance: Optional[FrameworkPerformanceAnalysis],
+        workflow_metrics: WorkflowReliabilityMetrics
+    ) -> Dict[str, Any]:
+        """Analyze framework migration opportunities based on performance thresholds."""
+        
+        if not detected_framework or not framework_performance:
+            return {"migration_recommended": False, "reason": "Insufficient framework data"}
+        
+        # Define performance thresholds for migration recommendation
+        migration_thresholds = {
+            "success_rate": 0.85,           # Below 85% success rate
+            "tool_failure_rate": 0.15,     # Above 15% tool failure rate
+            "timeout_frequency": 0.10,     # Above 10% timeout rate
+            "workflow_reliability": 0.75,   # Below 75% workflow reliability
+            "schema_mismatch_rate": 0.10    # Above 10% schema mismatches
+        }
+        
+        # Evaluate current performance against thresholds
+        performance_issues = []
+        severity_score = 0
+        
+        if framework_performance.success_rate < migration_thresholds["success_rate"]:
+            gap = migration_thresholds["success_rate"] - framework_performance.success_rate
+            performance_issues.append(f"Low success rate: {framework_performance.success_rate:.1%}")
+            severity_score += gap * 100  # Convert to percentage points
+        
+        if framework_performance.tool_call_failure_rate > migration_thresholds["tool_failure_rate"]:
+            gap = framework_performance.tool_call_failure_rate - migration_thresholds["tool_failure_rate"]
+            performance_issues.append(f"High tool failure rate: {framework_performance.tool_call_failure_rate:.1%}")
+            severity_score += gap * 100
+        
+        if framework_performance.timeout_frequency > migration_thresholds["timeout_frequency"]:
+            gap = framework_performance.timeout_frequency - migration_thresholds["timeout_frequency"]
+            performance_issues.append(f"Frequent timeouts: {framework_performance.timeout_frequency:.1%}")
+            severity_score += gap * 50  # Timeouts are less critical
+        
+        if workflow_metrics.workflow_success_rate < migration_thresholds["workflow_reliability"]:
+            gap = migration_thresholds["workflow_reliability"] - workflow_metrics.workflow_success_rate
+            performance_issues.append(f"Poor workflow reliability: {workflow_metrics.workflow_success_rate:.1%}")
+            severity_score += gap * 100
+        
+        if workflow_metrics.schema_mismatch_rate > migration_thresholds["schema_mismatch_rate"]:
+            gap = workflow_metrics.schema_mismatch_rate - migration_thresholds["schema_mismatch_rate"]
+            performance_issues.append(f"Schema mismatches: {workflow_metrics.schema_mismatch_rate:.1%}")
+            severity_score += gap * 75  # Schema issues are quite critical
+        
+        # Determine if migration is recommended based on severity
+        migration_recommended = len(performance_issues) >= 2 or severity_score > 20
+        
+        if not migration_recommended:
+            return {
+                "migration_recommended": False,
+                "reason": "Performance within acceptable thresholds",
+                "current_framework": detected_framework,
+                "performance_score": max(0, 100 - severity_score)
+            }
+        
+        # Generate migration recommendation
+        recommended_framework = self._get_recommended_migration_target(
+            detected_framework, performance_issues, framework_performance
+        )
+        
+        improvement_estimate = self._estimate_migration_improvement(
+            performance_issues, severity_score
+        )
+        
+        migration_priority = self._determine_migration_priority(severity_score, performance_issues)
+        
+        migration_steps = self._generate_migration_steps(detected_framework, recommended_framework)
+        
+        return {
+            "migration_recommended": True,
+            "current_framework": detected_framework,
+            "recommended_framework": recommended_framework,
+            "improvement_estimate": improvement_estimate,
+            "priority": migration_priority,
+            "performance_issues": performance_issues,
+            "severity_score": severity_score,
+            "migration_steps": migration_steps,
+            "estimated_migration_time": self._estimate_migration_time(detected_framework, recommended_framework),
+            "migration_risks": self._assess_migration_risks(detected_framework, recommended_framework)
+        }
+    
+    def _get_recommended_migration_target(
+        self,
+        current_framework: str,
+        performance_issues: List[str],
+        framework_performance: FrameworkPerformanceAnalysis
+    ) -> str:
+        """Get recommended migration target framework based on current issues."""
+        
+        # Framework migration matrix based on common issue patterns
+        migration_matrix = {
+            "langchain": {
+                "default": "openai",  # Direct API often more reliable
+                "timeout": "anthropic",  # Claude often faster for complex reasoning
+                "tool_failure": "openai",  # Better tool call reliability
+                "complexity": "agno"  # Simpler, lighter framework
+            },
+            "crewai": {
+                "default": "autogen",  # Better multi-agent support
+                "performance": "langchain",  # More mature ecosystem
+                "tool_failure": "openai",  # Direct API reliability
+                "complexity": "anthropic"  # Simpler agent interactions
+            },
+            "autogen": {
+                "default": "crewai",  # Specialized for agent crews
+                "performance": "openai",  # Direct API performance
+                "tool_failure": "anthropic",  # Better tool integration
+                "reliability": "langchain"  # More stable ecosystem
+            },
+            "openai": {
+                "default": "anthropic",  # Alternative provider
+                "performance": "langchain",  # Local optimization possible
+                "reliability": "anthropic",  # Different failure modes
+                "cost": "agno"  # More cost-effective
+            },
+            "anthropic": {
+                "default": "openai",  # Alternative provider
+                "tool_failure": "langchain",  # Better tool ecosystem
+                "performance": "openai",  # Faster API responses
+                "cost": "agno"  # More cost-effective
+            },
+            "generic": {
+                "default": "openai",  # Move to structured framework
+                "reliability": "langchain",  # Full framework support
+                "simplicity": "anthropic",  # Easy to implement
+                "cost": "agno"  # Lightweight option
+            },
+            "agno": {
+                "default": "openai",  # More features
+                "complexity": "langchain",  # Full framework capabilities
+                "reliability": "anthropic",  # Enterprise reliability
+                "performance": "openai"  # Faster responses
+            }
+        }
+        
+        # Determine primary issue type
+        primary_issue = "default"
+        if any("timeout" in issue.lower() for issue in performance_issues):
+            primary_issue = "timeout"
+        elif any("tool" in issue.lower() for issue in performance_issues):
+            primary_issue = "tool_failure"
+        elif any("reliability" in issue.lower() or "success" in issue.lower() for issue in performance_issues):
+            primary_issue = "reliability"
+        elif framework_performance.avg_response_time > 5.0:
+            primary_issue = "performance"
+        
+        # Get recommendation
+        framework_options = migration_matrix.get(current_framework, {"default": "openai"})
+        return framework_options.get(primary_issue, framework_options["default"])
+    
+    def _estimate_migration_improvement(
+        self,
+        performance_issues: List[str],
+        severity_score: float
+    ) -> int:
+        """Estimate performance improvement percentage from migration."""
+        
+        # Base improvement estimate based on severity
+        base_improvement = min(50, int(severity_score))  # Cap at 50% improvement
+        
+        # Issue-specific improvements
+        issue_bonuses = {
+            "timeout": 15,      # Migration often reduces timeouts significantly
+            "tool": 20,         # Better frameworks have better tool integration
+            "success": 25,      # Core reliability improvements
+            "schema": 10        # Better schema handling
+        }
+        
+        additional_improvement = 0
+        for issue in performance_issues:
+            for issue_type, bonus in issue_bonuses.items():
+                if issue_type in issue.lower():
+                    additional_improvement += bonus
+                    break
+        
+        # Total improvement estimate
+        total_improvement = min(60, base_improvement + additional_improvement)  # Cap at 60%
+        
+        return max(10, total_improvement)  # Minimum 10% improvement
+    
+    def _determine_migration_priority(
+        self,
+        severity_score: float,
+        performance_issues: List[str]
+    ) -> str:
+        """Determine migration priority based on severity and issues."""
+        
+        critical_indicators = ["success", "reliability", "failure"]
+        has_critical_issues = any(
+            any(indicator in issue.lower() for indicator in critical_indicators)
+            for issue in performance_issues
+        )
+        
+        if severity_score > 40 or has_critical_issues:
+            return "high"
+        elif severity_score > 20 or len(performance_issues) >= 3:
+            return "medium"
+        else:
+            return "low"
+    
+    def _generate_migration_steps(
+        self,
+        current_framework: str,
+        target_framework: str
+    ) -> List[str]:
+        """Generate specific migration steps."""
+        
+        migration_steps_map = {
+            ("langchain", "openai"): [
+                "Migrate to direct OpenAI API calls for better reliability",
+                "Replace LangChain chains with custom function orchestration",
+                "Implement OpenAI function calling for tool integration",
+                "Add custom retry logic and error handling"
+            ],
+            ("crewai", "autogen"): [
+                "Migrate crew workflows to AutoGen conversation patterns",
+                "Replace CrewAI tasks with AutoGen agent roles",
+                "Implement AutoGen group chat for multi-agent coordination",
+                "Add custom agent memory management"
+            ],
+            ("openai", "anthropic"): [
+                "Migrate OpenAI function calls to Claude tool use format",
+                "Replace OpenAI-specific prompting with Claude best practices",
+                "Implement Anthropic's structured output patterns",
+                "Add Claude-optimized error handling"
+            ],
+            ("generic", "openai"): [
+                "Structure agent outputs using OpenAI API format",
+                "Implement OpenAI function calling for tool integration",
+                "Add OpenAI-compatible streaming and async support",
+                "Integrate with OpenAI ecosystem tools"
+            ]
+        }
+        
+        # Get specific steps or generate generic ones
+        migration_key = (current_framework, target_framework)
+        if migration_key in migration_steps_map:
+            return migration_steps_map[migration_key]
+        
+        # Generic migration steps
+        return [
+            f"Plan migration from {current_framework} to {target_framework}",
+            f"Set up {target_framework} development environment",
+            f"Implement core functionality using {target_framework} patterns",
+            f"Test migration with parallel {current_framework} and {target_framework} runs",
+            f"Validate performance improvements and deploy {target_framework} solution"
+        ]
+    
+    def _estimate_migration_time(
+        self,
+        current_framework: str,
+        target_framework: str
+    ) -> str:
+        """Estimate migration time based on framework complexity."""
+        
+        # Framework complexity scores (higher = more complex to migrate from/to)
+        complexity_scores = {
+            "generic": 1,
+            "openai": 2,
+            "anthropic": 2,
+            "agno": 3,
+            "autogen": 4,
+            "langchain": 5,
+            "crewai": 4,
+            "langgraph": 6
+        }
+        
+        source_complexity = complexity_scores.get(current_framework, 3)
+        target_complexity = complexity_scores.get(target_framework, 3)
+        
+        # Calculate migration effort (days)
+        base_effort = 3  # Minimum 3 days
+        complexity_effort = (source_complexity + target_complexity) * 1.5
+        total_days = int(base_effort + complexity_effort)
+        
+        if total_days <= 5:
+            return "3-5 days"
+        elif total_days <= 10:
+            return "1-2 weeks"
+        elif total_days <= 20:
+            return "2-3 weeks"
+        else:
+            return "3-4 weeks"
+    
+    def _assess_migration_risks(
+        self,
+        current_framework: str,
+        target_framework: str
+    ) -> List[str]:
+        """Assess risks associated with framework migration."""
+        
+        risks = []
+        
+        # Framework-specific risks
+        framework_risks = {
+            "langchain": ["Complex dependency chain", "Custom chain compatibility"],
+            "crewai": ["Multi-agent coordination complexity", "Task workflow dependencies"],
+            "autogen": ["Conversation state management", "Agent memory handling"],
+            "openai": ["API rate limits", "Function calling compatibility"],
+            "anthropic": ["Tool use format changes", "Context window differences"],
+            "agno": ["Limited ecosystem", "Documentation gaps"],
+            "generic": ["Lack of structure", "Custom implementation dependencies"]
+        }
+        
+        # Add source framework risks
+        source_risks = framework_risks.get(current_framework, [])
+        for risk in source_risks:
+            risks.append(f"From {current_framework}: {risk}")
+        
+        # Add target framework risks
+        target_risks = framework_risks.get(target_framework, [])
+        for risk in target_risks:
+            risks.append(f"To {target_framework}: {risk}")
+        
+        # Add general migration risks
+        risks.extend([
+            "Temporary performance degradation during transition",
+            "Need for parallel testing and validation",
+            "Potential integration issues with existing systems"
+        ])
+        
+        return risks[:5]  # Return top 5 risks
+    
+    # ==================== Cognitive Analysis Integration (Task 8) ====================
+    
+    def _perform_cognitive_analysis(self, agent_outputs: List[Any]) -> Optional[Any]:
+        """Perform cognitive analysis using CognitiveAnalyzer."""
+        
+        try:
+            from agent_eval.analysis.cognitive_analyzer import CognitiveAnalyzer
+            
+            if not agent_outputs:
+                return None
+            
+            # Initialize cognitive analyzer
+            cognitive_analyzer = CognitiveAnalyzer()
+            
+            # Extract reasoning chains from agent outputs for analysis
+            reasoning_chains = self._extract_reasoning_chains_for_cognitive_analysis(agent_outputs)
+            
+            if not reasoning_chains:
+                # Fallback: use agent outputs directly if no reasoning chains found
+                logger.info("No reasoning chains found, performing cognitive analysis on agent outputs directly")
+                return cognitive_analyzer.generate_comprehensive_cognitive_analysis(
+                    agent_outputs=agent_outputs,
+                    reasoning_chains=None
+                )
+            
+            # Perform comprehensive cognitive analysis
+            cognitive_analysis = cognitive_analyzer.generate_comprehensive_cognitive_analysis(
+                agent_outputs=agent_outputs,
+                reasoning_chains=reasoning_chains
+            )
+            
+            logger.info(f"Cognitive analysis completed: health_score={cognitive_analysis.cognitive_health_score:.2f}")
+            
+            return cognitive_analysis
+            
+        except ImportError as e:
+            logger.warning(f"CognitiveAnalyzer not available: {e}")
+            return None
+        except Exception as e:
+            logger.warning(f"Cognitive analysis failed: {e}")
+            return None
+    
+    def _extract_reasoning_chains_for_cognitive_analysis(self, agent_outputs: List[Any]) -> List[str]:
+        """Extract reasoning chains from agent outputs for cognitive analysis."""
+        
+        reasoning_chains = []
+        
+        for output in agent_outputs:
+            try:
+                # Convert output to string for analysis
+                output_str = str(output)
+                
+                # Look for reasoning indicators in the output
+                reasoning_patterns = [
+                    r"(?:because|since|therefore|thus|hence|consequently).*?[.!?]",
+                    r"(?:reasoning|thinking|analysis|consideration)[:.].*?[.!?]",
+                    r"(?:let me think|my analysis|i believe|i think).*?[.!?]",
+                    r"(?:step \d+|first|second|third|next|then|finally).*?[.!?]",
+                    r"(?:based on|considering|given that|due to).*?[.!?]"
+                ]
+                
+                # Extract reasoning segments
+                for pattern in reasoning_patterns:
+                    matches = re.findall(pattern, output_str, re.IGNORECASE | re.DOTALL)
+                    for match in matches:
+                        # Clean up the reasoning text
+                        cleaned_reasoning = match.strip()
+                        if len(cleaned_reasoning) > 20:  # Only include substantial reasoning
+                            reasoning_chains.append(cleaned_reasoning)
+                
+                # If no pattern matches, look for longer coherent text segments
+                if not reasoning_chains:
+                    # Extract sentences that might contain reasoning
+                    sentences = re.split(r'[.!?]+', output_str)
+                    for sentence in sentences:
+                        sentence = sentence.strip()
+                        # Include sentences that are substantive and might contain reasoning
+                        if (len(sentence) > 50 and 
+                            any(word in sentence.lower() for word in 
+                                ['because', 'therefore', 'analysis', 'considering', 'reasoning', 'think', 'believe'])):
+                            reasoning_chains.append(sentence)
+                            
+            except Exception as e:
+                logger.debug(f"Error extracting reasoning from output: {e}")
+                continue
+        
+        # Remove duplicates while preserving order
+        unique_reasoning = []
+        seen = set()
+        for reasoning in reasoning_chains:
+            if reasoning not in seen:
+                unique_reasoning.append(reasoning)
+                seen.add(reasoning)
+        
+        logger.debug(f"Extracted {len(unique_reasoning)} reasoning chains from {len(agent_outputs)} outputs")
+        
+        return unique_reasoning[:20]  # Limit to top 20 for performance

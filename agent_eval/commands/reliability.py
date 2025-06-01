@@ -173,42 +173,51 @@ class ReliabilityCommandHandler(BaseCommandHandler):
             console.print(f"🔧 Framework: {framework_info}")
             console.print(f"📋 Debug Mode: {'Agent Debugging' if debug_agent else 'Unified Debug'}")
         
-        # Show post-evaluation menu for unified debug workflow
+        # Show debug-specific post-evaluation menu (NEW - Task 9)
         if unified_debug and not kwargs.get('no_interaction', False):
             try:
-                from agent_eval.ui.post_evaluation_menu import PostEvaluationMenu
+                from agent_eval.ui.debug_post_evaluation_menu import DebugPostEvaluationMenu
+                from pathlib import Path
                 
-                # Build evaluation results for menu
-                # Try to get framework from analysis if available
-                detected_framework = framework
-                if 'analysis' in locals() and hasattr(analysis, 'detected_framework'):
-                    detected_framework = analysis.detected_framework
-                elif framework_info:
-                    detected_framework = framework_info
+                # Get input file path for debugging session
+                input_file = kwargs.get('input_file')
+                if isinstance(input_file, str):
+                    input_file = Path(input_file)
                 
-                eval_results = {
-                    "summary": {
-                        "failures_found": len([o for o in agent_outputs if hasattr(o, 'error') and o.error]),
-                        "total_outputs": len(agent_outputs),
-                        "framework": detected_framework
-                    },
-                    "outputs": agent_outputs,
-                    "domain": kwargs.get('domain') or "general"
-                }
+                # Create debug session data if available
+                debug_session_data = None
+                if 'analysis' in locals() and analysis:
+                    debug_session_data = {
+                        "session_id": f"debug_{analysis.detected_framework or 'unknown'}",
+                        "start_time": "Live Session",
+                        "duration": "Active",
+                        "status": "completed",
+                        "framework": analysis.detected_framework or "unknown",
+                        "sample_size": analysis.sample_size,
+                        "critical_issues": analysis.sample_size if hasattr(analysis, 'sample_size') else 0
+                    }
                 
-                # Create and display menu
-                menu = PostEvaluationMenu(
-                    domain=kwargs.get('domain') or "general",
-                    evaluation_results=eval_results,
-                    workflow_type="debug"
+                # Create and display debug-specific menu
+                debug_menu = DebugPostEvaluationMenu(
+                    reliability_analysis=analysis if 'analysis' in locals() else None,
+                    cognitive_analysis=analysis.cognitive_analysis if ('analysis' in locals() and hasattr(analysis, 'cognitive_analysis')) else None,
+                    input_file=input_file,
+                    debug_session_data=debug_session_data
                 )
                 
                 # Display menu and handle user choice
-                choice = menu.display_menu()
-                menu.execute_choice(choice)
+                choice = debug_menu.display_menu()
+                debug_menu.execute_choice(choice)
                 
             except Exception as e:
-                console.print(f"\n[yellow]⚠️  Post-debug options unavailable: {str(e)}[/yellow]")
+                console.print(f"\n[yellow]⚠️  Debug menu unavailable: {str(e)}[/yellow]")
+                self.logger.debug(f"Debug menu error: {e}")
+                
+                # Fallback to basic guidance
+                console.print("\n[cyan]💡 Debug workflow complete. Next steps:[/cyan]")
+                console.print("• Review analysis results above")
+                console.print("• Run compliance evaluation for production readiness")
+                console.print("• Use framework-specific optimization recommendations")
         
         return 0
     
