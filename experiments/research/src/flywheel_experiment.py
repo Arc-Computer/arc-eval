@@ -51,6 +51,11 @@ class FlywheelExperiment:
         self.experiment_dir.mkdir(parents=True, exist_ok=True)
         self.research_mode = research_mode  # Controls full vs sampled evaluation
         
+        # Multi-domain configuration for full enterprise validation
+        self.domains = ["finance", "security", "ml"]
+        self.domain_scenarios = {"finance": 110, "security": 120, "ml": 148}  # Total: 378
+        self.current_domain_index = 0
+        
         # Verify API key for Agent-as-a-Judge
         self.api_key = os.getenv("ANTHROPIC_API_KEY")
         if not self.api_key and not os.getenv("OPENAI_API_KEY"):
@@ -80,6 +85,7 @@ class FlywheelExperiment:
         
         print(f"🔬 ARC-Eval Flywheel Experiment initialized")
         print(f"🤖 Agent-as-a-Judge: ✅ Enabled")
+        print(f"🌐 Multi-Domain: {', '.join(self.domains)} ({sum(self.domain_scenarios.values())} total scenarios)")
         print(f"📁 Experiment directory: {self.experiment_dir}")
     
     def load_baseline_data(self, sample_size: int = None) -> List[Dict[str, Any]]:
@@ -101,19 +107,26 @@ class FlywheelExperiment:
         
         return baseline_data
     
-    def run_agent_judge_evaluation(self, agent_outputs_file: Path, iteration: int) -> Dict[str, Any]:
+    def run_agent_judge_evaluation(self, agent_outputs_file: Path, iteration: int, domain: str = None) -> Dict[str, Any]:
         """
         Run Agent-as-a-Judge evaluation using actual arc-eval CLI.
         
-        This calls the real production CLI with all 110 finance scenarios.
+        This calls the real production CLI across all enterprise domains (finance, security, ml).
+        Domain parameter allows targeting specific compliance frameworks.
         """
-        print(f"🔍 Running Agent-as-a-Judge evaluation for iteration {iteration}...")
+        # Determine domain for this evaluation (cycle through domains)
+        if domain is None:
+            domain = self.domains[self.current_domain_index % len(self.domains)]
+            self.current_domain_index += 1
+        
+        print(f"🔍 Running Agent-as-a-Judge evaluation for iteration {iteration}, domain: {domain}...")
+        print(f"🎯 Evaluating against {self.domain_scenarios[domain]} {domain} scenarios")
         
         # Use actual arc-eval CLI with Agent-as-a-Judge
         cmd = [
             sys.executable, "-m", "agent_eval",
             "compliance",
-            "--domain", "finance", 
+            "--domain", domain, 
             "--input", str(agent_outputs_file),
             "--no-export",  # Skip PDF generation for speed
             "--no-interactive",  # Skip interactive menu for automation
@@ -154,7 +167,7 @@ class FlywheelExperiment:
                     # Use full baseline dataset for research evaluation
                     if iteration > 1:
                         sample_data = self.select_adaptive_scenarios(full_data, iteration, 
-                                                                   baseline_pass_rate=63.9)
+                                                                   baseline_pass_rate=63.9, domain=domain)
                     else:
                         # Use full research baseline examples for research
                         sample_data = full_data
@@ -164,7 +177,7 @@ class FlywheelExperiment:
                     # Development mode: use smaller sample for faster testing
                     if iteration > 1:
                         sample_data = self.select_adaptive_scenarios(full_data, iteration, 
-                                                                   baseline_pass_rate=63.9)
+                                                                   baseline_pass_rate=63.9, domain=domain)
                     else:
                         # Use only first 5 examples for development testing
                         sample_data = full_data[:5]
@@ -180,7 +193,7 @@ class FlywheelExperiment:
                 cmd = [
                     sys.executable, "-m", "agent_eval",
                     "compliance",
-                    "--domain", "finance", 
+                    "--domain", domain, 
                     "--input", str(sample_file),
                     "--no-export",
                     "--no-interactive",  # Skip interactive menu for automation
@@ -266,7 +279,7 @@ class FlywheelExperiment:
                 result_returncode = 0  # Treat as success
             
             # Parse evaluation results from CLI output
-            evaluation_data = self._parse_cli_output(result_stdout, iteration)
+            evaluation_data = self._parse_cli_output(result_stdout, iteration, domain)
             if evaluation_data:
                 print(f"✅ Agent-as-a-Judge evaluation completed")
                 print(f"📊 Pass rate: {evaluation_data.get('summary', {}).get('pass_rate', 'unknown')}%")
@@ -296,8 +309,8 @@ class FlywheelExperiment:
                 # Clean up generated file
                 latest_file.unlink()
                 
-                # Save to experiment directory
-                eval_file = self.experiment_dir / "evaluations" / f"evaluation_iter_{iteration:02d}.json"
+                # Save to experiment directory with domain identifier
+                eval_file = self.experiment_dir / "evaluations" / f"evaluation_{domain}_iter_{iteration:02d}.json"
                 with open(eval_file, 'w') as f:
                     json.dump(evaluation_data, f, indent=2)
                 
@@ -319,7 +332,7 @@ class FlywheelExperiment:
         except Exception as e:
             raise RuntimeError(f"Agent-as-a-Judge evaluation error: {e} - real evaluation required for research validity")
     
-    def _parse_cli_output(self, stdout: str, iteration: int) -> Dict[str, Any]:
+    def _parse_cli_output(self, stdout: str, iteration: int, domain: str = "finance") -> Dict[str, Any]:
         """Parse evaluation results from CLI output."""
         try:
             import re
@@ -330,8 +343,8 @@ class FlywheelExperiment:
                 evaluation_json = json_match.group(0)
                 evaluation_data = json.loads(evaluation_json)
                 
-                # Save evaluation data
-                eval_file = self.experiment_dir / "evaluations" / f"evaluation_iter_{iteration:02d}.json"
+                # Save evaluation data with domain identifier
+                eval_file = self.experiment_dir / "evaluations" / f"evaluation_{domain}_iter_{iteration:02d}.json"
                 eval_file.parent.mkdir(exist_ok=True)
                 with open(eval_file, 'w') as f:
                     json.dump(evaluation_data, f, indent=2)
@@ -378,8 +391,8 @@ class FlywheelExperiment:
                     "iteration": iteration
                 }
                 
-                # Save evaluation data
-                eval_file = self.experiment_dir / "evaluations" / f"evaluation_iter_{iteration:02d}.json"
+                # Save evaluation data with domain identifier
+                eval_file = self.experiment_dir / "evaluations" / f"evaluation_{domain}_iter_{iteration:02d}.json"
                 eval_file.parent.mkdir(exist_ok=True)
                 with open(eval_file, 'w') as f:
                     json.dump(evaluation_data, f, indent=2)
@@ -393,7 +406,7 @@ class FlywheelExperiment:
             return None
     
     
-    def analyze_failures_and_create_strategy(self, evaluation_data: Dict, iteration: int) -> Dict[str, Any]:
+    def analyze_failures_and_create_strategy(self, evaluation_data: Dict, iteration: int, domain: str = "finance") -> Dict[str, Any]:
         """
         Analyze failures and create improvement strategy using real self_improvement.py.
         """
@@ -458,8 +471,8 @@ class FlywheelExperiment:
             print(f"❌ ACL analysis pipeline failed - experiment cannot continue without real research data: {e}")
             raise RuntimeError(f"Complete ACL analysis pipeline required for research validity: {e}")
         
-        # Save strategy
-        strategy_file = self.experiment_dir / "strategies" / f"strategy_iter_{iteration:02d}.json"
+        # Save strategy with domain identifier
+        strategy_file = self.experiment_dir / "strategies" / f"strategy_{domain}_iter_{iteration:02d}.json"
         strategy_file.parent.mkdir(exist_ok=True)
         with open(strategy_file, 'w') as f:
             json.dump(strategy, f, indent=2)
@@ -889,7 +902,8 @@ class FlywheelExperiment:
                     print(f"📁 Using baseline data")
                 else:
                     # Apply improvements from previous iteration
-                    previous_strategy = self._load_previous_strategy(iteration - 1)
+                    prev_domain = self.domains[(iteration - 2) % len(self.domains)]
+                    previous_strategy = self._load_previous_strategy(iteration - 1, prev_domain)
                     current_outputs = self.apply_improvements(baseline_data, previous_strategy, iteration)
                     
                     # Save improved outputs
@@ -899,11 +913,12 @@ class FlywheelExperiment:
                     
                     print(f"💾 Generated {len(current_outputs)} improved outputs")
                 
-                # 2. Run Agent-as-a-Judge evaluation
+                # 2. Run Agent-as-a-Judge evaluation (domain cycles automatically)
                 evaluation_data = self.run_agent_judge_evaluation(outputs_file, iteration)
+                current_domain = self.domains[(iteration - 1) % len(self.domains)]
                 
                 # 3. Analyze failures and create improvement strategy
-                strategy = self.analyze_failures_and_create_strategy(evaluation_data, iteration)
+                strategy = self.analyze_failures_and_create_strategy(evaluation_data, iteration, current_domain)
                 
                 # 4. Log results
                 iter_duration = time.time() - iter_start
@@ -992,7 +1007,7 @@ class FlywheelExperiment:
         return final_iteration, final_pass_rate
     
     def select_adaptive_scenarios(self, baseline_data: List[Dict], 
-                                iteration: int, baseline_pass_rate: float) -> List[Dict]:
+                                iteration: int, baseline_pass_rate: float, domain: str = "finance") -> List[Dict]:
         """
         Select scenarios adaptively based on current performance using ACL principles.
         
@@ -1000,9 +1015,20 @@ class FlywheelExperiment:
         that targets the agent's current learning zone.
         """
         agent_id = "research_agent"
-        domain = "finance"
         
         try:
+            # Filter baseline data by domain first
+            domain_filtered_data = [
+                item for item in baseline_data 
+                if item.get('metadata', {}).get('domain') == domain
+            ]
+            
+            print(f"🔍 Domain filtering: {len(domain_filtered_data)} {domain} scenarios from {len(baseline_data)} total")
+            
+            if not domain_filtered_data:
+                print(f"⚠️  No {domain} scenarios found in baseline data, using all data")
+                domain_filtered_data = baseline_data
+            
             # Get adaptive curriculum data from self-improvement engine
             curriculum_data = self.self_improvement.get_adaptive_curriculum_data(agent_id, domain)
             
@@ -1039,15 +1065,15 @@ class FlywheelExperiment:
             if adaptive_scenarios:
                 print(f"✅ Selected {len(adaptive_scenarios)} adaptive scenarios")
                 
-                # Convert scenario definitions to agent output format using real baseline data
+                # Convert scenario definitions to agent output format using domain-filtered baseline data
                 adaptive_samples = []
                 for i, scenario in enumerate(adaptive_scenarios):
-                    # Use real baseline examples for all adaptive scenarios
-                    if i < len(baseline_data):
-                        base_sample = baseline_data[i].copy()
+                    # Use domain-filtered baseline examples for all adaptive scenarios
+                    if i < len(domain_filtered_data):
+                        base_sample = domain_filtered_data[i].copy()
                     else:
-                        # Cycle through available baseline data
-                        base_sample = baseline_data[i % len(baseline_data)].copy()
+                        # Cycle through available domain-filtered data
+                        base_sample = domain_filtered_data[i % len(domain_filtered_data)].copy()
                     
                     # Update with scenario-specific information
                     base_sample.update({
@@ -1065,12 +1091,19 @@ class FlywheelExperiment:
             
             else:
                 print(f"⚠️  No adaptive scenarios found, using performance-driven selection")
-                return self._performance_based_scenario_selection(baseline_data, iteration, current_pass_rate)
+                return self._performance_based_scenario_selection(domain_filtered_data, iteration, current_pass_rate)
                 
         except Exception as e:
             print(f"⚠️  Adaptive selection error: {e}")
             print(f"🔄 Using performance-driven selection")
-            return self._performance_based_scenario_selection(baseline_data, iteration, baseline_pass_rate / 100.0)
+            # Filter baseline data by domain for fallback
+            domain_filtered_data = [
+                item for item in baseline_data 
+                if item.get('metadata', {}).get('domain') == domain
+            ]
+            if not domain_filtered_data:
+                domain_filtered_data = baseline_data
+            return self._performance_based_scenario_selection(domain_filtered_data, iteration, baseline_pass_rate / 100.0)
     
     def _performance_based_scenario_selection(self, baseline_data: List[Dict], 
                                              iteration: int, current_pass_rate: float) -> List[Dict]:
@@ -1120,10 +1153,17 @@ class FlywheelExperiment:
         
         return selected_samples
     
-    def _load_previous_strategy(self, iteration: int) -> Dict[str, Any]:
-        """Load strategy from previous iteration."""
-        strategy_file = self.experiment_dir / "strategies" / f"strategy_iter_{iteration:02d}.json"
+    def _load_previous_strategy(self, iteration: int, domain: str = None) -> Dict[str, Any]:
+        """Load strategy from previous iteration, preferring domain-specific strategies."""
+        if domain:
+            # Try domain-specific strategy first
+            strategy_file = self.experiment_dir / "strategies" / f"strategy_{domain}_iter_{iteration:02d}.json"
+            if strategy_file.exists():
+                with open(strategy_file, 'r') as f:
+                    return json.load(f)
         
+        # Fallback to generic strategy file (backward compatibility)
+        strategy_file = self.experiment_dir / "strategies" / f"strategy_iter_{iteration:02d}.json"
         if strategy_file.exists():
             with open(strategy_file, 'r') as f:
                 return json.load(f)
