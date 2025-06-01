@@ -138,6 +138,8 @@ class FlywheelExperiment:
         # Set environment variable to bypass interactive menu
         env_vars["ARC_EVAL_NO_INTERACTION"] = "1"
         env_vars["PYTHONUNBUFFERED"] = "1"  # For real-time output
+        # Enable batch processing for cost optimization
+        env_vars["AGENT_EVAL_BATCH_MODE"] = "true"
         
         # Try OpenAI if API key available
         if os.getenv("OPENAI_API_KEY"):
