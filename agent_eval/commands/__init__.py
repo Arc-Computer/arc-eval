@@ -10,11 +10,19 @@ from .reliability import ReliabilityCommandHandler
 from .compliance import ComplianceCommandHandler
 from .workflow import WorkflowCommandHandler
 from .benchmark import BenchmarkCommandHandler
+from .debug_command import DebugCommand
+from .compliance_command import ComplianceCommand
+from .improve_command import ImproveCommand
+from .analyze_command import AnalyzeCommand
 
 __all__ = [
     'BaseCommandHandler',
-    'ReliabilityCommandHandler', 
+    'ReliabilityCommandHandler',
     'ComplianceCommandHandler',
     'WorkflowCommandHandler',
-    'BenchmarkCommandHandler'
+    'BenchmarkCommandHandler',
+    'DebugCommand',
+    'ComplianceCommand',
+    'ImproveCommand',
+    'AnalyzeCommand'
 ]

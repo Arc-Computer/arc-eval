@@ -55,10 +55,10 @@ class ScenarioBank:
 
     def add_pattern(self, pattern: Dict[str, Any]) -> None:
         """Append a new failure pattern entry (thread-safe).
-        
+
         Uses file locking (where available) to ensure thread-safe writes
         when multiple evaluation processes are running concurrently.
-        
+
         Args:
             pattern: Failure pattern dictionary containing:
                 - fingerprint: Unique identifier for the pattern
@@ -67,39 +67,57 @@ class ScenarioBank:
                 - domain: Evaluation domain (finance, security, ml)
                 - compliance_violation: List of violated compliance frameworks
                 - remediation: Suggested fix or improvement
+
+        Raises:
+            OSError: If file cannot be opened or written to
+            json.JSONEncodeError: If pattern cannot be serialized to JSON
         """
-        with open(self.patterns_file, "a") as f:
-            if has_fcntl:
-                fcntl.flock(f.fileno(), fcntl.LOCK_EX)
-            try:
-                f.write(json.dumps(pattern) + "\n")
-            finally:
+        try:
+            with open(self.patterns_file, "a") as f:
                 if has_fcntl:
-                    fcntl.flock(f.fileno(), fcntl.LOCK_UN)
+                    fcntl.flock(f.fileno(), fcntl.LOCK_EX)
+                try:
+                    f.write(json.dumps(pattern) + "\n")
+                finally:
+                    if has_fcntl:
+                        fcntl.flock(f.fileno(), fcntl.LOCK_UN)
+        except (OSError, json.JSONEncodeError) as e:
+            raise RuntimeError(f"Failed to add pattern to {self.patterns_file}: {e}") from e
 
     def get_pattern_count(self, fingerprint: str) -> int:
         """Return how many times this fingerprint has been recorded.
-        
+
         Used for tracking pattern frequency to identify recurring issues
         and prioritize high-frequency patterns in curriculum generation.
-        
+
         Args:
             fingerprint: Unique identifier for the pattern
-            
+
         Returns:
             Count of times this pattern has been recorded
+
+        Raises:
+            ValueError: If fingerprint is empty or None
         """
+        if not fingerprint:
+            raise ValueError("Fingerprint cannot be empty or None")
+
         if not os.path.exists(self.patterns_file):
             return 0
+
         count = 0
-        with open(self.patterns_file) as f:
-            for line in f:
-                try:
-                    data = json.loads(line)
-                    if data.get("fingerprint") == fingerprint:
-                        count += 1
-                except json.JSONDecodeError:
-                    continue
+        try:
+            with open(self.patterns_file) as f:
+                for line in f:
+                    try:
+                        data = json.loads(line)
+                        if data.get("fingerprint") == fingerprint:
+                            count += 1
+                    except json.JSONDecodeError:
+                        continue  # Skip malformed lines
+        except OSError as e:
+            raise RuntimeError(f"Failed to read patterns file {self.patterns_file}: {e}") from e
+
         return count
 
     def _write_scenarios_header(self) -> str:

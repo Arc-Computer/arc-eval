@@ -36,43 +36,20 @@ from agent_eval.commands import (
     ReliabilityCommandHandler,
     ComplianceCommandHandler,
     WorkflowCommandHandler,
-    BenchmarkCommandHandler
+    BenchmarkCommandHandler,
+    DebugCommand,
+    ComplianceCommand,
+    ImproveCommand,
+    AnalyzeCommand
 )
 from agent_eval.core.constants import DOMAIN_SCENARIO_COUNTS
-from agent_eval.core.workflow_state import WorkflowStateManager, update_workflow_progress
+from agent_eval.core.workflow_state import WorkflowStateManager
 from agent_eval.ui.result_renderer import ResultRenderer
 
 console = Console()
 
 # Initialize workflow state manager
 workflow_manager = WorkflowStateManager()
-
-
-def get_next_workflow_suggestion(current_workflow: str) -> str:
-    """Get suggested next command based on current workflow."""
-    state = workflow_manager.load_state()
-    cycle = state.get('current_cycle', {})
-    
-    suggestions = {
-        'debug': {
-            'next': 'compliance',
-            'command': lambda: f"arc-eval compliance --domain [finance|security|ml] --input {cycle.get('debug', {}).get('input_file', 'outputs.json')}"
-        },
-        'compliance': {
-            'next': 'improve',
-            'command': lambda: f"arc-eval improve --from-evaluation {cycle.get('compliance', {}).get('evaluation_file', 'latest')}"
-        },
-        'improve': {
-            'next': 'debug',
-            'command': lambda: "arc-eval debug --input improved_outputs.json"
-        }
-    }
-    
-    if current_workflow in suggestions:
-        next_wf = suggestions[current_workflow]
-        return f"\n🔄 Next Step: Run '{next_wf['command']()}' to continue the improvement cycle"
-    
-    return ""
 
 
 # ==================== Unified CLI Commands ====================
@@ -152,75 +129,14 @@ def show_workflow_selector():
 def analyze(input_file: Path, domain: str, quick: bool, verbose: bool):
     """
     Unified analysis workflow that chains debug → compliance → improve.
-    
+
     This is the recommended entry point for comprehensive agent evaluation.
-    
+
     Example:
         arc-eval analyze --input agent_outputs.json --domain finance
     """
-    console.print("\n[bold blue]🔄 Unified Analysis Workflow[/bold blue]")
-    console.print("=" * 60)
-    
-    try:
-        # Step 1: Debug Analysis
-        console.print("\n[bold cyan]Step 1: Debug Analysis[/bold cyan]")
-        handler = ReliabilityCommandHandler()
-        debug_result = handler.execute(
-            input_file=input_file,
-            unified_debug=True,
-            workflow_reliability=True,
-            schema_validation=True,
-            verbose=verbose,
-            no_interaction=True  # Suppress menu in intermediate steps
-        )
-        
-        if debug_result != 0:
-            console.print("[yellow]⚠️  Debug analysis found issues. Continuing to compliance check...[/yellow]")
-        
-        # Step 2: Compliance Check
-        console.print("\n[bold cyan]Step 2: Compliance Evaluation[/bold cyan]")
-        compliance_handler = ComplianceCommandHandler()
-        compliance_result = compliance_handler.execute(
-            domain=domain,
-            input_file=input_file,
-            agent_judge=not quick,
-            workflow=True,
-            verbose=verbose,
-            no_interaction=True  # Suppress menu in intermediate steps
-        )
-        
-        # Step 3: Show unified menu with all options
-        console.print("\n[bold cyan]Step 3: Analysis Complete[/bold cyan]")
-        
-        # Get the latest evaluation file
-        evaluation_files = list(Path.cwd().glob(f"{domain}_evaluation_*.json"))
-        if evaluation_files:
-            evaluation_files.sort(key=lambda f: f.stat().st_mtime, reverse=True)
-            latest_evaluation = evaluation_files[0]
-            
-            # Load evaluation data
-            import json
-            with open(latest_evaluation, 'r') as f:
-                eval_data = json.load(f)
-            
-            # Show unified post-evaluation menu
-            from agent_eval.ui.post_evaluation_menu import PostEvaluationMenu
-            menu = PostEvaluationMenu(
-                domain=domain,
-                evaluation_results=eval_data,
-                workflow_type="compliance"  # Use compliance menu as it has all options
-            )
-            
-            choice = menu.display_menu()
-            menu.execute_choice(choice)
-        
-        return 0
-        
-    except Exception as e:
-        console.print(f"[red]Analysis failed:[/red] {e}")
-        if verbose:
-            console.print_exception()
-        return 1
+    command = AnalyzeCommand()
+    return command.execute(input_file, domain, quick, verbose)
 
 
 @cli.command()
@@ -231,56 +147,18 @@ def analyze(input_file: Path, domain: str, quick: bool, verbose: bool):
 def debug(input_file: Path, framework: Optional[str], output_format: str, verbose: bool):
     """
     Debug: Why is my agent failing?
-    
+
     Analyzes your agent's outputs to identify:
     • Framework-specific performance issues
     • Tool call failures and schema mismatches
     • Memory bloat and timeout problems
     • Hallucinations and error patterns
-    
+
     Example:
         arc-eval debug --input agent_trace.json
     """
-    console.print("\n[bold blue]🔍 Agent Debug Analysis[/bold blue]")
-    console.print("=" * 60)
-    
-    try:
-        # Use ReliabilityCommandHandler with unified debugging enabled
-        handler = ReliabilityCommandHandler()
-        
-        # Execute with unified debugging features
-        exit_code = handler.execute(
-            input_file=input_file,
-            framework=framework,
-            unified_debug=True,  # Enable unified debugging
-            workflow_reliability=True,  # Enable workflow analysis
-            schema_validation=True,  # Enable schema validation
-            verbose=verbose,
-            output=output_format,
-            # Disable other features not needed for debug
-            domain=None,
-            agent_judge=False,
-            export=None
-        )
-        
-        if exit_code == 0:
-            # Update workflow progress
-            update_workflow_progress('debug', 
-                input_file=str(input_file),
-                framework=framework or 'auto-detected',
-                timestamp=datetime.now().isoformat()
-            )
-            
-            # Show next step suggestion
-            console.print(get_next_workflow_suggestion('debug'))
-        
-        return exit_code
-        
-    except Exception as e:
-        console.print(f"[red]Debug failed:[/red] {e}")
-        if verbose:
-            console.print_exception()
-        return 1
+    command = DebugCommand()
+    return command.execute(input_file, framework, output_format, verbose)
 
 
 @cli.command()
@@ -295,97 +173,17 @@ def debug(input_file: Path, framework: Optional[str], output_format: str, verbos
 def compliance(domain: str, input_file: Optional[Path], folder_scan: bool, export: Optional[str], no_export: bool, no_interactive: bool, quick_start: bool, verbose: bool):
     """
     Compliance: Does it meet requirements?
-    
+
     Runs comprehensive evaluation across:
     • Finance: SOX, KYC, AML, PCI-DSS, GDPR (110 scenarios)
     • Security: OWASP, NIST AI-RMF, ISO 27001 (120 scenarios)
     • ML: EU AI Act, IEEE Ethics, Model Cards (148 scenarios)
-    
+
     Example:
         arc-eval compliance --domain finance --input outputs.json
     """
-    console.print(f"\n[bold blue]✅ Compliance Evaluation - {domain.upper()}[/bold blue]")
-    console.print("=" * 60)
-    
-    # Handle special input methods and folder scanning
-    if folder_scan or (input_file and str(input_file) == "scan"):
-        from agent_eval.core.input_helpers import handle_smart_input
-        input_file = handle_smart_input("scan", scan_folder=True)
-        if not input_file:
-            return 1
-    elif input_file and str(input_file) == "clipboard":
-        from agent_eval.core.input_helpers import handle_smart_input
-        input_file = handle_smart_input("clipboard")
-        if not input_file:
-            return 1
-    
-    # Validate input
-    if not quick_start and not input_file:
-        console.print("[red]Error: Must provide --input or use --quick-start[/red]")
-        console.print("\nExample with your own data:")
-        console.print(f"  arc-eval compliance --domain {domain} --input your_outputs.json")
-        console.print("\nExample with sample data:")
-        console.print(f"  arc-eval compliance --domain {domain} --quick-start")
-        console.print("\n[blue]💡 Pilot helpers:[/blue]")
-        console.print(f"  arc-eval compliance --domain {domain} --folder-scan")
-        console.print(f"  arc-eval compliance --domain {domain} --input clipboard")
-        return 1
-    
-    try:
-        # Use ComplianceCommandHandler with smart defaults
-        handler = ComplianceCommandHandler()
-        
-        # Smart defaults for compliance workflow
-        if not no_export and not export:
-            export = 'pdf'  # Auto-export PDF for audit trail
-        
-        # Check for batch mode environment variable
-        use_batch = os.getenv('AGENT_EVAL_BATCH_MODE', '').lower() == 'true'
-        if use_batch and verbose:
-            console.print("[cyan]Verbose:[/cyan] Batch processing mode enabled via AGENT_EVAL_BATCH_MODE")
-        
-        # Execute compliance evaluation
-        exit_code = handler.execute(
-            domain=domain,
-            input_file=input_file,
-            quick_start=quick_start,
-            agent_judge=not quick_start,  # Disable agent-judge for quick-start to speed up demo
-            export=export,
-            format_template='compliance',  # Use compliance template
-            workflow=True,  # Enable workflow mode
-            verbose=verbose,
-            output='table',
-            # Performance tracking for compliance
-            performance=True,
-            timing=True,
-            # Pass batch mode flag to handler
-            batch_mode=use_batch
-        )
-        
-        if exit_code == 0:
-            # Save evaluation file path for improve workflow
-            evaluation_files = list(Path.cwd().glob(f"{domain}_evaluation_*.json"))
-            if evaluation_files:
-                evaluation_files.sort(key=lambda f: f.stat().st_mtime, reverse=True)
-                latest_evaluation = evaluation_files[0]
-                
-                update_workflow_progress('compliance',
-                    domain=domain,
-                    input_file=str(input_file) if input_file else 'quick-start',
-                    evaluation_file=str(latest_evaluation),
-                    timestamp=datetime.now().isoformat()
-                )
-            
-            # Show next step suggestion
-            console.print(get_next_workflow_suggestion('compliance'))
-        
-        return exit_code
-        
-    except Exception as e:
-        console.print(f"[red]Compliance evaluation failed:[/red] {e}")
-        if verbose:
-            console.print_exception()
-        return 1
+    command = ComplianceCommand()
+    return command.execute(domain, input_file, folder_scan, export, no_export, no_interactive, quick_start, verbose)
 
 
 @cli.command()
@@ -397,95 +195,19 @@ def compliance(domain: str, input_file: Optional[Path], folder_scan: bool, expor
 def improve(evaluation_file: Optional[Path], baseline: Optional[Path], current: Optional[Path], auto_detect: bool, verbose: bool):
     """
     Improve: How do I make it better?
-    
+
     Creates actionable improvement plans with:
     • Prioritized fixes for failed scenarios
     • Expected improvement projections
     • Step-by-step implementation guidance
     • Progress tracking between versions
-    
+
     Examples:
         arc-eval improve --from-evaluation latest
         arc-eval improve --baseline v1.json --current v2.json
     """
-    console.print("\n[bold blue]📈 Improvement Workflow[/bold blue]")
-    console.print("=" * 60)
-    
-    try:
-        # Auto-detect latest evaluation if needed
-        if not evaluation_file and (auto_detect or not (baseline and current)):
-            state = workflow_manager.load_state()
-            cycle = state.get('current_cycle', {})
-            
-            # Try to get evaluation file from workflow state
-            if cycle.get('compliance', {}).get('evaluation_file'):
-                evaluation_file = Path(cycle['compliance']['evaluation_file'])
-                console.print(f"[green]Auto-detected evaluation:[/green] {evaluation_file}")
-            else:
-                # Find latest evaluation file
-                evaluation_files = list(Path.cwd().glob("*_evaluation_*.json"))
-                if evaluation_files:
-                    evaluation_files.sort(key=lambda f: f.stat().st_mtime, reverse=True)
-                    evaluation_file = evaluation_files[0]
-                    console.print(f"[green]Using latest evaluation:[/green] {evaluation_file}")
-                else:
-                    # No evaluation files found - provide helpful error
-                    console.print("[red]Error:[/red] No evaluation files found!")
-                    console.print("\n[yellow]To use the improve workflow, you need to run a compliance evaluation first:[/yellow]")
-                    console.print("\nExample commands:")
-                    console.print("  arc-eval compliance --domain finance --quick-start")
-                    console.print("  arc-eval compliance --domain security --input agent_outputs.json")
-                    console.print("\nThen run improve with:")
-                    console.print("  arc-eval improve --auto-detect")
-                    console.print("  arc-eval improve --from-evaluation finance_evaluation_*.json")
-                    return 1
-        
-        # Use WorkflowCommandHandler
-        handler = WorkflowCommandHandler()
-        
-        if baseline and current:
-            # Comparison mode
-            exit_code = handler.execute(
-                baseline=baseline,
-                input_file=current,  # Current file as input
-                domain='generic',  # Will be detected from files
-                verbose=verbose,
-                output='table'
-            )
-        else:
-            # Improvement plan generation
-            if not evaluation_file:
-                console.print("[red]Error:[/red] No evaluation file specified or found!")
-                console.print("\nPlease run a compliance evaluation first or specify an evaluation file.")
-                return 1
-                
-            exit_code = handler.execute(
-                improvement_plan=True,
-                from_evaluation=evaluation_file,
-                verbose=verbose,
-                output='table',
-                # Auto-generate training data
-                dev=True  # Enable self-improvement features
-            )
-        
-        if exit_code == 0:
-            update_workflow_progress('improve',
-                evaluation_file=str(evaluation_file) if evaluation_file else None,
-                baseline=str(baseline) if baseline else None,
-                current=str(current) if current else None,
-                timestamp=datetime.now().isoformat()
-            )
-            
-            # Show next step suggestion
-            console.print(get_next_workflow_suggestion('improve'))
-        
-        return exit_code
-        
-    except Exception as e:
-        console.print(f"[red]Improvement workflow failed:[/red] {e}")
-        if verbose:
-            console.print_exception()
-        return 1
+    command = ImproveCommand()
+    return command.execute(evaluation_file, baseline, current, auto_detect, verbose)
 
 
 # ==================== Legacy CLI Support ====================
