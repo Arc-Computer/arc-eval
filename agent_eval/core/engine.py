@@ -1,5 +1,8 @@
 """
 Core evaluation engine for processing scenarios against agent outputs.
+
+This module provides the main EvaluationEngine class for running domain-specific
+evaluations against agent outputs with comprehensive error handling and validation.
 """
 
 import re
