@@ -188,7 +188,25 @@ This runs debug → compliance → menu automatically.
 
 ## Input Formats
 
-ARC-Eval auto-detects your agent framework:
+### Multiple Ways to Upload Traces
+
+```bash
+# 1. Direct file input
+arc-eval compliance --domain finance --input your_traces.json
+
+# 2. Auto-scan current directory for JSON files
+arc-eval compliance --domain finance --folder-scan
+
+# 3. Paste traces from clipboard (requires pyperclip)
+arc-eval compliance --domain finance --input clipboard
+
+# 4. Quick start with sample data
+arc-eval compliance --domain finance --quick-start
+```
+
+### Auto-Detected Formats
+
+ARC-Eval automatically recognizes output from any agent framework:
 
 ```json
 // Simple format (works with any agent)
@@ -198,20 +216,20 @@ ARC-Eval auto-detects your agent framework:
   "metadata": {"scenario_id": "fin_001"}  // Optional
 }
 
-// OpenAI format
+// OpenAI/Anthropic API logs
 {
   "choices": [{"message": {"content": "Response"}}],
   "tool_calls": [{"function": {"name": "check_balance"}}]
 }
 
-// LangChain format  
+// LangChain/CrewAI traces
 {
   "intermediate_steps": [...],
   "output": "Final answer"
 }
 ```
 
-See `agent_eval/core/parser_registry.py` to add custom formats.
+**Works with existing logs** - no code changes required. See `agent_eval/core/parser_registry.py` to add custom formats.
 
 ---
 
