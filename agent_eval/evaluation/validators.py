@@ -340,11 +340,11 @@ class DomainValidator:
 
 def format_validation_error(error: ValidationError) -> str:
     """Format validation error with suggestions for CLI display."""
-    message = f"[red]Error:[/red] {error.message}"
-    
+    message = f"[bold red]❌ Error:[/bold red] {error.message}"
+
     if error.suggestions:
-        message += "\n\n[yellow]Suggestions:[/yellow]"
+        message += "\n\n[yellow]💡 Suggestions:[/yellow]"
         for suggestion in error.suggestions:
             message += f"\n  • {suggestion}"
-    
+
     return message

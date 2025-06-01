@@ -23,6 +23,7 @@ from rich import box
 
 from agent_eval.core.parser_registry import detect_and_extract, detect_and_extract_tools
 from agent_eval.evaluation.reliability_validator import ReliabilityAnalyzer
+from .timeout_prompts import TimeoutPrompt
 
 console = Console()
 
@@ -326,10 +327,11 @@ class InteractiveDebugger:
         """Main interactive debugging loop."""
         while self.active_session:
             try:
-                # Get user input
-                command_input = Prompt.ask(
+                # Get user input with timeout
+                command_input = TimeoutPrompt.ask(
                     f"[bold green]debug[{self.active_session.framework or 'unknown'}][/bold green]",
-                    default="help"
+                    default="help",
+                    automation_default="quit"
                 )
                 
                 # Parse command
@@ -350,7 +352,7 @@ class InteractiveDebugger:
                     self.console.print(f"[yellow]Unknown command: {command}. Type 'help' for available commands.[/yellow]")
                 
             except KeyboardInterrupt:
-                if Confirm.ask("\nExit debugging session?"):
+                if TimeoutPrompt.confirm("\nExit debugging session?", default=True, automation_default=True):
                     break
             except EOFError:
                 break
