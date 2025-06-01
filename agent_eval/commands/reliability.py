@@ -194,7 +194,12 @@ class ReliabilityCommandHandler(BaseCommandHandler):
             console.print(f"[yellow]⚠️ Advanced reliability analysis unavailable:[/yellow] {e}")
             console.print("\n[yellow]💡 Resolution steps:[/yellow]")
             console.print("  1. Install reliability module: [green]pip install agent-eval[reliability][/green]")
-            console.print("  2. Check dependencies: [green]pip install -r requirements.txt[/green]")
+
+            console.print(
+                "  2. Check dependencies: "
+                "[green]pip install -r requirements.txt[/green]"
+            )
+
             console.print("  3. Verify installation: [green]python -c 'from agent_eval.evaluation.reliability_validator import ReliabilityAnalyzer'[/green]")
             console.print(f"\n[blue]📋 Log details saved to:[/blue] {self._get_log_file_path()}")
             console.print("\n💡 Falling back to basic analysis...")
