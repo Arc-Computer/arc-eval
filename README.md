@@ -1,4 +1,5 @@
 # ARC-Eval: Debug, Evaluate, and Improve AI Agents
+*Put your AI agent through real-world challenges — spot risks, fix failures, and improve performance with every run*
 
 [![PyPI version](https://badge.fury.io/py/arc-eval.svg)](https://badge.fury.io/py/arc-eval)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -6,7 +7,7 @@
 
 ![ARC-Eval Dashboard](public/cli_dashboard_rounded.png)
 
-ARC-Eval helps you find and fix issues in AI agents through three simple workflows: debug failures, check compliance, and track improvements. It runs 378 real-world test scenarios and learns from failures to help your agents get better over time.
+ARC-Eval identifies what is not working in your AI agents through three workflows: 1) debugging any failures, 2) checking if your agent meets compliance standards and 3) suggesting improvements by testing your AI agent in 378 real-world scenarios e.g. spotting information leaks or detecting bias as well as learning from every failure to help your agent perform better over time.
 
 ---
 
@@ -25,35 +26,32 @@ arc-eval
 ## Three Simple Workflows
 
 ### 1. Debug: Why is my agent failing?
+Auto-detects your framework (LangChain, CrewAI, OpenAI, etc.), shows success rates, error patterns, and timeout issues, then suggests specific fixes for common problems.
+
 ```bash
 arc-eval debug --input agent_trace.json
 ```
-- Auto-detects your framework (LangChain, CrewAI, OpenAI, etc.)
-- Shows success rates, error patterns, and timeout issues
-- Suggests specific fixes for common problems
 
 ### 2. Compliance: Does it meet requirements?
+Tests against 378 scenarios based on industry standards and compliance requirements across finance, security, and ML, then highlights where there is risk exposed and your agent is falling short of compliance standards. Generates PDF audit reports automatically.
+
 ```bash
 arc-eval compliance --domain finance --input outputs.json
 
 # Or try it instantly with sample data
 arc-eval compliance --domain finance --quick-start
 ```
-- Tests against 378 real scenarios (finance, security, ML)
-- Shows pass rates and compliance gaps
-- Generates PDF audit reports automatically
 
 ### 3. Improve: How do I make it better?
+Highlights the most important issues to improve your agent's performance, tracks improvement over time (73% → 91%), and learns patterns to generate better tests.
+
 ```bash
 arc-eval improve --from-evaluation latest
 ```
-- Creates prioritized fix lists from your failures
-- Tracks improvement over time (73% → 91%)
-- Learns patterns to generate better tests
 
 ---
 
-## How It Works
+## How It Works: The Arc Loop
 
 ```mermaid
 graph LR
@@ -62,6 +60,7 @@ graph LR
     C --> D[Learning Dashboard]
     D --> E[Improvement Plan]
     E --> F[Re-evaluate]
+    F --> A
     
     B --> |Finds Issues| B1[Framework Detection<br/>Error Analysis<br/>Performance Metrics]
     C --> |Tests Scenarios| C1[Finance: 110 tests<br/>Security: 120 tests<br/>ML: 148 tests]
@@ -71,13 +70,16 @@ graph LR
     style C fill:#e3f2fd
     style D fill:#fff3e0
     style E fill:#fce4ec
+    style F fill:#f3e5f5
 ```
 
-Each workflow leads naturally to the next:
+**The Arc Loop**: ARC learns from every failure and builds smarter agents through continuous improvement:
+
 1. **Debug** finds what's broken → suggests running compliance
 2. **Compliance** measures against requirements → shows patterns in dashboard
 3. **Dashboard** tracks learning → guides to improvement plan
 4. **Improve** generates fixes → prompts re-evaluation
+5. **Re-evaluate** tests improvements → feeds back into the loop
 
 The system learns from every failure, building a pattern library that helps generate better tests and fixes over time.
 
@@ -99,6 +101,59 @@ The system learns from every failure, building a pattern library that helps gene
 - **Standards**: EU AI Act, IEEE Ethics, Model Cards
 - **Focus**: Bias detection, fairness, explainability
 - **Example**: Loan approval bias based on demographic features
+
+---
+
+## Advanced Debug Interface
+
+ARC-Eval includes a comprehensive debug interface that provides deep insights into agent failures:
+
+### Interactive Debugging Session
+```bash
+arc-eval debug --input agent_trace.json
+```
+
+**Debug Analysis Features:**
+- **Framework auto-detection** - Identifies LangChain, CrewAI, OpenAI, and other frameworks automatically
+- **Performance bottleneck detection** - Finds timeout issues, tool call failures, and response delays
+- **Tool call validation** - Analyzes function calls and parameter mismatches
+- **Framework migration recommendations** - Suggests alternative frameworks based on performance data
+
+### Comprehensive Analysis Engine
+The debug workflow includes advanced analysis capabilities:
+
+**Core Analysis:**
+- **Error pattern detection** - Identifies recurring failure modes and their root causes
+- **Success rate analysis** - Shows framework-specific performance metrics
+- **Optimization recommendations** - Provides specific fixes for detected issues
+- **Interactive post-analysis menu** - Guides you to next steps including compliance evaluation
+
+
+## Research Foundation: Continuous Self-Improvement Loop
+
+The `experiments/research/` directory contains our research implementation of Automated Curriculum Learning (ACL) for continuous agent improvement:
+
+### Flywheel Learning Framework
+**Continuous self-improvement through adaptive curriculum generation:**
+
+```bash
+cd experiments/research
+python3 src/flywheel_experiment.py --iterations 25 --target 85.0
+```
+
+**Research Infrastructure:**
+- **Multi-domain learning** across finance, security, and ML compliance frameworks
+- **Agent-as-Judge evaluation** using production-grade LLM evaluation
+- **Adaptive scenario selection** that targets identified weakness areas
+- **Cross-domain knowledge transfer** between compliance domains
+
+**Core Research Components:**
+- **SelfImprovementEngine** - Tracks performance patterns and generates curricula
+- **ScenarioBank** - Adaptive scenario selection based on learning progress
+- **Multi-domain cycling** - Learning transfer across finance → security → ML domains
+- **ACL-enhanced targeting** - Focuses on weakness areas rather than random sampling
+
+Based on 2024-2025 research showing **ACL outperforms standard fine-tuning approaches** for compliance tasks, using 35% less compute while achieving better accuracy on complex reasoning tasks.
 
 ---
 
@@ -273,4 +328,4 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 - **Issues**: [GitHub Issues](https://github.com/Arc-Computer/arc-eval/issues)
 - **Examples**: See `/examples` for complete datasets and integration templates
-- **Docs**: [Quick Start Guide](examples/tutorials/QUICK_START_GUIDE.md)
+- **Quick Start**: Use `arc-eval compliance --quick-start` for instant demo with sample data
