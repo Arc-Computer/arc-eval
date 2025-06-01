@@ -40,8 +40,13 @@ class ResultRenderer:
         console.print(f"\n[bold blue]🤖 Agent-as-a-Judge Improvement Report[/bold blue]")
         console.print("[blue]" + "═" * 60 + "[/blue]")
         
-        # Summary metrics
+        # Summary metrics with defensive parsing
         summary = improvement_report.get("summary", {})
+        
+        # Generate fallback summary if missing
+        if not summary and improvement_report.get("detailed_results"):
+            summary = self._generate_summary_from_results(improvement_report["detailed_results"])
+            
         console.print(f"\n[bold green]📊 Evaluation Summary:[/bold green]")
         console.print(f"• Total Scenarios: {summary.get('total_scenarios', 0)}")
         console.print(f"• Passed: [green]{summary.get('passed', 0)}[/green]")
@@ -51,12 +56,18 @@ class ResultRenderer:
         console.print(f"• Average Confidence: {summary.get('average_confidence', 0):.2f}")
         console.print(f"• Total Cost: [dim]${summary.get('total_cost', 0):.4f}[/dim]")
         
-        # Check if verification was used and display verification metrics
+        # Check if verification was used and display verification metrics with defensive parsing
         detailed_results = improvement_report.get("detailed_results", [])
-        verification_used = any(
-            hasattr(result, "verification") and result.get("verification") 
-            for result in detailed_results
-        )
+        verification_used = False
+        try:
+            verification_used = any(
+                (hasattr(result, "verification") and result.get("verification")) or
+                (isinstance(result, dict) and result.get("verification"))
+                for result in detailed_results
+            )
+        except (AttributeError, TypeError):
+            # Gracefully handle malformed result structures
+            pass
         
         if verification_used:
             console.print(f"\n[bold cyan]🔍 Verification Layer:[/bold cyan]")
@@ -66,12 +77,23 @@ class ResultRenderer:
             avg_confidence_delta = 0
             
             for result in detailed_results:
-                verification = result.get("verification")
-                if verification:
-                    total_with_verification += 1
-                    if verification.get("verified", False):
-                        verified_count += 1
-                    avg_confidence_delta += abs(verification.get("confidence_delta", 0))
+                try:
+                    # Defensive parsing for verification data
+                    if hasattr(result, "verification"):
+                        verification = getattr(result, "verification", {})
+                    elif isinstance(result, dict):
+                        verification = result.get("verification", {})
+                    else:
+                        verification = None
+                        
+                    if verification:
+                        total_with_verification += 1
+                        if verification.get("verified", False):
+                            verified_count += 1
+                        avg_confidence_delta += abs(verification.get("confidence_delta", 0))
+                except (AttributeError, TypeError, KeyError):
+                    # Skip malformed verification data
+                    continue
             
             if total_with_verification > 0:
                 verification_rate = verified_count / total_with_verification
@@ -81,9 +103,9 @@ class ResultRenderer:
                 console.print(f"• Avg Confidence Delta: {avg_confidence_delta:.2f}")
                 console.print(f"• Verified Judgments: [green]{verified_count}[/green]/{total_with_verification}")
         
-        # Display bias detection results
+        # Display bias detection results with defensive parsing
         bias_detection = improvement_report.get("bias_detection")
-        if bias_detection:
+        if bias_detection and isinstance(bias_detection, dict):
             console.print(f"\n[bold magenta]⚖️ Bias Detection:[/bold magenta]")
             
             # Overall bias risk with color coding
@@ -713,6 +735,59 @@ class ResultRenderer:
             if len(fixes) > 3:
                 console.print(f"\n[dim]... and {len(fixes) - 3} more fixes available[/dim]")
 
+    def _generate_summary_from_results(self, detailed_results: List[Any]) -> Dict[str, Any]:
+        """Generate fallback summary when Agent-as-a-Judge results lack summary field."""
+        if not detailed_results:
+            return {"total_scenarios": 0, "passed": 0, "failed": 0, "warnings": 0, "pass_rate": 0.0, "average_confidence": 0.0, "total_cost": 0.0}
+        
+        total_scenarios = len(detailed_results)
+        passed = 0
+        failed = 0
+        warnings = 0
+        total_confidence = 0.0
+        total_cost = 0.0
+        
+        for result in detailed_results:
+            # Handle both dict and object result types
+            if hasattr(result, 'judgment'):
+                judgment = getattr(result, 'judgment', 'fail')
+            elif isinstance(result, dict):
+                judgment = result.get('judgment', 'fail')
+            else:
+                judgment = 'fail'
+            
+            if judgment == 'pass':
+                passed += 1
+            elif judgment == 'warning':
+                warnings += 1
+            else:
+                failed += 1
+            
+            # Extract confidence if available
+            if hasattr(result, 'confidence'):
+                total_confidence += getattr(result, 'confidence', 0.0)
+            elif isinstance(result, dict):
+                total_confidence += result.get('confidence', 0.0)
+            
+            # Extract cost if available
+            if hasattr(result, 'cost'):
+                total_cost += getattr(result, 'cost', 0.0)
+            elif isinstance(result, dict):
+                total_cost += result.get('cost', 0.0)
+        
+        pass_rate = passed / total_scenarios if total_scenarios > 0 else 0.0
+        average_confidence = total_confidence / total_scenarios if total_scenarios > 0 else 0.0
+        
+        return {
+            "total_scenarios": total_scenarios,
+            "passed": passed,
+            "failed": failed,
+            "warnings": warnings,
+            "pass_rate": pass_rate,
+            "average_confidence": average_confidence,
+            "total_cost": total_cost
+        }
+    
     def _get_domain_info(self) -> dict:
         """Get centralized domain information to avoid duplication."""
         return {
