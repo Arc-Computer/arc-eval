@@ -48,10 +48,12 @@ arc-eval compliance --domain security --list-scenarios
 ## Quick Example
 
 ```bash
-# 1. Evaluate your agent outputs
-arc-eval compliance --domain finance --input your_agent_outputs.json
+# 1. Upload traces (multiple options)
+arc-eval compliance --domain finance --input your_outputs.json    # Direct file
+arc-eval compliance --domain finance --folder-scan               # Auto-find JSONs
+arc-eval compliance --domain finance --input clipboard           # Paste traces
 
-# 2. Generate improvement plan from failures
+# 2. Generate improvement plan from failures  
 arc-eval improve --from-evaluation latest
 
 # 3. Implement fixes and re-evaluate

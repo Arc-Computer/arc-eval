@@ -191,7 +191,9 @@ class ResultRenderer:
         self._display_table_results(results, dev_mode, workflow_mode, domain, summary_only, format_template)
         
         # Post-Evaluation Menu - Show user journey options
-        if not no_interaction and results:  # Only show menu if we have results
+        # Check environment variable for automation mode
+        automation_mode = os.getenv("ARC_EVAL_NO_INTERACTION") == "1"
+        if not no_interaction and not automation_mode and results:  # Only show menu if we have results
             try:
                 from agent_eval.ui.post_evaluation_menu import PostEvaluationMenu
                 
