@@ -34,12 +34,40 @@ class ReliabilityCommandHandler(BaseCommandHandler):
                 self.logger.error("No reliability command specified")
                 return 1
         except ImportError as e:
-            console.print(f"[red]Missing dependency:[/red] {e}")
+            console.print(f"[red]❌ Missing Dependency:[/red] {e}")
+            console.print("\n[yellow]💡 Quick fixes:[/yellow]")
+            console.print("  1. Install missing package: [green]pip install {package_name}[/green]")
+            console.print("  2. Check requirements: [green]pip install -r requirements.txt[/green]")
+            console.print("  3. Verify installation: [green]pip list | grep {package_name}[/green]")
+            console.print(f"\n[blue]📋 Log details saved to:[/blue] {self._get_log_file_path()}")
             self.logger.error(f"ImportError in reliability command: {e}")
             return 1
-        except (FileNotFoundError, ValueError, KeyError) as e:
-            console.print(f"[red]Error in reliability analysis:[/red] {e}")
-            self.logger.error(f"Reliability command failed: {e}")
+        except FileNotFoundError as e:
+            console.print(f"[red]❌ File Not Found:[/red] {e}")
+            console.print("\n[yellow]💡 Troubleshooting steps:[/yellow]")
+            console.print("  1. Check file path: [green]ls -la your_file.json[/green]")
+            console.print("  2. Use absolute path: [green]arc-eval debug --input /full/path/to/file.json[/green]")
+            console.print("  3. Try sample data: [green]arc-eval compliance --domain finance --quick-start[/green]")
+            console.print(f"\n[blue]📋 Log details saved to:[/blue] {self._get_log_file_path()}")
+            self.logger.error(f"File not found in reliability command: {e}")
+            return 1
+        except ValueError as e:
+            console.print(f"[red]❌ Invalid Input:[/red] {e}")
+            console.print("\n[yellow]💡 Common fixes:[/yellow]")
+            console.print("  1. Validate JSON format: [green]python -m json.tool your_file.json[/green]")
+            console.print("  2. Check file encoding: [green]file your_file.json[/green]")
+            console.print("  3. Use export guide: [green]arc-eval export-guide[/green]")
+            console.print(f"\n[blue]📋 Log details saved to:[/blue] {self._get_log_file_path()}")
+            self.logger.error(f"ValueError in reliability command: {e}")
+            return 1
+        except KeyError as e:
+            console.print(f"[red]❌ Missing Required Field:[/red] {e}")
+            console.print("\n[yellow]💡 Data format fixes:[/yellow]")
+            console.print("  1. Check required fields in your JSON")
+            console.print("  2. Use export guide: [green]arc-eval export-guide[/green]")
+            console.print("  3. Try with sample data: [green]arc-eval compliance --domain finance --quick-start[/green]")
+            console.print(f"\n[blue]📋 Log details saved to:[/blue] {self._get_log_file_path()}")
+            self.logger.error(f"KeyError in reliability command: {e}")
             return 1
     
     def _handle_unified_debugging(self, **kwargs) -> int:
@@ -163,9 +191,19 @@ class ReliabilityCommandHandler(BaseCommandHandler):
                             f"Outputs={analysis.sample_size}[/dim]")
             
         except ImportError as e:
-            console.print(f"[yellow]⚠️ Advanced reliability analysis unavailable: {e}[/yellow]")
-            console.print("💡 Falling back to basic analysis...")
-            
+            console.print(f"[yellow]⚠️ Advanced reliability analysis unavailable:[/yellow] {e}")
+            console.print("\n[yellow]💡 Resolution steps:[/yellow]")
+            console.print("  1. Install reliability module: [green]pip install agent-eval[reliability][/green]")
+
+            console.print(
+                "  2. Check dependencies: "
+                "[green]pip install -r requirements.txt[/green]"
+            )
+
+            console.print("  3. Verify installation: [green]python -c 'from agent_eval.evaluation.reliability_validator import ReliabilityAnalyzer'[/green]")
+            console.print(f"\n[blue]📋 Log details saved to:[/blue] {self._get_log_file_path()}")
+            console.print("\n💡 Falling back to basic analysis...")
+
             # Basic fallback
             framework_info = self._basic_framework_detection(agent_outputs, framework)
             console.print(f"\\n🎯 [bold]Basic Analysis Results:[/bold]")
@@ -344,15 +382,20 @@ class ReliabilityCommandHandler(BaseCommandHandler):
             console.print(analysis.reliability_dashboard)
             
         except ImportError as e:
-            console.print(f"[yellow]⚠️ Data-driven analysis unavailable: {e}[/yellow]")
-            console.print("💡 Falling back to general framework guidance...")
-            
+            console.print(f"[yellow]⚠️ Data-driven analysis unavailable:[/yellow] {e}")
+            console.print("\n[yellow]💡 Resolution steps:[/yellow]")
+            console.print("  1. Install analysis module: [green]pip install agent-eval[analysis][/green]")
+            console.print("  2. Check dependencies: [green]pip install -r requirements.txt[/green]")
+            console.print("  3. Verify installation: [green]python -c 'from agent_eval.evaluation.reliability_validator import ReliabilityAnalyzer'[/green]")
+            console.print(f"\n[blue]📋 Log details saved to:[/blue] {self._get_log_file_path()}")
+            console.print("\n💡 Falling back to general framework guidance...")
+
             # Minimal fallback recommendations
             if framework:
                 console.print(f"  • Monitor {framework} performance patterns in your workflows")
                 console.print(f"  • Analyze tool call success rates and response times")
                 console.print(f"  • Consider framework alternatives if performance issues persist")
-            
+
             console.print(f"\\n🎯 [bold]Basic Reliability Metrics:[/bold]")
             console.print(f"✅ Total Components: {len(agent_outputs)}")
             console.print(f"🔄 Framework: {framework if framework else 'Auto-detected'}")
@@ -645,3 +688,14 @@ class ReliabilityCommandHandler(BaseCommandHandler):
                 return f"{framework.upper()} (auto-detected)"
         
         return "Generic (auto-detection inconclusive)"
+
+    def _get_log_file_path(self) -> str:
+        """Get the path to the log file for error details."""
+        try:
+            from pathlib import Path
+            log_dir = Path.cwd() / ".arc-eval" / "logs"
+            log_dir.mkdir(parents=True, exist_ok=True)
+            log_file = log_dir / "reliability.log"
+            return str(log_file)
+        except Exception:
+            return "~/.arc-eval/logs/reliability.log"
