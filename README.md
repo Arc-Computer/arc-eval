@@ -79,11 +79,11 @@ arc-eval improve --from-evaluation latest # Uses insights from your last evaluat
 
 ```mermaid
 graph LR
-    A[Agent Output (Your Agent's Trace)] --> B(Debug)
-    B --> C(Compliance)
-    C --> D(Learning Dashboard & PDF Report)
-    D --> E(Improvement Plan)
-    E --> F(Re-evaluate Agent)
+    A[Agent Output] --> B[Debug]
+    B --> C[Compliance]
+    C --> D[Dashboard & Report]
+    D --> E[Improve]
+    E --> F[Re-evaluate]
     F --> B
 ```
 
