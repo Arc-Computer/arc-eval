@@ -59,17 +59,25 @@ workflow_manager = WorkflowStateManager()
 @click.version_option(version="0.2.7", prog_name="arc-eval")
 def cli(ctx):
     """
-    ARC-Eval: Debug, Comply, Improve - The complete agent improvement lifecycle.
-    
-    Core workflows:
-    
+    🚀 ARC-Eval: Debug, Comply, Improve - Zero-config agent evaluation
+
+    ⚡ FASTEST START (try this first!):
+        arc-eval compliance --domain finance --quick-start
+
+    🔄 COMPLETE WORKFLOW:
+
     \b
-    • debug        - Why is my agent failing?
-    • compliance   - Does it meet requirements?  
-    • improve      - How do I make it better?
-    • export-guide - How to create JSON files from agent outputs
-    
-    Run 'arc-eval COMMAND --help' for more information on a command.
+    1. 🔍 debug        - Find what's broken in your agent
+    2. ✅ compliance   - Test against 378 real-world scenarios
+    3. 📈 improve      - Get specific fixes and track progress
+    4. 📚 export-guide - Learn how to capture agent outputs
+
+    💡 EXAMPLES:
+        arc-eval debug --input agent_outputs.json
+        arc-eval compliance --domain security --quick-start
+        arc-eval improve --from-evaluation latest
+
+    🆘 NEED HELP? Run any command with --help for detailed guidance
     """
     # If no command provided, show interactive workflow selector
     if ctx.invoked_subcommand is None:
@@ -78,47 +86,58 @@ def cli(ctx):
 
 def show_workflow_selector():
     """Interactive workflow selector when no command is specified."""
-    console.print("\n[bold blue]🚀 ARC-Eval Unified Workflow[/bold blue]")
+    console.print("\n[bold blue]🚀 ARC-Eval: Choose Your Starting Point[/bold blue]")
     console.print("=" * 60)
-    
-    # Create workflow options table
+
+    # Create workflow options table with better descriptions
     table = Table(show_header=False, box=box.ROUNDED)
-    table.add_column("Option", style="cyan", width=12)
-    table.add_column("Workflow", style="bold")
-    table.add_column("Purpose")
-    
-    table.add_row("1", "debug", "Why is my agent failing?")
-    table.add_row("2", "compliance", "Does it meet requirements?")
-    table.add_row("3", "improve", "How do I make it better?")
-    
+    table.add_column("Option", style="cyan", width=8)
+    table.add_column("Workflow", style="bold", width=15)
+    table.add_column("Best For", width=35)
+
+    table.add_row("1", "🚀 quick-start", "First time? Try with sample data (recommended!)")
+    table.add_row("2", "🔍 debug", "I have agent outputs and want to find issues")
+    table.add_row("3", "✅ compliance", "I want to test against regulatory scenarios")
+    table.add_row("4", "📈 improve", "I have evaluation results and want fixes")
+
     console.print(table)
     console.print()
-    
+
     # Check workflow state for suggestions
     state = workflow_manager.load_state()
     if state.get('current_cycle'):
         cycle = state['current_cycle']
         if cycle.get('debug') and not cycle.get('compliance'):
-            console.print("[yellow]💡 Suggestion: You've completed debug. Consider running compliance next.[/yellow]\n")
+            console.print("[yellow]💡 You've completed debug. Try compliance next![/yellow]\n")
         elif cycle.get('compliance') and not cycle.get('improve'):
-            console.print("[yellow]💡 Suggestion: You've completed compliance. Consider running improve next.[/yellow]\n")
-    
-    choice = Prompt.ask(
-        "Select workflow",
-        choices=["1", "2", "3", "debug", "compliance", "improve", "q"],
-        default="q"
-    )
-    
-    if choice in ["1", "debug"]:
-        console.print("\n[green]Run:[/green] arc-eval debug --input <your_agent_trace.json>")
-        console.print("[dim]💡 Need help creating JSON files? Run: arc-eval export-guide[/dim]")
-    elif choice in ["2", "compliance"]:
-        console.print("\n[green]Run:[/green] arc-eval compliance --domain [finance|security|ml] --input <outputs.json>")
-        console.print("[dim]💡 Don't have JSON files? Try: arc-eval compliance --domain finance --quick-start[/dim]")
-    elif choice in ["3", "improve"]:
-        console.print("\n[green]Run:[/green] arc-eval improve --from-evaluation <evaluation_file.json>")
+            console.print("[yellow]💡 You've completed compliance. Try improve next![/yellow]\n")
     else:
-        console.print("\n[dim]Exiting...[/dim]")
+        console.print("[green]💡 New user? Start with option 1 (quick-start) to see ARC-Eval in action![/green]\n")
+
+    choice = Prompt.ask(
+        "What would you like to do?",
+        choices=["1", "2", "3", "4", "quick-start", "debug", "compliance", "improve", "q"],
+        default="1"
+    )
+
+    if choice in ["1", "quick-start"]:
+        console.print("\n[bold green]🚀 Perfect! Try this command:[/bold green]")
+        console.print("[green]arc-eval compliance --domain finance --quick-start[/green]")
+        console.print("\n[dim]This runs a demo with sample data - no files needed![/dim]")
+    elif choice in ["2", "debug"]:
+        console.print("\n[bold green]🔍 Debug your agent:[/bold green]")
+        console.print("[green]arc-eval debug --input your_agent_outputs.json[/green]")
+        console.print("\n[dim]💡 Need help creating JSON files? Run: arc-eval export-guide[/dim]")
+    elif choice in ["3", "compliance"]:
+        console.print("\n[bold green]✅ Test compliance:[/bold green]")
+        console.print("[green]arc-eval compliance --domain finance --input outputs.json[/green]")
+        console.print("\n[dim]💡 Or try with sample data: arc-eval compliance --domain finance --quick-start[/dim]")
+    elif choice in ["4", "improve"]:
+        console.print("\n[bold green]📈 Get improvement plan:[/bold green]")
+        console.print("[green]arc-eval improve --from-evaluation latest[/green]")
+        console.print("\n[dim]💡 Run compliance first to generate evaluation results[/dim]")
+    else:
+        console.print("\n[dim]Exiting... Run 'arc-eval --help' anytime for guidance![/dim]")
 
 
 @cli.command()
@@ -141,48 +160,67 @@ def analyze(input_file: Path, domain: str, quick: bool, no_interactive: bool, ve
 
 
 @cli.command()
-@click.option('--input', 'input_file', type=click.Path(exists=True, path_type=Path), required=True, help='Agent trace or output file to debug')
-@click.option('--framework', type=click.Choice(['langchain', 'langgraph', 'crewai', 'autogen', 'openai', 'anthropic', 'generic']), help='Framework (auto-detected if not specified)')
-@click.option('--output-format', type=click.Choice(['console', 'json', 'html']), default='console', help='Output format')
-@click.option('--no-interactive', is_flag=True, help='Skip interactive menu for automation')
-@click.option('--verbose', is_flag=True, help='Enable verbose output')
+@click.option('--input', 'input_file', type=click.Path(exists=True, path_type=Path), required=True,
+              help='📁 Your agent output file (JSON format). Try: agent_outputs.json')
+@click.option('--framework', type=click.Choice(['langchain', 'langgraph', 'crewai', 'autogen', 'openai', 'anthropic', 'generic']),
+              help='🔧 Agent framework (auto-detected if not specified)')
+@click.option('--output-format', type=click.Choice(['console', 'json', 'html']), default='console',
+              help='📊 Output format (console recommended for first use)')
+@click.option('--no-interactive', is_flag=True, help='🤖 Skip menus (for CI/CD automation)')
+@click.option('--verbose', is_flag=True, help='🔍 Show detailed technical output')
 def debug(input_file: Path, framework: Optional[str], output_format: str, no_interactive: bool, verbose: bool):
     """
-    Debug: Why is my agent failing?
+    🔍 Debug: Why is my agent failing?
 
-    Analyzes your agent's outputs to identify:
-    • Framework-specific performance issues
-    • Tool call failures and schema mismatches
-    • Memory bloat and timeout problems
-    • Hallucinations and error patterns
+    FINDS: Performance issues, tool failures, timeout problems, error patterns
+    SHOWS: Success rates, framework analysis, specific fixes
+    NEXT:  Suggests running compliance check on same outputs
 
-    Example:
-        arc-eval debug --input agent_trace.json
+    💡 QUICK START:
+        arc-eval debug --input your_agent_outputs.json
+
+    📚 NEED HELP CREATING JSON FILES?
+        arc-eval export-guide
+
+    🎯 EXAMPLE OUTPUT:
+        ✅ Success Rate: 73% (22/30 outputs)
+        ❌ Issues: 5 timeouts, 3 parsing errors
+        💡 Fixes: Add retry logic, validate JSON schemas
     """
     command = DebugCommand()
     return command.execute(input_file, framework, output_format, no_interactive, verbose)
 
 
 @cli.command()
-@click.option('--domain', type=click.Choice(['finance', 'security', 'ml']), required=True, help='Evaluation domain')
-@click.option('--input', 'input_file', type=click.Path(path_type=Path), help='Agent outputs to evaluate (file, folder, or "clipboard" for paste)')
-@click.option('--folder-scan', is_flag=True, help='Auto-scan current directory for JSON files')
-@click.option('--export', type=click.Choice(['pdf', 'csv', 'json']), help='Export format (auto-exports PDF by default)')
-@click.option('--no-export', is_flag=True, help='Disable automatic PDF export')
-@click.option('--no-interactive', is_flag=True, help='Skip interactive menu for automation')
-@click.option('--quick-start', is_flag=True, help='Run with sample data (no input file required)')
-@click.option('--verbose', is_flag=True, help='Enable verbose output')
+@click.option('--domain', type=click.Choice(['finance', 'security', 'ml']), required=True,
+              help='🎯 Choose: finance (banking/fintech), security (AI safety), ml (bias/governance)')
+@click.option('--input', 'input_file', type=click.Path(path_type=Path),
+              help='📁 Agent outputs file, or try --quick-start for demo')
+@click.option('--folder-scan', is_flag=True, help='🔍 Auto-find JSON files in current directory')
+@click.option('--export', type=click.Choice(['pdf', 'csv', 'json']),
+              help='📄 Export format (PDF auto-generated for audit trail)')
+@click.option('--no-export', is_flag=True, help='🚫 Skip PDF generation')
+@click.option('--no-interactive', is_flag=True, help='🤖 Skip menus (for CI/CD automation)')
+@click.option('--quick-start', is_flag=True, help='🚀 Try with sample data (no file needed!)')
+@click.option('--verbose', is_flag=True, help='🔍 Show detailed technical output')
 def compliance(domain: str, input_file: Optional[Path], folder_scan: bool, export: Optional[str], no_export: bool, no_interactive: bool, quick_start: bool, verbose: bool):
     """
-    Compliance: Does it meet requirements?
+    ✅ Compliance: Does it meet requirements?
 
-    Runs comprehensive evaluation across:
-    • Finance: SOX, KYC, AML, PCI-DSS, GDPR (110 scenarios)
-    • Security: OWASP, NIST AI-RMF, ISO 27001 (120 scenarios)
-    • ML: EU AI Act, IEEE Ethics, Model Cards (148 scenarios)
+    TESTS: 378 real-world scenarios across finance, security, ML domains
+    FINDS: Regulatory violations, security risks, bias issues
+    EXPORTS: Audit-ready PDF reports for compliance teams
 
-    Example:
-        arc-eval compliance --domain finance --input outputs.json
+    💡 QUICK START (try this first!):
+        arc-eval compliance --domain finance --quick-start
+
+    📊 DOMAIN COVERAGE:
+        • finance: 110 scenarios (SOX, KYC, AML, PCI-DSS, GDPR)
+        • security: 120 scenarios (OWASP, prompt injection, data leaks)
+        • ml: 148 scenarios (bias detection, EU AI Act, model safety)
+
+    🎯 WITH YOUR DATA:
+        arc-eval compliance --domain finance --input your_outputs.json
     """
     command = ComplianceCommand()
     return command.execute(domain, input_file, folder_scan, export, no_export, no_interactive, quick_start, verbose)

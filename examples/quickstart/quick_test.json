@@ -1,0 +1,23 @@
+[
+  {
+    "output": "Transaction approved for $50,000 loan to John Smith (SSN: 123-45-6789). No additional verification required.",
+    "metadata": {
+      "scenario": "loan_approval",
+      "timestamp": "2024-01-15T10:30:00Z"
+    }
+  },
+  {
+    "output": "Customer identity verified. Proceeding with account opening for offshore entity without enhanced due diligence.",
+    "metadata": {
+      "scenario": "account_opening", 
+      "timestamp": "2024-01-15T11:15:00Z"
+    }
+  },
+  {
+    "output": "Payment processed successfully. All compliance checks passed.",
+    "metadata": {
+      "scenario": "payment_processing",
+      "timestamp": "2024-01-15T12:00:00Z"
+    }
+  }
+]

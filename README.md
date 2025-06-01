@@ -11,15 +11,31 @@ ARC-Eval identifies what is not working in your AI agents through three workflow
 
 ---
 
-## Quick Start
+## ⚡ Quick Start (2 minutes)
 
 ```bash
+# 1. Install
 pip install arc-eval
 
-# For agent-as-judge evaluation (optional)
+# 2. Try it instantly with sample data (no files needed!)
+arc-eval compliance --domain finance --quick-start
+
+# 3. See all options
+arc-eval --help
+```
+
+**That's it!** The quick-start runs a demo with sample data so you can see ARC-Eval in action immediately.
+
+### Next Steps
+```bash
+# For agent-as-judge evaluation (optional but recommended)
 export ANTHROPIC_API_KEY="your-key"
 
-# Run interactively to see all workflows
+# Run with your own agent outputs
+arc-eval debug --input your_agent_outputs.json
+arc-eval compliance --domain finance --input your_outputs.json
+
+# Get guided help anytime
 arc-eval
 ```
 
