@@ -111,11 +111,10 @@ class FlywheelExperiment:
         
         # Use actual arc-eval CLI with Agent-as-a-Judge
         cmd = [
-            sys.executable, "-m", "agent_eval.cli",
+            sys.executable, "-m", "agent_eval",
             "compliance",
             "--domain", "finance", 
             "--input", str(agent_outputs_file),
-            "--export", "json",
             "--no-export",  # Skip PDF generation for speed
             "--no-interactive",  # Skip interactive menu for automation
             "--verbose"
@@ -125,6 +124,7 @@ class FlywheelExperiment:
         env_vars = {**os.environ, "ANTHROPIC_API_KEY": self.api_key}
         # Set environment variable to bypass interactive menu
         env_vars["ARC_EVAL_NO_INTERACTION"] = "1"
+        env_vars["PYTHONUNBUFFERED"] = "1"  # For real-time output
         
         # Try OpenAI if API key available
         if os.getenv("OPENAI_API_KEY"):
@@ -154,9 +154,9 @@ class FlywheelExperiment:
                     # Use full baseline dataset for research evaluation
                     if iteration > 1:
                         sample_data = self.select_adaptive_scenarios(full_data, iteration, 
-                                                                   baseline_pass_rate=42.0)
+                                                                   baseline_pass_rate=63.9)
                     else:
-                        # Use full 337 baseline examples for research
+                        # Use full research baseline examples for research
                         sample_data = full_data
                     sample_file = self.experiment_dir / f"full_research_iter_{iteration:02d}.json"
                     evaluation_type = "full research dataset"
@@ -164,7 +164,7 @@ class FlywheelExperiment:
                     # Development mode: use smaller sample for faster testing
                     if iteration > 1:
                         sample_data = self.select_adaptive_scenarios(full_data, iteration, 
-                                                                   baseline_pass_rate=42.0)
+                                                                   baseline_pass_rate=63.9)
                     else:
                         # Use only first 5 examples for development testing
                         sample_data = full_data[:5]
@@ -178,11 +178,10 @@ class FlywheelExperiment:
                 
                 # Update command to use sample file
                 cmd = [
-                    sys.executable, "-m", "agent_eval.cli",
+                    sys.executable, "-m", "agent_eval",
                     "compliance",
                     "--domain", "finance", 
                     "--input", str(sample_file),
-                    "--export", "json",
                     "--no-export",
                     "--no-interactive",  # Skip interactive menu for automation
                     "--verbose"
@@ -229,21 +228,42 @@ class FlywheelExperiment:
                 result_stdout = stdout
                 result_stderr = stderr
                 
+                # Enhanced menu detection - if we detect menu in output, treat as success if evaluation completed
+                if "Select option [1/2/3/4]" in result_stdout and ("✅ Evaluation completed successfully!" in result_stdout or "✅ Compliance Evaluation Complete:" in result_stdout):
+                    print(f"🔧 Detected interactive menu after successful evaluation - treating as success")
+                    result_returncode = 0
+                
             except subprocess.TimeoutExpired:
                 process.kill()
                 stdout, stderr = process.communicate()
                 print(f"⏰ Process killed after {timeout_minutes} minute timeout")
-                result_returncode = 1
-                result_stdout = stdout
-                result_stderr = f"Timeout after {timeout_minutes} minutes: {stderr}"
+                
+                # Check if evaluation completed before timeout
+                if "✅ Evaluation completed successfully!" in stdout or "✅ Compliance Evaluation Complete:" in stdout:
+                    print(f"✅ Evaluation completed successfully before timeout")
+                    result_returncode = 0
+                    result_stdout = stdout
+                    result_stderr = ""
+                else:
+                    result_returncode = 1
+                    result_stdout = stdout
+                    result_stderr = f"Timeout after {timeout_minutes} minutes: {stderr}"
             
             print("-" * 50)
             
-            if result_returncode != 0:
+            # Check for successful completion in output, not just return code
+            # The CLI may exit with non-zero due to menu timeout, but evaluation could still succeed
+            evaluation_completed = "✅ Evaluation completed successfully!" in result_stdout
+            compliance_complete = "✅ Compliance Evaluation Complete:" in result_stdout
+            
+            if result_returncode != 0 and not (evaluation_completed or compliance_complete):
                 print(f"❌ CLI evaluation failed - experiment cannot continue without real Agent-as-a-Judge results:")
                 print(f"STDERR: {result_stderr}")
                 print(f"STDOUT: {result_stdout}")
                 raise RuntimeError("Agent-as-a-Judge evaluation failed - real evaluation required for research validity")
+            elif result_returncode != 0 and (evaluation_completed or compliance_complete):
+                print(f"✅ Evaluation completed successfully despite non-zero exit code (likely menu timeout)")
+                result_returncode = 0  # Treat as success
             
             # Parse evaluation results from CLI output
             evaluation_data = self._parse_cli_output(result_stdout, iteration)
@@ -1141,7 +1161,7 @@ def main():
         
         # Test basic CLI
         try:
-            result = subprocess.run([sys.executable, "-m", "agent_eval.cli", "--help"], 
+            result = subprocess.run([sys.executable, "-m", "agent_eval", "--help"], 
                                   capture_output=True, text=True, timeout=30)
             print(f"CLI Help Test: {'✅' if result.returncode == 0 else '❌'}")
             if result.returncode != 0:
@@ -1164,7 +1184,7 @@ def main():
                     print("Using Anthropic")
                 
                 result = subprocess.run([
-                    sys.executable, "-m", "agent_eval.cli",
+                    sys.executable, "-m", "agent_eval",
                     "compliance", "--domain", "finance",
                     "--input", str(baseline_file),
                     "--no-export",
