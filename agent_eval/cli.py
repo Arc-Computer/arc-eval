@@ -18,10 +18,9 @@ except ImportError:
     pass
 
 import sys
-import json
 import os
 from pathlib import Path
-from typing import Optional, Dict, Any, List
+from typing import Optional, List
 from datetime import datetime
 
 import click
@@ -40,67 +39,18 @@ from agent_eval.commands import (
     BenchmarkCommandHandler
 )
 from agent_eval.core.constants import DOMAIN_SCENARIO_COUNTS
+from agent_eval.core.workflow_state import WorkflowStateManager, update_workflow_progress
 from agent_eval.ui.result_renderer import ResultRenderer
 
 console = Console()
 
-# Workflow tracking file
-WORKFLOW_STATE_FILE = Path(".arc-eval-workflow-state.json")
-
-
-# ==================== Workflow State Management ====================
-
-def load_workflow_state() -> Dict[str, Any]:
-    """Load workflow state from disk."""
-    if WORKFLOW_STATE_FILE.exists():
-        with open(WORKFLOW_STATE_FILE, 'r') as f:
-            return json.load(f)
-    return {}
-
-
-def save_workflow_state(state: Dict[str, Any]) -> None:
-    """Save workflow state to disk."""
-    with open(WORKFLOW_STATE_FILE, 'w') as f:
-        json.dump(state, f, indent=2)
-
-
-def update_workflow_progress(workflow: str, **kwargs) -> None:
-    """Update workflow progress tracking."""
-    state = load_workflow_state()
-    
-    if 'current_cycle' not in state:
-        state['current_cycle'] = {
-            'started_at': datetime.now().isoformat(),
-            'debug': None,
-            'compliance': None,
-            'improve': None
-        }
-    
-    state['current_cycle'][workflow] = {
-        'completed_at': datetime.now().isoformat(),
-        **kwargs
-    }
-    
-    # Track history
-    if 'history' not in state:
-        state['history'] = []
-    
-    # If all three workflows completed, archive the cycle
-    if all(state['current_cycle'].get(w) for w in ['debug', 'compliance', 'improve']):
-        state['history'].append(state['current_cycle'])
-        state['current_cycle'] = {
-            'started_at': datetime.now().isoformat(),
-            'debug': None,
-            'compliance': None,
-            'improve': None
-        }
-    
-    save_workflow_state(state)
+# Initialize workflow state manager
+workflow_manager = WorkflowStateManager()
 
 
 def get_next_workflow_suggestion(current_workflow: str) -> str:
     """Get suggested next command based on current workflow."""
-    state = load_workflow_state()
+    state = workflow_manager.load_state()
     cycle = state.get('current_cycle', {})
     
     suggestions = {
@@ -168,7 +118,7 @@ def show_workflow_selector():
     console.print()
     
     # Check workflow state for suggestions
-    state = load_workflow_state()
+    state = workflow_manager.load_state()
     if state.get('current_cycle'):
         cycle = state['current_cycle']
         if cycle.get('debug') and not cycle.get('compliance'):
@@ -464,7 +414,7 @@ def improve(evaluation_file: Optional[Path], baseline: Optional[Path], current: 
     try:
         # Auto-detect latest evaluation if needed
         if not evaluation_file and (auto_detect or not (baseline and current)):
-            state = load_workflow_state()
+            state = workflow_manager.load_state()
             cycle = state.get('current_cycle', {})
             
             # Try to get evaluation file from workflow state

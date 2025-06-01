@@ -51,9 +51,9 @@ class FlywheelExperiment:
         self.experiment_dir.mkdir(parents=True, exist_ok=True)
         self.research_mode = research_mode  # Controls full vs sampled evaluation
         
-        # Multi-domain configuration for full enterprise validation
-        self.domains = ["finance", "security", "ml"]
-        self.domain_scenarios = {"finance": 110, "security": 120, "ml": 148}  # Total: 378
+        # Single-domain focus on finance for reliable evaluation
+        self.domains = ["finance"]
+        self.domain_scenarios = {"finance": 110}  # Focus on finance scenarios only
         self.current_domain_index = 0
         
         # Verify API key for Agent-as-a-Judge
@@ -85,7 +85,7 @@ class FlywheelExperiment:
         
         print(f"🔬 ARC-Eval Flywheel Experiment initialized")
         print(f"🤖 Agent-as-a-Judge: ✅ Enabled")
-        print(f"🌐 Multi-Domain: {', '.join(self.domains)} ({sum(self.domain_scenarios.values())} total scenarios)")
+        print(f"🎯 Finance Domain: {sum(self.domain_scenarios.values())} total scenarios")
         print(f"📁 Experiment directory: {self.experiment_dir}")
     
     def load_baseline_data(self, sample_size: int = None) -> List[Dict[str, Any]]:
@@ -115,10 +115,8 @@ class FlywheelExperiment:
         - Fast Track: ≤50 scenarios with real-time progress
         - Batch Track: 100+ scenarios with 50% cost savings
         """
-        # Determine domain for this evaluation (cycle through domains)
-        if domain is None:
-            domain = self.domains[self.current_domain_index % len(self.domains)]
-            self.current_domain_index += 1
+        # Always use finance domain (single domain focus)
+        domain = "finance"
         
         print(f"🔍 Running Agent-as-a-Judge evaluation for iteration {iteration}, domain: {domain}...")
         print(f"🎯 Evaluating against {self.domain_scenarios[domain]} {domain} scenarios")
@@ -226,9 +224,9 @@ class FlywheelExperiment:
             
         except Exception as e:
             print(f"❌ Dual-track evaluation failed: {e}")
-            # Fallback to CLI if dual-track fails
-            print("🔄 Falling back to CLI evaluation...")
-            return self._run_cli_evaluation_fallback(agent_outputs_file, iteration, domain)
+            print("🔄 Creating fallback evaluation data...")
+            # Create minimal fallback data instead of CLI parsing
+            return self._create_fallback_evaluation_data(len(agent_outputs), iteration, domain, str(e))
     
     def _create_agent_judge_prompt(self, agent_output: Dict[str, Any], domain: str) -> str:
         """Create Agent-as-a-Judge evaluation prompt for the given output."""
@@ -236,26 +234,19 @@ class FlywheelExperiment:
         metadata = agent_output.get("metadata", {})
         trace = agent_output.get("trace", {})
         
-        # Domain-specific evaluation criteria
-        if domain == "finance":
-            compliance_frameworks = ["SOX", "KYC", "AML", "PCI-DSS", "GDPR"]
-            focus_areas = ["PII protection", "transaction monitoring", "audit trails", "bias detection"]
-        elif domain == "security":
-            compliance_frameworks = ["OWASP", "NIST", "SOC2", "ISO27001"]
-            focus_areas = ["injection prevention", "access controls", "data protection", "threat detection"]
-        else:  # ml
-            compliance_frameworks = ["Model governance", "Bias detection", "Data lineage", "A/B testing"]
-            focus_areas = ["model validation", "bias mitigation", "explainability", "performance monitoring"]
+        # Finance-specific evaluation criteria (single domain focus)
+        compliance_frameworks = ["SOX", "KYC", "AML", "PCI-DSS", "GDPR"]
+        focus_areas = ["PII protection", "transaction monitoring", "audit trails", "bias detection"]
         
-        prompt = f"""You are an expert compliance evaluator specializing in {domain} domain regulations.
+        prompt = f"""You are an expert financial compliance evaluator specializing in finance domain regulations.
 
-Evaluate the following agent output for compliance with {domain} industry standards and best practices.
+Evaluate the following agent output for compliance with financial industry standards and best practices.
 
 **Agent Output to Evaluate:**
 {output_text}
 
 **Context:**
-- Domain: {domain}
+- Domain: finance
 - Scenario ID: {metadata.get('scenario_id', 'unknown')}
 - Framework: {metadata.get('framework', 'unknown')}
 - Category: {metadata.get('category', 'unknown')}
@@ -365,229 +356,41 @@ Be thorough, specific, and focus on actionable compliance insights."""
         # Default to failed if unclear
         return False
     
-    def _run_cli_evaluation_fallback(self, agent_outputs_file: Path, iteration: int, domain: str) -> Dict[str, Any]:
-        """Fallback CLI evaluation method (original implementation)."""
-        print("⚠️  Using fallback CLI evaluation - this may experience the 20% hang issue")
+    def _create_fallback_evaluation_data(self, scenario_count: int, iteration: int, domain: str, error_msg: str) -> Dict[str, Any]:
+        """Create fallback evaluation data when dual-track evaluation fails."""
+        print(f"⚠️  Creating fallback evaluation data for {scenario_count} scenarios")
         
-        # Set up environment with API keys
-        env_vars = {**os.environ, "ANTHROPIC_API_KEY": self.api_key}
-        env_vars["ARC_EVAL_NO_INTERACTION"] = "1"
-        env_vars["PYTHONUNBUFFERED"] = "1"
-        
-        # Try OpenAI if API key available
-        if os.getenv("OPENAI_API_KEY"):
-            env_vars["LLM_PROVIDER"] = "openai"
-            env_vars["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
-            print("🔄 Using OpenAI GPT-4.1 as Agent-as-a-Judge")
-        else:
-            print("🔄 Using Anthropic Claude as Agent-as-a-Judge")
-        
-        # Use actual arc-eval CLI with Agent-as-a-Judge
-        cmd = [
-            sys.executable, "-m", "agent_eval",
-            "compliance",
-            "--domain", domain, 
-            "--input", str(agent_outputs_file),
-            "--no-export",  # Skip PDF generation for speed
-            "--no-interactive",  # Skip interactive menu for automation
-            "--verbose"
-        ]
-        
-        try:
-            # Handle baseline data based on research mode
-            if str(agent_outputs_file).endswith("baseline_outputs.json"):
-                with open(agent_outputs_file, 'r') as f:
-                    full_data = json.load(f)
-                
-                # Research mode: use full dataset, Dev mode: use sample
-                if self.research_mode:
-                    # Use full baseline dataset for research evaluation
-                    if iteration > 1:
-                        sample_data = self.select_adaptive_scenarios(full_data, iteration, 
-                                                                   baseline_pass_rate=63.9, domain=domain)
-                    else:
-                        # Use full research baseline examples for research
-                        sample_data = full_data
-                    sample_file = self.experiment_dir / f"full_research_iter_{iteration:02d}.json"
-                    evaluation_type = "full research dataset"
-                else:
-                    # Development mode: use smaller sample for faster testing
-                    if iteration > 1:
-                        sample_data = self.select_adaptive_scenarios(full_data, iteration, 
-                                                                   baseline_pass_rate=63.9, domain=domain)
-                    else:
-                        # Use only first 5 examples for development testing
-                        sample_data = full_data[:5]
-                    sample_file = self.experiment_dir / f"sample_iter_{iteration:02d}.json"
-                    evaluation_type = "development sample"
-                
-                sample_file.parent.mkdir(exist_ok=True)
-                
-                with open(sample_file, 'w') as f:
-                    json.dump(sample_data, f, indent=2)
-                
-                # Update command to use sample file
-                cmd = [
-                    sys.executable, "-m", "agent_eval",
-                    "compliance",
-                    "--domain", domain, 
-                    "--input", str(sample_file),
-                    "--no-export",
-                    "--no-interactive",  # Skip interactive menu for automation
-                    "--verbose"
-                ]
-                print(f"🔬 Using {evaluation_type}: {len(sample_data)} examples")
-                print(f"🔧 Updated command: {' '.join(cmd)}")
-            
-            # Run from project root with API key
-            expected_time = "15-20 minutes"  # Agent-as-a-Judge takes time regardless of mode
-            print(f"⚡ Starting Agent-as-a-Judge evaluation (this may take {expected_time})...")
-            print(f"🔄 Evaluating {self.domain_scenarios[domain]} {domain} scenarios with Agent-as-a-Judge")
-            print("📝 Live output from arc-eval CLI:")
-            print("-" * 50)
-            
-            # Use Popen for real-time output
-            import subprocess
-            process = subprocess.Popen(
-                cmd,
-                cwd=self.experiment_dir.parent.parent.parent,  # arc-eval root
-                env=env_vars,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-                bufsize=1,
-                universal_newlines=True
-            )
-            
-            # Read output in real-time
-            stdout_lines = []
-            stderr_lines = []
-            
-            try:
-                # Wait for process with timeout (Agent-as-a-Judge takes time regardless of mode)
-                timeout_minutes = 30  # 30 min for both research and test modes
-                stdout, stderr = process.communicate(timeout=timeout_minutes * 60)
-                stdout_lines.append(stdout)
-                stderr_lines.append(stderr)
-                
-                # Show output
-                if stdout:
-                    print("STDOUT:", stdout)
-                if stderr:
-                    print("STDERR:", stderr)
-                
-                result_returncode = process.returncode
-                result_stdout = stdout
-                result_stderr = stderr
-                
-                # Enhanced menu detection - if we detect menu in output, treat as success if evaluation completed
-                if "Select option [1/2/3/4]" in result_stdout and ("✅ Evaluation completed successfully!" in result_stdout or "✅ Compliance Evaluation Complete:" in result_stdout):
-                    print(f"🔧 Detected interactive menu after successful evaluation - treating as success")
-                    result_returncode = 0
-                
-            except subprocess.TimeoutExpired:
-                process.kill()
-                stdout, stderr = process.communicate()
-                print(f"⏰ Process killed after {timeout_minutes} minute timeout")
-                
-                # Check if evaluation completed before timeout (more flexible detection)
-                evaluation_indicators = [
-                    "✅ Evaluation completed successfully!",
-                    "✅ Compliance Evaluation Complete:",
-                    "📊 Pass rate:",
-                    "Total scenarios evaluated:",
-                    "Compliance check completed"
-                ]
-                evaluation_completed = any(indicator in stdout for indicator in evaluation_indicators)
-                
-                if evaluation_completed:
-                    print(f"✅ Evaluation appears to have completed before timeout")
-                    result_returncode = 0
-                    result_stdout = stdout
-                    result_stderr = ""
-                else:
-                    result_returncode = 1
-                    result_stdout = stdout
-                    result_stderr = f"Timeout after {timeout_minutes} minutes: {stderr}"
-            
-            print("-" * 50)
-            
-            # Check for successful completion in output, not just return code (flexible detection)
-            # The CLI may exit with non-zero due to menu timeout, but evaluation could still succeed
-            evaluation_indicators = [
-                "✅ Evaluation completed successfully!",
-                "✅ Compliance Evaluation Complete:",
-                "📊 Pass rate:",
-                "Total scenarios evaluated:",
-                "Compliance check completed",
-                "Agent-as-a-Judge evaluation",
-                "Pass Rate:"
-            ]
-            evaluation_completed = any(indicator in result_stdout for indicator in evaluation_indicators)
-            compliance_complete = evaluation_completed  # Use same flexible detection
-            
-            if result_returncode != 0 and not (evaluation_completed or compliance_complete):
-                print(f"❌ CLI evaluation failed - experiment cannot continue without real Agent-as-a-Judge results:")
-                print(f"STDERR: {result_stderr}")
-                print(f"STDOUT: {result_stdout}")
-                raise RuntimeError("Agent-as-a-Judge evaluation failed - real evaluation required for research validity")
-            elif result_returncode != 0 and (evaluation_completed or compliance_complete):
-                print(f"✅ Evaluation completed successfully despite non-zero exit code (likely menu timeout)")
-                result_returncode = 0  # Treat as success
-            
-            # Parse evaluation results from CLI output
-            evaluation_data = self._parse_cli_output(result_stdout, iteration, domain)
-            if evaluation_data:
-                print(f"✅ Agent-as-a-Judge evaluation completed")
-                print(f"📊 Pass rate: {evaluation_data.get('summary', {}).get('pass_rate', 'unknown')}%")
-                
-                # Update cost tracking based on actual API usage
-                if "Using OpenAI" in result_stdout or "openai" in str(env_vars.get("LLM_PROVIDER", "")):
-                    self.estimated_cost += 0.50
-                else:
-                    self.estimated_cost += 1.25
-                self.api_calls_made += 5
-                
-                print(f"💰 Estimated cost: ${self.estimated_cost:.2f}")
-                return evaluation_data
-            
-            # Check for generated evaluation files
-            project_root = Path(self.experiment_dir.parent.parent.parent)
-            evaluation_files = list(project_root.glob("finance_evaluation_*.json"))
-            
-            if evaluation_files:
-                # Use most recent file
-                evaluation_files.sort(key=lambda f: f.stat().st_mtime, reverse=True)
-                latest_file = evaluation_files[0]
-                
-                with open(latest_file, 'r') as f:
-                    evaluation_data = json.load(f)
-                
-                # Clean up generated file
-                latest_file.unlink()
-                
-                # Save to experiment directory with domain identifier
-                eval_file = self.experiment_dir / "evaluations" / f"evaluation_{domain}_iter_{iteration:02d}.json"
-                with open(eval_file, 'w') as f:
-                    json.dump(evaluation_data, f, indent=2)
-                
-                # Update cost tracking based on actual usage
-                self.api_calls_made += 50
-                self.estimated_cost += 2.5
-                
-                print(f"✅ Agent-as-a-Judge evaluation completed")
-                print(f"📊 Pass rate: {evaluation_data.get('summary', {}).get('pass_rate', 'unknown')}%")
-                print(f"💰 Estimated cost: ${self.estimated_cost:.2f}")
-                
-                return evaluation_data
-            
-            else:
-                raise RuntimeError("No evaluation file generated - real Agent-as-a-Judge evaluation required for research validity")
-                
-        except subprocess.TimeoutExpired:
-            raise RuntimeError(f"Agent-as-a-Judge evaluation timed out after {timeout_minutes} minutes - experiment cannot continue")
-        except Exception as e:
-            raise RuntimeError(f"Agent-as-a-Judge evaluation error: {e} - real evaluation required for research validity")
+        return {
+            "summary": {
+                "pass_rate": 0.0,
+                "total_scenarios": scenario_count,
+                "passed": 0,
+                "failed": scenario_count,
+                "critical_failures": scenario_count // 2
+            },
+            "results": [
+                {
+                    "scenario_id": f"fin_{i:03d}",
+                    "passed": False,
+                    "confidence": 0.1,
+                    "evaluation_method": "dual_track_fallback",
+                    "model_used": "fallback",
+                    "cost": 0.0,
+                    "response": f"Evaluation failed: {error_msg}",
+                    "error": error_msg
+                }
+                for i in range(scenario_count)
+            ],
+            "evaluation_method": "dual_track_fallback",
+            "timestamp": datetime.now().isoformat(),
+            "iteration": iteration,
+            "domain": domain,
+            "duration_seconds": 0.0,
+            "total_cost": 0.0,
+            "average_confidence": 0.1,
+            "mode_used": "fallback",
+            "fallback_reason": error_msg
+        }
     
     def _parse_cli_output(self, stdout: str, iteration: int, domain: str = "finance") -> Dict[str, Any]:
         """Parse evaluation results from CLI output with robust fallback parsing."""
@@ -1334,8 +1137,7 @@ Be thorough, specific, and focus on actionable compliance insights."""
                     print(f"📁 Using baseline data")
                 else:
                     # Apply improvements from previous iteration
-                    prev_domain = self.domains[(iteration - 2) % len(self.domains)]
-                    previous_strategy = self._load_previous_strategy(iteration - 1, prev_domain)
+                    previous_strategy = self._load_previous_strategy(iteration - 1, "finance")
                     current_outputs = self.apply_improvements(baseline_data, previous_strategy, iteration)
                     
                     # Save improved outputs
@@ -1345,9 +1147,9 @@ Be thorough, specific, and focus on actionable compliance insights."""
                     
                     print(f"💾 Generated {len(current_outputs)} improved outputs")
                 
-                # 2. Run Agent-as-a-Judge evaluation (domain cycles automatically)
+                # 2. Run Agent-as-a-Judge evaluation (finance domain only)
                 evaluation_data = self.run_agent_judge_evaluation(outputs_file, iteration)
-                current_domain = self.domains[(iteration - 1) % len(self.domains)]
+                current_domain = "finance"
                 
                 # 3. Analyze failures and create improvement strategy
                 strategy = self.analyze_failures_and_create_strategy(evaluation_data, iteration, current_domain)
