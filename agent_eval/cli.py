@@ -19,6 +19,7 @@ except ImportError:
 
 import sys
 import json
+import os
 from pathlib import Path
 from typing import Optional, Dict, Any, List
 from datetime import datetime
@@ -388,6 +389,11 @@ def compliance(domain: str, input_file: Optional[Path], folder_scan: bool, expor
         if not no_export and not export:
             export = 'pdf'  # Auto-export PDF for audit trail
         
+        # Check for batch mode environment variable
+        use_batch = os.getenv('AGENT_EVAL_BATCH_MODE', '').lower() == 'true'
+        if use_batch and verbose:
+            console.print("[cyan]Verbose:[/cyan] Batch processing mode enabled via AGENT_EVAL_BATCH_MODE")
+        
         # Execute compliance evaluation
         exit_code = handler.execute(
             domain=domain,
@@ -401,7 +407,9 @@ def compliance(domain: str, input_file: Optional[Path], folder_scan: bool, expor
             output='table',
             # Performance tracking for compliance
             performance=True,
-            timing=True
+            timing=True,
+            # Pass batch mode flag to handler
+            batch_mode=use_batch
         )
         
         if exit_code == 0:
