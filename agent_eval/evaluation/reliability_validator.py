@@ -1302,10 +1302,11 @@ Required parameters:
         return template
 
     def generate_comprehensive_analysis(
-        self, 
-        agent_outputs: List[Any], 
+        self,
+        agent_outputs: List[Any],
         framework: Optional[str] = None,
-        expected_tools: Optional[List[str]] = None
+        expected_tools: Optional[List[str]] = None,
+        pipeline_data: Optional[Dict[str, Any]] = None
     ) -> ComprehensiveReliabilityAnalysis:
         """Generate comprehensive reliability analysis combining all functionality."""
         
@@ -1427,11 +1428,13 @@ Required parameters:
                     )
                     logger.info(f"Generated reliability prediction with risk level: {reliability_prediction.get('risk_level', 'UNKNOWN')}")
 
-                    # Log prediction for tracking (Task 2.2)
+                    # Log prediction for tracking (Task 2.2) with unified pipeline data
                     if self.prediction_tracker and reliability_prediction:
-                        prediction_id = self.prediction_tracker.log_prediction(reliability_prediction, agent_config)
+                        prediction_id = self.prediction_tracker.log_prediction(
+                            reliability_prediction, agent_config, pipeline_data
+                        )
                         if prediction_id:
-                            logger.info(f"Logged prediction {prediction_id} for tracking")
+                            logger.info(f"Logged prediction {prediction_id} for tracking with pipeline data")
 
                     # Detect outcome from current agent outputs (Task 2.2)
                     if self.outcome_detector and reliability_prediction:

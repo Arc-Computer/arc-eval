@@ -42,7 +42,8 @@ class PredictionTracker:
         
         logger.info(f"PredictionTracker initialized with storage: {self.storage_dir}")
     
-    def log_prediction(self, prediction: Dict[str, Any], agent_config: Dict[str, Any]) -> str:
+    def log_prediction(self, prediction: Dict[str, Any], agent_config: Dict[str, Any],
+                     pipeline_data: Optional[Dict[str, Any]] = None) -> str:
         """Log prediction with metadata for later accuracy tracking."""
         
         try:
@@ -73,7 +74,10 @@ class PredictionTracker:
                 
                 # Business impact
                 'business_impact': prediction.get('business_impact', {}),
-                
+
+                # Pipeline data integration (NEW - unified data capture)
+                'pipeline_metadata': self._extract_pipeline_metadata(pipeline_data) if pipeline_data else {},
+
                 # Outcome tracking (to be filled by outcome detection)
                 'outcome_detected': False,
                 'outcome': None,
@@ -255,7 +259,68 @@ class PredictionTracker:
             return 'healthcare'
         
         return 'general'
-    
+
+    def _extract_pipeline_metadata(self, pipeline_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Extract unified metadata from pipeline components."""
+
+        metadata = {}
+
+        try:
+            # Input detection metadata
+            if 'input_detection' in pipeline_data:
+                input_data = pipeline_data['input_detection']
+                metadata['input_detection'] = {
+                    'detected_framework': input_data.get('detected_framework'),
+                    'confidence': input_data.get('confidence', 0.0),
+                    'file_size_mb': input_data.get('file_size_mb', 0.0),
+                    'entry_count': input_data.get('entry_count', 0),
+                    'validation_issues': input_data.get('validation_issues', [])
+                }
+
+            # Parser registry metadata
+            if 'parser_registry' in pipeline_data:
+                parser_data = pipeline_data['parser_registry']
+                metadata['parser_registry'] = {
+                    'framework_detected': parser_data.get('framework_detected'),
+                    'extraction_method': parser_data.get('extraction_method'),
+                    'tool_calls_extracted': parser_data.get('tool_calls_extracted', []),
+                    'output_text_length': len(str(parser_data.get('extracted_output', ''))),
+                    'parsing_errors': parser_data.get('parsing_errors', [])
+                }
+
+            # Input helpers metadata
+            if 'input_helpers' in pipeline_data:
+                helper_data = pipeline_data['input_helpers']
+                metadata['input_helpers'] = {
+                    'input_source': helper_data.get('input_source'),  # file, clipboard, scan
+                    'file_discovery_method': helper_data.get('discovery_method'),
+                    'candidates_found': helper_data.get('candidates_found', 0),
+                    'quick_validation_result': helper_data.get('validation_result', {})
+                }
+
+            # Raw input metadata
+            if 'raw_input' in pipeline_data:
+                raw_data = pipeline_data['raw_input']
+                metadata['raw_input'] = {
+                    'input_type': type(raw_data).__name__,
+                    'input_size': len(str(raw_data)) if raw_data else 0,
+                    'is_list': isinstance(raw_data, list),
+                    'list_length': len(raw_data) if isinstance(raw_data, list) else 0
+                }
+
+            # Processing timestamps
+            metadata['processing_timestamps'] = {
+                'pipeline_start': pipeline_data.get('start_timestamp'),
+                'pipeline_end': pipeline_data.get('end_timestamp'),
+                'total_processing_time_ms': pipeline_data.get('processing_time_ms', 0)
+            }
+
+        except Exception as e:
+            logger.warning(f"Failed to extract pipeline metadata: {e}")
+            metadata['extraction_error'] = str(e)
+
+        return metadata
+
     def get_storage_info(self) -> Dict[str, Any]:
         """Get information about storage location and statistics."""
         
