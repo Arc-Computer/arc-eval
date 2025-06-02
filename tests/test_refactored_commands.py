@@ -208,9 +208,9 @@ class TestCommandIntegration:
             assert result == 0
             mock_handler.return_value.execute.assert_called_once()
 
-    @patch('agent_eval.commands.compliance_command.ComplianceHandler')
     @patch('agent_eval.commands.compliance_command.update_workflow_progress')
-    def test_compliance_command_integration(self, mock_update, mock_handler):
+    @patch('agent_eval.commands.compliance_command.ComplianceHandler')
+    def test_compliance_command_integration(self, mock_handler, mock_update):
         """Test compliance command integrates with CLI correctly."""
         mock_handler.return_value.execute.return_value = 0
 
