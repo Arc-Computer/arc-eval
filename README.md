@@ -1,6 +1,6 @@
 # ARC-Eval: Debug, Evaluate, and Improve AI Agents
 
-> **ARC-Eval helps teams rapidly debug, test, and improve AI agents for real-world reliability, compliance, and risk, no matter your stack.**
+> **CLI-native, agent-agnostic evaluation for AI agents—real-world reliability, compliance, and risk, beyond built-in framework evals.**
 
 [![PyPI version](https://badge.fury.io/py/arc-eval.svg)](https://badge.fury.io/py/arc-eval)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -8,7 +8,7 @@
 
 ![ARC-Eval Dashboard](public/cli_dashboard_rounded.png)
 
-ARC-Eval helps teams rapidly debug, test, and improve AI agents for real-world reliability, compliance, and risk, no matter your stack. This is a CLI-native tool that tests your agent against **378 real-world scenarios** across finance, security, and machine learning to spot risks like data leaks or bias. With four simple workflows, ARC-Eval identifies failures, checks compliance, and suggests improvements, learning from every run to boost your agent's performance and reliability.
+ARC-Eval tests any agent—regardless of framework—against **378 enterprise-grade scenarios** in finance, security, and machine learning. Instantly spot risks like data leaks, bias, or compliance gaps. With four simple CLI workflows, ARC-Eval delivers actionable insights, continuous improvement, and audit-ready reports—no code changes required.
 
 It's built to be **agent-agnostic**, meaning you can bring your own agent (BYOA) regardless of the framework (LangChain, OpenAI, Google, Agno, etc.) and get actionable insights with minimal setup.
 
@@ -319,6 +319,39 @@ graph LR
 
 <details>
 <summary><strong>Show Advanced Usage (SDK, CI/CD, etc.)</strong></summary>
+
+### Python SDK for Programmatic Evaluation
+
+```python
+from agent_eval.core import EvaluationEngine, AgentOutput
+from agent_eval.core.types import EvaluationResult, EvaluationSummary
+
+# Example agent outputs (replace with your actual agent data)
+agent_data = [
+    {"output": "The transaction is approved.", "metadata": {"scenario": "finance_scenario_1"}},
+    {"output": "Access denied due to security policy.", "metadata": {"scenario": "security_scenario_3"}}
+]
+agent_outputs = [AgentOutput.from_raw(data) for data in agent_data]
+
+# Initialize the evaluation engine for a specific domain
+engine = EvaluationEngine(domain="finance")
+
+# Run evaluation
+# You can optionally pass specific scenarios if needed, otherwise it uses the domain's default pack
+results: list[EvaluationResult] = engine.evaluate(agent_outputs=agent_outputs)
+
+# Get a summary of the results
+summary: EvaluationSummary = engine.get_summary(results)
+
+print(f"Total Scenarios: {summary.total_scenarios}")
+print(f"Passed: {summary.passed}")
+print(f"Failed: {summary.failed}")
+print(f"Pass Rate: {summary.pass_rate:.2f}%")
+
+for result in results:
+    if not result.passed:
+        print(f"Failed Scenario: {result.scenario_name}, Reason: {result.failure_reason}")
+```
 
 > See the [GitHub Actions workflow example](./examples/integration/ci-cd/github-actions.yml).
 
