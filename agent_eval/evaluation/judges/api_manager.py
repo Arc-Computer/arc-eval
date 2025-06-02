@@ -31,26 +31,45 @@ logger = logging.getLogger(__name__)
 class APIManager:
     """Enterprise API management with cost tracking and fallback."""
     
-    def __init__(self, preferred_model: str = "auto", provider: str = None):
-        # Determine provider
-        self.provider = provider or os.getenv("LLM_PROVIDER", "anthropic")
-        
-        # Initialize provider-specific settings
+    def __init__(self, preferred_model: str = "auto", provider: str = None, high_accuracy: bool = False):
+        # Determine provider - default to OpenAI for speed
+        self.provider = provider or os.getenv("LLM_PROVIDER", "openai")
+        self.high_accuracy = high_accuracy
+
+        # Initialize provider-specific settings with speed-optimized defaults
         if self.provider == "anthropic":
-            self.primary_model = "claude-sonnet-4-20250514"  # Latest Claude Sonnet 4
-            self.fallback_model = "claude-3-5-haiku-20241022"  # Latest Claude Haiku 3.5
+            if high_accuracy:
+                self.primary_model = "claude-sonnet-4-20250514"  # High accuracy
+                self.fallback_model = "claude-3-5-sonnet-20241022"  # Medium accuracy
+            else:
+                self.primary_model = "claude-3-5-haiku-20241022"  # Fast default
+                self.fallback_model = "claude-3-5-haiku-20241022"  # Same for consistency
             self.api_key = os.getenv("ANTHROPIC_API_KEY")
             if not self.api_key:
                 raise ValueError("ANTHROPIC_API_KEY environment variable not set")
         elif self.provider == "openai":
-            self.primary_model = "gpt-4.1-2025-04-14"  # Latest GPT-4.1
-            self.fallback_model = "gpt-4.1-mini-2025-04-14"  # Latest GPT-4.1-mini
+            if high_accuracy:
+                self.primary_model = "gpt-4.1-2025-04-14"  # High accuracy
+                self.fallback_model = "gpt-4.1-mini-2025-04-14"  # Fast fallback
+            else:
+                self.primary_model = "gpt-4.1-mini-2025-04-14"  # Fast default
+                self.fallback_model = "gpt-4.1-mini-2025-04-14"  # Same for consistency
             self.api_key = os.getenv("OPENAI_API_KEY")
             if not self.api_key:
                 raise ValueError("OPENAI_API_KEY environment variable not set")
+        elif self.provider == "google":
+            if high_accuracy:
+                self.primary_model = "gemini-2.0-flash-exp"  # High accuracy
+                self.fallback_model = "gemini-2.5-flash-preview-05-20"  # Fast fallback
+            else:
+                self.primary_model = "gemini-2.5-flash-preview-05-20"  # Fast default
+                self.fallback_model = "gemini-2.0-flash-lite"  # Fastest fallback
+            self.api_key = os.getenv("GEMINI_API_KEY")
+            if not self.api_key:
+                raise ValueError("GEMINI_API_KEY environment variable not set")
         else:
             raise ValueError(f"Unsupported provider: {self.provider}")
-        
+
         # Handle user model preference
         if preferred_model == "auto":
             self.preferred_model = self.primary_model
@@ -59,6 +78,8 @@ class APIManager:
             if self.provider == "anthropic" and preferred_model in ["claude-sonnet-4-20250514", "claude-3-5-sonnet-20241022", "claude-3-5-haiku-20241022"]:
                 self.preferred_model = preferred_model
             elif self.provider == "openai" and preferred_model in ["gpt-4.1-2025-04-14", "gpt-4.1-mini-2025-04-14"]:
+                self.preferred_model = preferred_model
+            elif self.provider == "google" and preferred_model in ["gemini-2.5-flash-preview-05-20", "gemini-2.0-flash-lite", "gemini-2.0-flash-exp"]:
                 self.preferred_model = preferred_model
             else:
                 logger.warning(f"Unknown model {preferred_model} for provider {self.provider}, using auto selection")
@@ -77,15 +98,23 @@ class APIManager:
                 import anthropic
             except ImportError:
                 raise ImportError("anthropic library not installed. Run: pip install anthropic")
-            
+
             client = anthropic.Anthropic(api_key=self.api_key)
         elif self.provider == "openai":
             try:
                 import openai
             except ImportError:
                 raise ImportError("openai library not installed. Run: pip install openai")
-            
+
             client = openai.OpenAI(api_key=self.api_key)
+        elif self.provider == "google":
+            try:
+                from google import genai
+            except ImportError:
+                raise ImportError("google-genai library not installed. Run: pip install google-genai")
+
+            # Create client with API key
+            client = genai.Client(api_key=self.api_key)
         
         # Model selection logic
         if self.total_cost > self.cost_threshold or not prefer_primary:
@@ -145,6 +174,20 @@ class APIManager:
             else:
                 # Default to mini pricing if unknown
                 cost = (input_tokens * 0.15 + output_tokens * 0.6) / 1_000_000
+        elif self.provider == "google":
+            # Google Gemini pricing (December 2024)
+            if "gemini-2.5-flash-preview" in model:
+                # Gemini 2.5 Flash pricing: $0.075 input / $0.30 output per MTok
+                cost = (input_tokens * 0.075 + output_tokens * 0.30) / 1_000_000
+            elif "gemini-2.0-flash-exp" in model:
+                # Gemini 2.0 Flash Experimental pricing: $0.075 input / $0.30 output per MTok
+                cost = (input_tokens * 0.075 + output_tokens * 0.30) / 1_000_000
+            elif "gemini-2.0-flash-lite" in model:
+                # Gemini 2.0 Flash Lite pricing: $0.075 input / $0.30 output per MTok (same as flash)
+                cost = (input_tokens * 0.075 + output_tokens * 0.30) / 1_000_000
+            else:
+                # Default to flash pricing if unknown
+                cost = (input_tokens * 0.075 + output_tokens * 0.30) / 1_000_000
         else:
             cost = 0.0
         
@@ -204,19 +247,35 @@ class APIManager:
                         logprobs=enable_logprobs,
                         top_logprobs=5 if enable_logprobs else None
                     )
-                    
+
                     response_text = response.choices[0].message.content
-                    
+
                     # Use actual token counts from API
                     input_tokens = response.usage.prompt_tokens
                     output_tokens = response.usage.completion_tokens
                     self.track_cost(input_tokens, output_tokens, model)
-                    
+
                     # Extract real logprobs
                     if enable_logprobs and response.choices[0].logprobs:
                         logprobs = self._extract_openai_logprobs(response.choices[0].logprobs)
                     else:
                         logprobs = None
+
+                elif self.provider == "google":
+                    response = client.models.generate_content(
+                        model=model,
+                        contents=prompt
+                    )
+
+                    response_text = response.text
+
+                    # Estimate token counts (Google doesn't provide exact counts in response)
+                    input_tokens = self._count_tokens(prompt)
+                    output_tokens = self._count_tokens(response_text)
+                    self.track_cost(input_tokens, output_tokens, model)
+
+                    # Google doesn't provide logprobs, use pseudo-logprobs
+                    logprobs = self._extract_enhanced_pseudo_logprobs(response_text) if enable_logprobs else None
                 
                 return response_text, logprobs
                 

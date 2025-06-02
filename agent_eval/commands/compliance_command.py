@@ -34,6 +34,8 @@ class ComplianceCommand:
         no_export: bool = False,
         no_interactive: bool = False,
         quick_start: bool = False,
+        high: bool = False,
+        provider: Optional[str] = None,
         verbose: bool = False
     ) -> int:
         """
@@ -47,6 +49,7 @@ class ComplianceCommand:
             no_export: Disable automatic PDF export
             no_interactive: Skip interactive menu for automation
             quick_start: Run with sample data
+            high: High accuracy mode (slower, premium models)
             verbose: Enable verbose output
             
         Returns:
@@ -94,6 +97,8 @@ class ComplianceCommand:
                 verbose=verbose,
                 output='table',
                 no_interactive=no_interactive,  # Pass no_interactive flag
+                high_accuracy=high,  # Pass high accuracy flag
+                provider=provider,  # Pass provider selection
                 # Performance tracking for compliance
                 performance=True,
                 timing=True,

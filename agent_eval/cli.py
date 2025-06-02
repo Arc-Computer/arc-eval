@@ -249,8 +249,11 @@ def debug(input_file: Path, framework: Optional[str], output_format: str, no_int
 @click.option('--no-export', is_flag=True, help='🚫 Skip PDF generation')
 @click.option('--no-interactive', is_flag=True, help='🤖 Skip menus (for CI/CD automation)')
 @click.option('--quick-start', is_flag=True, help='🚀 Try with sample data (no file needed!)')
+@click.option('--high', is_flag=True, help='🎯 High accuracy mode (slower, premium models)')
+@click.option('--provider', type=click.Choice(['openai', 'anthropic', 'google']),
+              help='🔧 AI provider: openai (default), anthropic, or google')
 @click.option('--verbose', is_flag=True, help='🔍 Show detailed technical output')
-def compliance(domain: str, input_file: Optional[Path], folder_scan: bool, export: Optional[str], no_export: bool, no_interactive: bool, quick_start: bool, verbose: bool):
+def compliance(domain: str, input_file: Optional[Path], folder_scan: bool, export: Optional[str], no_export: bool, no_interactive: bool, quick_start: bool, high: bool, provider: Optional[str], verbose: bool):
     """
     ✅ Compliance: Does it meet requirements?
 
@@ -282,7 +285,7 @@ def compliance(domain: str, input_file: Optional[Path], folder_scan: bool, expor
       • Regulatory reporting (SOX, GDPR, EU AI Act)
     """
     command = ComplianceCommand()
-    return command.execute(domain, input_file, folder_scan, export, no_export, no_interactive, quick_start, verbose)
+    return command.execute(domain, input_file, folder_scan, export, no_export, no_interactive, quick_start, high, provider, verbose)
 
 
 @cli.command()

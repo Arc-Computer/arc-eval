@@ -33,9 +33,11 @@ SLOW_RESPONSE_TIME_THRESHOLD = 10.0  # seconds - considered slow
 ANALYSIS_CONFIDENCE_HIGH_THRESHOLD = 0.8  # 80% - high confidence analysis
 ANALYSIS_CONFIDENCE_MEDIUM_THRESHOLD = 0.6  # 60% - medium confidence analysis
 
-# Model Names (centralized)
-DEFAULT_JUDGE_MODEL = "claude-sonnet-4-20250514"
-COST_OPTIMIZED_JUDGE_MODEL = "claude-3-5-haiku-latest"
+# Model Names (centralized) - Optimized for Speed
+DEFAULT_JUDGE_MODEL = "gpt-4.1-mini"  # Fast, cost-effective default
+FAST_JUDGE_MODEL = "claude-3-5-haiku-latest"  # Alternative fast model
+GOOGLE_FAST_MODEL = "gemini-2.5-flash-preview-05-20"  # Google's fastest model
+HIGH_ACCURACY_JUDGE_MODEL = "claude-sonnet-4-20250514"  # Premium accuracy model
 AUTO_MODEL_SELECTION = "auto"
 
 # Progress and UI Thresholds
