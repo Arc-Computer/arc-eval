@@ -198,7 +198,12 @@ def analyze(input_file: Path, domain: str, quick: bool, no_interactive: bool, ve
               help='📊 Output format (console recommended for first use)')
 @click.option('--no-interactive', is_flag=True, help='🤖 Skip menus (for CI/CD automation)')
 @click.option('--verbose', is_flag=True, help='🔍 Show detailed technical output')
-def debug(input_file: Path, framework: Optional[str], output_format: str, no_interactive: bool, verbose: bool):
+@click.option('--pattern-analysis', is_flag=True, help='🔍 Perform universal failure pattern analysis')
+@click.option('--root-cause', is_flag=True, help='🔧 Deep root cause analysis with remediation')
+@click.option('--framework-agnostic', is_flag=True, help='🌐 Show insights from other frameworks')
+@click.option('--cross-framework-learning', is_flag=True, help='🎓 Show how other frameworks solve similar issues')
+def debug(input_file: Path, framework: Optional[str], output_format: str, no_interactive: bool, verbose: bool,
+          pattern_analysis: bool, root_cause: bool, framework_agnostic: bool, cross_framework_learning: bool):
     """
     🔍 Debug: Why is my agent failing?
 
@@ -229,7 +234,8 @@ def debug(input_file: Path, framework: Optional[str], output_format: str, no_int
       • Generic format (works with any agent)
     """
     command = DebugCommand()
-    return command.execute(input_file, framework, output_format, no_interactive, verbose)
+    return command.execute(input_file, framework, output_format, no_interactive, verbose,
+                          pattern_analysis, root_cause, framework_agnostic, cross_framework_learning)
 
 
 @cli.command()
@@ -289,7 +295,11 @@ def compliance(domain: str, input_file: Optional[Path], folder_scan: bool, expor
 @click.option('--auto-detect', is_flag=True, help='🔍 Auto-detect latest evaluation file')
 @click.option('--no-interactive', is_flag=True, help='🤖 Skip menus (for CI/CD automation)')
 @click.option('--verbose', is_flag=True, help='🔍 Enable verbose output')
-def improve(evaluation_file: Optional[Path], baseline: Optional[Path], current: Optional[Path], auto_detect: bool, no_interactive: bool, verbose: bool):
+@click.option('--framework-specific', is_flag=True, help='🎯 Generate framework-specific improvements')
+@click.option('--code-examples', is_flag=True, help='💻 Include copy-paste ready code examples')
+@click.option('--cross-framework-solutions', is_flag=True, help='🌐 Show solutions from other frameworks')
+def improve(evaluation_file: Optional[Path], baseline: Optional[Path], current: Optional[Path], auto_detect: bool,
+           no_interactive: bool, verbose: bool, framework_specific: bool, code_examples: bool, cross_framework_solutions: bool):
     """
     📈 Improve: How do I make it better?
 
@@ -322,7 +332,8 @@ def improve(evaluation_file: Optional[Path], baseline: Optional[Path], current: 
       Run 'arc-eval compliance --domain <domain> --quick-start' first
     """
     command = ImproveCommand()
-    exit_code = command.execute(evaluation_file, baseline, current, auto_detect, no_interactive, verbose)
+    exit_code = command.execute(evaluation_file, baseline, current, auto_detect, no_interactive, verbose,
+                               framework_specific, code_examples, cross_framework_solutions)
     if exit_code != 0:
         if no_interactive:
             # For automation contexts, return exit code directly
