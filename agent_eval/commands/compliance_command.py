@@ -35,6 +35,7 @@ class ComplianceCommand:
         no_interactive: bool = False,
         quick_start: bool = False,
         high: bool = False,
+        provider: Optional[str] = None,
         verbose: bool = False
     ) -> int:
         """
@@ -97,6 +98,7 @@ class ComplianceCommand:
                 output='table',
                 no_interactive=no_interactive,  # Pass no_interactive flag
                 high_accuracy=high,  # Pass high accuracy flag
+                provider=provider,  # Pass provider selection
                 # Performance tracking for compliance
                 performance=True,
                 timing=True,

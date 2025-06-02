@@ -45,6 +45,7 @@ class ComplianceHandler(BaseCommandHandler):
         quick_start = kwargs.get('quick_start', False)
         agent_judge = kwargs.get('agent_judge', False)
         high_accuracy = kwargs.get('high_accuracy', False)
+        provider = kwargs.get('provider', None)
         judge_model = kwargs.get('judge_model', 'claude-3-5-haiku-latest')
         verify = kwargs.get('verify', False)
         confidence_calibration = kwargs.get('confidence_calibration', False)
@@ -159,7 +160,7 @@ class ComplianceHandler(BaseCommandHandler):
         if agent_judge:
             results, improvement_report, performance_metrics, reliability_metrics, learning_metrics = self._run_agent_judge_evaluation(
                 domain, judge_model, verify, performance, reliability, scenario_count,
-                engine, agent_outputs, verbose, dev, agent_judge, batch_mode, high_accuracy
+                engine, agent_outputs, verbose, dev, agent_judge, batch_mode, high_accuracy, provider
             )
         else:
             results = self._run_standard_evaluation(
@@ -357,10 +358,10 @@ class ComplianceHandler(BaseCommandHandler):
     def _run_agent_judge_evaluation(self, domain: str, judge_model: str, verify: bool,
                                    performance: bool, reliability: bool, scenario_count: int,
                                    engine: EvaluationEngine, agent_outputs: List[Dict[str, Any]],
-                                   verbose: bool, dev: bool, agent_judge: bool, batch_mode: bool = False, high_accuracy: bool = False) -> tuple:
+                                   verbose: bool, dev: bool, agent_judge: bool, batch_mode: bool = False, high_accuracy: bool = False, provider: Optional[str] = None) -> tuple:
         """Run Agent-as-a-Judge evaluation with all enhancements."""
         # Use Agent-as-a-Judge evaluation with model preference and accuracy mode
-        agent_judge_instance = AgentJudge(domain=domain, preferred_model=judge_model, high_accuracy=high_accuracy)
+        agent_judge_instance = AgentJudge(domain=domain, preferred_model=judge_model, high_accuracy=high_accuracy, provider=provider)
         
         # Initialize performance tracking if requested OR for Agent Judge mode (always track performance for judges)
         if performance or agent_judge:
@@ -433,10 +434,23 @@ class ComplianceHandler(BaseCommandHandler):
             performance_metrics = None
             if performance_tracker:
                 try:
+                    # Manually set end time since we're still inside the context manager
+                    import time
+                    performance_tracker.end_time = time.time()
                     performance_tracker.add_cost(agent_judge_instance.api_manager.total_cost)
+                    performance_tracker.scenario_count = len(judge_results)  # Ensure scenario count is set
                     performance_metrics = performance_tracker.get_performance_summary()
+
+                    # Debug logging
+                    if verbose:
+                        console.print(f"[cyan]Verbose:[/cyan] Performance tracker - Start: {performance_tracker.start_time}, End: {performance_tracker.end_time}")
+                        console.print(f"[cyan]Verbose:[/cyan] Performance tracker - Scenarios: {performance_tracker.scenario_count}, Cost: {performance_tracker.total_cost}")
+                        console.print(f"[cyan]Verbose:[/cyan] Performance metrics: {performance_metrics}")
+
                 except Exception as e:
                     logger.warning(f"Failed to generate performance metrics: {e}")
+                    if verbose:
+                        console.print(f"[cyan]Verbose:[/cyan] Performance tracking error: {e}")
                     performance_metrics = None
             
             # Run reliability evaluation if enabled
