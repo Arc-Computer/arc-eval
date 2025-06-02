@@ -52,6 +52,28 @@
 
 ## 🚀 30-Day Implementation Plan
 
+### **🔍 CRITICAL: Web Search Requirements (June 2025)**
+
+**Before starting ANY implementation**, each agent MUST conduct comprehensive web search to gather the most current context:
+
+**Required Research Areas**:
+- **Latest Framework Updates**: LangChain, CrewAI, AutoGen, LangGraph releases and breaking changes
+- **Current Failure Patterns**: Recent GitHub issues, Stack Overflow discussions, Reddit threads
+- **Competitive Landscape**: LangSmith, Arize, Weights & Biases latest features and positioning
+- **Industry Standards**: Latest compliance frameworks, security standards, evaluation methodologies
+- **Best Practices**: Current debugging techniques, optimization patterns, enterprise deployment strategies
+
+**Search Queries to Execute**:
+```
+"LangChain debugging 2025" "agent failure patterns"
+"CrewAI coordination issues" "AutoGen memory problems"
+"LangSmith vs alternatives 2025" "agent evaluation tools"
+"AI agent compliance" "enterprise agent deployment"
+"agent observability" "production agent monitoring"
+```
+
+**Why This Matters**: The agent framework space evolves weekly. June 2025 implementations must reflect the absolute latest patterns, tools, and best practices to maintain competitive advantage.
+
 ### **Week 1-2: Universal Failure Pattern Classification**
 
 **Goal**: Map any agent failure to universal taxonomy regardless of framework
