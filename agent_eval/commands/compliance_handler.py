@@ -483,20 +483,30 @@ class ComplianceHandler(BaseCommandHandler):
         
         return results
     
-    def _filter_scenarios_by_input(self, engine: EvaluationEngine, 
+    def _filter_scenarios_by_input(self, engine: EvaluationEngine,
                                   agent_outputs: List[Dict[str, Any]], verbose: bool) -> List:
         """Filter scenarios based on input data scenario_ids if available."""
         all_scenarios = engine.eval_pack.scenarios
         input_scenario_ids = set()
-        
-        # Extract scenario_ids from input data
+
+        # Extract scenario_ids from input data - check both top-level and metadata
         if isinstance(agent_outputs, list):
             for output in agent_outputs:
-                if isinstance(output, dict) and 'scenario_id' in output:
-                    input_scenario_ids.add(output['scenario_id'])
-        elif isinstance(agent_outputs, dict) and 'scenario_id' in agent_outputs:
-            input_scenario_ids.add(agent_outputs['scenario_id'])
-        
+                if isinstance(output, dict):
+                    # Check top-level scenario_id first
+                    if 'scenario_id' in output:
+                        input_scenario_ids.add(output['scenario_id'])
+                    # Also check metadata.scenario_id for backward compatibility
+                    elif 'metadata' in output and isinstance(output['metadata'], dict) and 'scenario_id' in output['metadata']:
+                        input_scenario_ids.add(output['metadata']['scenario_id'])
+        elif isinstance(agent_outputs, dict):
+            # Check top-level scenario_id first
+            if 'scenario_id' in agent_outputs:
+                input_scenario_ids.add(agent_outputs['scenario_id'])
+            # Also check metadata.scenario_id for backward compatibility
+            elif 'metadata' in agent_outputs and isinstance(agent_outputs['metadata'], dict) and 'scenario_id' in agent_outputs['metadata']:
+                input_scenario_ids.add(agent_outputs['metadata']['scenario_id'])
+
         # Filter scenarios to only those matching input data
         if input_scenario_ids:
             scenarios = [s for s in all_scenarios if s.id in input_scenario_ids]
@@ -506,7 +516,7 @@ class ComplianceHandler(BaseCommandHandler):
             scenarios = all_scenarios
             if verbose:
                 console.print(f"[cyan]Verbose:[/cyan] No scenario_ids found in input data, evaluating all {len(scenarios)} scenarios")
-        
+
         return scenarios
     
     def _find_best_matching_output(self, scenario, agent_output_objects: List[AgentOutput]) -> Optional[AgentOutput]:
