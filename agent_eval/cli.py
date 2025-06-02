@@ -324,7 +324,12 @@ def improve(evaluation_file: Optional[Path], baseline: Optional[Path], current: 
     command = ImproveCommand()
     exit_code = command.execute(evaluation_file, baseline, current, auto_detect, no_interactive, verbose)
     if exit_code != 0:
-        raise click.ClickException("Improvement workflow failed")
+        if no_interactive:
+            # For automation contexts, return exit code directly
+            return exit_code
+        else:
+            # For interactive contexts, raise exception for better UX
+            raise click.ClickException("Improvement workflow failed")
     return exit_code
 
 

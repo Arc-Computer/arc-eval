@@ -383,9 +383,9 @@ class ReliabilityAnalyzer:
         if framework:
             patterns = self.framework_patterns.get_tool_call_patterns(framework)
         else:
-            # Try all patterns if framework is unknown
+            # Try all patterns if framework is unknown - use dynamic framework list
             patterns = []
-            for fw in ['openai', 'anthropic', 'langchain', 'crewai', 'autogen', 'generic']:
+            for fw in self.framework_patterns._tool_call_patterns.keys():
                 patterns.extend(self.framework_patterns.get_tool_call_patterns(fw))
         
         for pattern in patterns:
