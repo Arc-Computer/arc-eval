@@ -1,12 +1,29 @@
+<div align="center">
+  <img src="public/arc-banner-readme.png" alt="ARC-Eval Banner" style="border-radius: 6px; max-width: 45%; height: auto; max-height: 120px; object-fit: cover;" />
+</div>
+
+<br>
+
+<div align="center">
+
 # ARC-Eval: Debug, Evaluate, and Improve AI Agents
 
-> **CLI-native, agent-agnostic evaluation for AI agents—real-world reliability, compliance, and risk, beyond built-in framework evals.**
+**CLI-native, agent-agnostic evaluation for AI agents—real-world reliability, compliance, and risk, beyond built-in framework evals.**
 
 [![PyPI version](https://badge.fury.io/py/arc-eval.svg)](https://badge.fury.io/py/arc-eval)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 
-![ARC-Eval Dashboard](public/cli_dashboard_rounded.png)
+</div>
+
+<br>
+
+<div align="center">
+  <img src="public/cli_dashboard_rounded.png" alt="ARC-Eval CLI Dashboard" style="border-radius: 8px; max-width: 90%; height: auto;" />
+</div>
+
+<br>
+<br>
 
 ARC-Eval tests any agent—regardless of framework—against **378 enterprise-grade scenarios** in finance, security, and machine learning. Instantly spot risks like data leaks, bias, or compliance gaps. With four simple CLI workflows, ARC-Eval delivers actionable insights, continuous improvement, and audit-ready reports—no code changes required.
 
