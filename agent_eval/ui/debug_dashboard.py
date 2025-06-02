@@ -22,6 +22,7 @@ from rich import box
 
 from agent_eval.evaluation.reliability_validator import ComprehensiveReliabilityAnalysis, FrameworkPerformanceAnalysis
 from agent_eval.analysis.cognitive_analyzer import ComprehensiveCognitiveAnalysis
+from agent_eval.ui.prediction_renderer import PredictionRenderer
 
 console = Console()
 
@@ -32,6 +33,7 @@ class DebugDashboard:
     def __init__(self):
         """Initialize debug dashboard."""
         self.console = console
+        self.prediction_renderer = PredictionRenderer(self.console)
     
     def display_debug_summary(
         self, 
@@ -45,7 +47,11 @@ class DebugDashboard:
         
         # Create main overview panel
         self._display_overview_panel(analysis, cognitive_analysis)
-        
+
+        # Display reliability prediction prominently (NEW - Task 2.3)
+        if analysis.reliability_prediction:
+            self.display_reliability_prediction(analysis.reliability_prediction)
+
         # Display framework-specific insights
         if analysis.framework_performance:
             self._display_framework_insights(analysis.framework_performance, analysis.detected_framework)
@@ -180,7 +186,66 @@ class DebugDashboard:
         
         # Migration roadmap
         self._display_migration_roadmap(current_framework, recommended_framework)
-    
+
+    # ==================== Prediction Display Methods (NEW - Task 2.3) ====================
+
+    def display_reliability_prediction(self, prediction: Dict[str, Any]) -> None:
+        """Display reliability prediction prominently in debug dashboard."""
+
+        if not prediction:
+            return
+
+        # Use specialized prediction renderer for high-impact display
+        self.prediction_renderer.render_prediction_summary(prediction)
+        self.prediction_renderer.render_risk_factors(prediction)
+        self.prediction_renderer.render_compliance_violations(prediction)
+        self.prediction_renderer.render_business_impact(prediction)
+        self.prediction_renderer.render_recommendations(prediction)
+        self.prediction_renderer.render_llm_rationale(prediction, expandable=True)
+
+    def render_risk_assessment(self, risk_level: str, confidence: float) -> None:
+        """Color-coded risk level display."""
+
+        # Get risk styling
+        risk_color, risk_emoji = self._get_risk_styling(risk_level)
+
+        # Create risk assessment panel
+        risk_text = Text()
+        risk_text.append(f"{risk_emoji} RISK LEVEL: ", style="bold white")
+        risk_text.append(f"{risk_level}", style=f"bold {risk_color}")
+        risk_text.append(f"\n🎯 Confidence: {confidence:.1%}", style="white")
+
+        risk_panel = Panel(
+            risk_text,
+            title=f"[bold {risk_color}]Risk Assessment[/bold {risk_color}]",
+            border_style=risk_color
+        )
+
+        self.console.print(risk_panel)
+
+    def show_compliance_violations(self, violations: List[Dict]) -> None:
+        """Highlight regulatory compliance issues."""
+
+        if not violations:
+            self.console.print("[green]✅ No compliance violations detected[/green]")
+            return
+
+        # Use prediction renderer for consistent display
+        prediction_data = {'rule_based_component': {'violations': violations}}
+        self.prediction_renderer.render_compliance_violations(prediction_data)
+
+    def _get_risk_styling(self, risk_level: str) -> tuple:
+        """Get color and emoji for risk level."""
+
+        risk_styling = {
+            'LOW': ('green', '🟢'),
+            'MEDIUM': ('yellow', '🟡'),
+            'HIGH': ('red', '🔴'),
+            'UNKNOWN': ('dim', '⚪')
+        }
+
+        return risk_styling.get(risk_level.upper(), ('dim', '⚪'))
+
     # ==================== Helper Methods ====================
     
     def _display_overview_panel(

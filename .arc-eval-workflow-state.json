@@ -2,10 +2,10 @@
   "current_cycle": {
     "started_at": "2025-06-02T15:25:17.358238",
     "debug": {
-      "completed_at": "2025-06-02T15:25:17.358246",
-      "input_file": "examples/quickstart/finance_example.json",
-      "framework": "auto-detected",
-      "timestamp": "2025-06-02T15:25:17.357979"
+      "completed_at": "2025-06-02T16:30:15.045856",
+      "input_file": "/var/folders/db/b_7_hw4x1pgg4ntrggcdgzt80000gn/T/tmpox_bgsie.json",
+      "framework": "langchain",
+      "timestamp": "2025-06-02T16:30:15.045476"
     },
     "compliance": null,
     "improve": null
