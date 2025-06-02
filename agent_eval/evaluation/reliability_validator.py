@@ -391,9 +391,9 @@ class ReliabilityAnalyzer:
                 # Use detected framework patterns
                 patterns = self.framework_patterns.get_tool_call_patterns(detected_framework)
             else:
-                # Try all patterns if framework is unknown - use dynamic framework list
+                # Try all patterns if framework is unknown - use public method to get framework list
                 patterns = []
-                for fw in self.framework_patterns._tool_call_patterns.keys():
+                for fw in self.framework_patterns.get_framework_names():
                     patterns.extend(self.framework_patterns.get_tool_call_patterns(fw))
         
         for pattern in patterns:

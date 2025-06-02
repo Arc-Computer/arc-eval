@@ -179,6 +179,10 @@ class FrameworkPatterns:
     def get_failure_patterns(self, framework: str) -> List[str]:
         """Get failure detection patterns for a specific framework."""
         return self._failure_patterns.get(framework, self._failure_patterns.get("generic", []))
+
+    def get_framework_names(self) -> List[str]:
+        """Get list of all supported framework names."""
+        return list(self._tool_call_patterns.keys())
     
     def detect_framework_from_structure(self, data: Any) -> Optional[str]:
         """Detect framework based on data structure patterns."""
