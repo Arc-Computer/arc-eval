@@ -8,7 +8,7 @@
 
 # ARC-Eval: Debug, Evaluate, and Improve AI Agents
 
-**CLI-native, agent-agnostic evaluation for AI agents—real-world reliability, compliance, and risk, beyond built-in framework evals.**
+**CLI-native, framework-agnostic evaluation for AI agents. Real-world reliability, compliance, and risk - improve performance with every run.**
 
 [![PyPI version](https://badge.fury.io/py/arc-eval.svg)](https://badge.fury.io/py/arc-eval)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
