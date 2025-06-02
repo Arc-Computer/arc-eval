@@ -1,0 +1,15 @@
+[
+  {
+    "pass_rate": 0.0,
+    "critical_failures": 0,
+    "total_scenarios": 5,
+    "timestamp": 1748893780.8867662,
+    "failure_patterns": [
+      "The agent output demonstrates a complete misalignm",
+      "This agent output represents a catastrophic failur",
+      "The agent output demonstrates critical failure in ",
+      "Critical failure on multiple fronts: 1) SCENARIO M",
+      "The agent output demonstrates critical failures ac"
+    ]
+  }
+]

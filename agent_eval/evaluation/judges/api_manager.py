@@ -31,26 +31,35 @@ logger = logging.getLogger(__name__)
 class APIManager:
     """Enterprise API management with cost tracking and fallback."""
     
-    def __init__(self, preferred_model: str = "auto", provider: str = None):
-        # Determine provider
-        self.provider = provider or os.getenv("LLM_PROVIDER", "anthropic")
-        
-        # Initialize provider-specific settings
+    def __init__(self, preferred_model: str = "auto", provider: str = None, high_accuracy: bool = False):
+        # Determine provider - default to OpenAI for speed
+        self.provider = provider or os.getenv("LLM_PROVIDER", "openai")
+        self.high_accuracy = high_accuracy
+
+        # Initialize provider-specific settings with speed-optimized defaults
         if self.provider == "anthropic":
-            self.primary_model = "claude-sonnet-4-20250514"  # Latest Claude Sonnet 4
-            self.fallback_model = "claude-3-5-haiku-20241022"  # Latest Claude Haiku 3.5
+            if high_accuracy:
+                self.primary_model = "claude-sonnet-4-20250514"  # High accuracy
+                self.fallback_model = "claude-3-5-sonnet-20241022"  # Medium accuracy
+            else:
+                self.primary_model = "claude-3-5-haiku-20241022"  # Fast default
+                self.fallback_model = "claude-3-5-haiku-20241022"  # Same for consistency
             self.api_key = os.getenv("ANTHROPIC_API_KEY")
             if not self.api_key:
                 raise ValueError("ANTHROPIC_API_KEY environment variable not set")
         elif self.provider == "openai":
-            self.primary_model = "gpt-4.1-2025-04-14"  # Latest GPT-4.1
-            self.fallback_model = "gpt-4.1-mini-2025-04-14"  # Latest GPT-4.1-mini
+            if high_accuracy:
+                self.primary_model = "gpt-4.1-2025-04-14"  # High accuracy
+                self.fallback_model = "gpt-4.1-mini-2025-04-14"  # Fast fallback
+            else:
+                self.primary_model = "gpt-4.1-mini-2025-04-14"  # Fast default
+                self.fallback_model = "gpt-4.1-mini-2025-04-14"  # Same for consistency
             self.api_key = os.getenv("OPENAI_API_KEY")
             if not self.api_key:
                 raise ValueError("OPENAI_API_KEY environment variable not set")
         else:
             raise ValueError(f"Unsupported provider: {self.provider}")
-        
+
         # Handle user model preference
         if preferred_model == "auto":
             self.preferred_model = self.primary_model

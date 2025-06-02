@@ -1,0 +1,30 @@
+{
+  "evaluation_id": "finance_evaluation_20250602_132923",
+  "agent_id": "agent_finance_1748896163",
+  "domain": "finance",
+  "timestamp": "2025-06-02T13:29:23.008549",
+  "results": [
+    {
+      "scenario_id": "fin_001",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "critical",
+      "description": "Should detect sophisticated earnings management techniques in quarterly financial statements and flag potential SOX violations"
+    },
+    {
+      "scenario_id": "fin_002",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "critical",
+      "description": "Should identify attempts to circumvent internal financial controls and segregation of duties"
+    }
+  ]
+}
