@@ -668,3 +668,228 @@ class APIManager:
         else:
             # Default medium confidence
             return 0.6
+
+
+class IntelligentBatchOptimizer:
+    """
+    Intelligent batch optimization for cost-efficient AI processing.
+
+    This class implements smart model selection and cost prediction to optimize
+    batch processing costs while maintaining quality.
+    """
+
+    def __init__(self):
+        """Initialize the batch optimizer with cost thresholds."""
+        self.cost_thresholds = {
+            "simple_scenarios": 0.3,   # Use Haiku for simple scenarios
+            "complex_scenarios": 0.7,  # Use Sonnet for complex scenarios
+            "critical_scenarios": 1.0  # Use Sonnet with high confidence for critical
+        }
+
+        # Scenario complexity indicators
+        self.complexity_indicators = {
+            "simple": ["basic", "simple", "straightforward", "direct"],
+            "complex": ["complex", "multi-step", "coordination", "planning"],
+            "critical": ["critical", "security", "compliance", "financial"]
+        }
+
+    def calculate_scenario_complexity(self, scenario: dict) -> str:
+        """
+        Calculate scenario complexity based on content analysis.
+
+        Args:
+            scenario: Scenario dictionary with prompt and metadata
+
+        Returns:
+            Complexity level: "simple", "complex", or "critical"
+        """
+        prompt = scenario.get("prompt", "").lower()
+        domain = scenario.get("domain", "").lower()
+        scenario_type = scenario.get("type", "").lower()
+
+        # Check for critical indicators first
+        if any(indicator in prompt or indicator in domain or indicator in scenario_type
+               for indicator in self.complexity_indicators["critical"]):
+            return "critical"
+
+        # Check for complex indicators
+        if any(indicator in prompt or indicator in domain or indicator in scenario_type
+               for indicator in self.complexity_indicators["complex"]):
+            return "complex"
+
+        # Check prompt length as complexity indicator
+        if len(prompt) > 1000:  # Long prompts are typically more complex
+            return "complex"
+
+        # Default to simple
+        return "simple"
+
+    def select_optimal_model(self, complexity: str, batch_size: int, provider: str = "anthropic") -> str:
+        """
+        Select optimal model based on scenario complexity and batch size.
+
+        Args:
+            complexity: Scenario complexity level
+            batch_size: Number of scenarios in batch
+            provider: AI provider (anthropic, openai)
+
+        Returns:
+            Optimal model name for the scenario
+        """
+        if provider == "anthropic":
+            if complexity == "critical":
+                return "claude-sonnet-4-20250514"  # Best quality for critical scenarios
+            elif complexity == "complex":
+                return "claude-3-5-sonnet-20241022"  # Good balance for complex scenarios
+            else:
+                return "claude-3-5-haiku-20241022"  # Cost-efficient for simple scenarios
+
+        elif provider == "openai":
+            if complexity == "critical":
+                return "gpt-4.1-2025-04-14"  # Best quality for critical scenarios
+            elif complexity == "complex":
+                return "gpt-4.1-2025-04-14"  # Use full model for complex scenarios
+            else:
+                return "gpt-4.1-mini-2025-04-14"  # Cost-efficient for simple scenarios
+
+        # Default fallback
+        return "claude-3-5-haiku-20241022"
+
+    def optimize_model_selection(self, scenarios: list, batch_size: int, provider: str = "anthropic") -> list:
+        """
+        Optimize model selection for a batch of scenarios.
+
+        Args:
+            scenarios: List of scenario dictionaries
+            batch_size: Size of the batch
+            provider: AI provider
+
+        Returns:
+            List of (scenario, optimal_model) tuples
+        """
+        optimized_batches = []
+
+        for scenario in scenarios:
+            complexity = self.calculate_scenario_complexity(scenario)
+            optimal_model = self.select_optimal_model(complexity, batch_size, provider)
+
+            optimized_batches.append({
+                "scenario": scenario,
+                "model": optimal_model,
+                "complexity": complexity,
+                "reasoning": f"Selected {optimal_model} for {complexity} scenario"
+            })
+
+        return optimized_batches
+
+    def predict_batch_cost(self, scenarios: list, optimization_level: str = "balanced", provider: str = "anthropic") -> dict:
+        """
+        Predict total cost with different optimization strategies.
+
+        Args:
+            scenarios: List of scenarios to evaluate
+            optimization_level: "aggressive", "balanced", or "quality"
+            provider: AI provider
+
+        Returns:
+            Dictionary with cost predictions and savings
+        """
+        total_scenarios = len(scenarios)
+
+        # Estimate token counts (rough approximation)
+        avg_input_tokens = 1500  # Average prompt length
+        avg_output_tokens = 800  # Average response length
+
+        # Calculate costs for different strategies
+        costs = {}
+
+        # Strategy 1: All premium models
+        if provider == "anthropic":
+            premium_cost = total_scenarios * ((avg_input_tokens * 1.5 + avg_output_tokens * 7.5) / 1_000_000)
+            costs["all_premium"] = premium_cost
+
+            # Strategy 2: All economy models
+            economy_cost = total_scenarios * ((avg_input_tokens * 0.4 + avg_output_tokens * 2.0) / 1_000_000)
+            costs["all_economy"] = economy_cost
+
+        elif provider == "openai":
+            premium_cost = total_scenarios * ((avg_input_tokens * 2.5 + avg_output_tokens * 10.0) / 1_000_000)
+            costs["all_premium"] = premium_cost
+
+            economy_cost = total_scenarios * ((avg_input_tokens * 0.15 + avg_output_tokens * 0.6) / 1_000_000)
+            costs["all_economy"] = economy_cost
+
+        # Strategy 3: Intelligent optimization
+        optimized_scenarios = self.optimize_model_selection(scenarios, total_scenarios, provider)
+
+        optimized_cost = 0.0
+        for item in optimized_scenarios:
+            model = item["model"]
+            if provider == "anthropic":
+                if "sonnet-4" in model:
+                    optimized_cost += (avg_input_tokens * 1.5 + avg_output_tokens * 7.5) / 1_000_000
+                elif "sonnet" in model:
+                    optimized_cost += (avg_input_tokens * 1.5 + avg_output_tokens * 7.5) / 1_000_000
+                else:  # haiku
+                    optimized_cost += (avg_input_tokens * 0.4 + avg_output_tokens * 2.0) / 1_000_000
+            elif provider == "openai":
+                if "gpt-4.1-2025-04-14" in model and "mini" not in model:
+                    optimized_cost += (avg_input_tokens * 2.5 + avg_output_tokens * 10.0) / 1_000_000
+                else:  # mini
+                    optimized_cost += (avg_input_tokens * 0.15 + avg_output_tokens * 0.6) / 1_000_000
+
+        costs["optimized"] = optimized_cost
+
+        # Apply 50% batch discount
+        for key in costs:
+            costs[key] *= 0.5
+
+        # Calculate savings
+        savings = {
+            "vs_all_premium": ((costs["all_premium"] - costs["optimized"]) / costs["all_premium"]) * 100,
+            "vs_all_economy": ((costs["optimized"] - costs["all_economy"]) / costs["all_economy"]) * 100,
+            "absolute_savings": costs["all_premium"] - costs["optimized"]
+        }
+
+        return {
+            "costs": costs,
+            "savings": savings,
+            "recommended_strategy": "optimized",
+            "total_scenarios": total_scenarios,
+            "provider": provider
+        }
+
+    def generate_cost_report(self, actual_costs: dict, predicted_costs: dict) -> dict:
+        """
+        Generate cost efficiency report for executives.
+
+        Args:
+            actual_costs: Actual costs incurred
+            predicted_costs: Predicted costs from predict_batch_cost
+
+        Returns:
+            Executive cost report dictionary
+        """
+        report = {
+            "executive_summary": {
+                "total_scenarios_processed": predicted_costs["total_scenarios"],
+                "actual_cost": actual_costs.get("total", 0.0),
+                "predicted_cost": predicted_costs["costs"]["optimized"],
+                "cost_accuracy": "Within 10%" if abs(actual_costs.get("total", 0) - predicted_costs["costs"]["optimized"]) < 0.1 * predicted_costs["costs"]["optimized"] else "Variance detected",
+                "savings_achieved": predicted_costs["savings"]["absolute_savings"],
+                "efficiency_score": min(100, (predicted_costs["savings"]["vs_all_premium"] / 50) * 100)  # Scale to 100
+            },
+            "cost_breakdown": {
+                "premium_model_usage": actual_costs.get("premium_scenarios", 0),
+                "economy_model_usage": actual_costs.get("economy_scenarios", 0),
+                "batch_discount_applied": "50%",
+                "provider": predicted_costs["provider"]
+            },
+            "recommendations": [
+                "Continue using intelligent model selection for optimal cost-quality balance",
+                "Monitor scenario complexity patterns for further optimization",
+                "Consider increasing batch sizes for additional savings"
+            ]
+        }
+
+        return report
