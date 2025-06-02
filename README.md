@@ -285,25 +285,6 @@ graph LR
           └──────────────── Continuous Feedback Loop ────────────────────────┘
 ```
 
-🗃️ Data Sources & Storage
-
-1. Static Domain Knowledge
-- Location: agent_eval/domains/finance.yaml (110 scenarios)
-- Structure: SOX, KYC, AML, PCI-DSS, GDPR compliance scenarios
-- Metadata: Categories, difficulty indicators, compliance frameworks
-- Role: Foundational test scenarios and compliance requirements
-1. Dynamic Pattern Learning
-- Location: .arc-eval/learned_patterns.jsonl (user-specific, git-ignored)
-- Structure: Failure fingerprints, remediation patterns, scenario generations
-- Generated: agent_eval/domains/customer_generated.yaml (auto-generated scenarios)
-- Role: Learns from real failures to create new test scenarios
-1. Performance Tracking Database
-- Location: experiments/flywheel_proof/improvement/retraining_data/
-- Files:
-    - reward_signal_history.jsonl - All evaluation results over time
-    - training_examples.jsonl - Generated training data from failures
-    - improvement_curriculum.json - Adaptive curriculum recommendations
-  
 ## Examples & Integrations
 
 <details>
