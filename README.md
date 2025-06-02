@@ -185,7 +185,27 @@ arc-eval compliance --domain finance --input clipboard
 
 # 4. Instant demo with built-in sample data (no files needed!)
 arc-eval compliance --domain finance --quick-start
+
+# 5. For automation/CI-CD (skips interactive prompts)
+arc-eval compliance --domain finance --input your_agent_traces.json --no-interactive
 ```
+
+### Performance Optimization
+
+For faster evaluation, include `scenario_id` in your agent outputs to limit evaluation to specific scenarios:
+
+```json
+{
+  "output": "Transaction approved after KYC verification",
+  "scenario_id": "fin_001"
+}
+```
+
+**Performance Tips:**
+- ✅ **Include scenario_id**: Limits evaluation to specific scenarios (10x faster)
+- ✅ **Use --no-interactive**: Essential for automation and CI/CD
+- ✅ **Use --quick-start**: Instant demo with built-in sample data
+- ✅ **Batch processing**: Automatically enabled for 5+ scenarios (50% cost savings)
 
 ### Automatic Format Detection
 
@@ -197,8 +217,9 @@ No need to reformat your agent logs. ARC-Eval automatically detects and parses o
 // Simple, generic format (works with any custom agent)
 {
   "output": "Transaction approved for account X9876.",
+  "scenario_id": "fin_001", // Optional: for faster evaluation (limits to specific scenarios)
   "error": null, // Optional: include if an error occurred
-  "metadata": {"scenario_id": "fin_scenario_001", "user_id": "user123"} // Optional metadata
+  "metadata": {"user_id": "user123", "timestamp": "2024-05-27T10:30:00Z"} // Optional metadata
 }
 
 // OpenAI / Anthropic API style logs (and similar LLM provider formats)
