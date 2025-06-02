@@ -61,23 +61,34 @@ def cli(ctx):
     """
     🚀 ARC-Eval: Debug, Comply, Improve - Zero-config agent evaluation
 
+    \b
     ⚡ FASTEST START (try this first!):
-        arc-eval compliance --domain finance --quick-start
-
-    🔄 COMPLETE WORKFLOW:
+      arc-eval compliance --domain finance --quick-start
 
     \b
-    1. 🔍 debug        - Find what's broken in your agent
-    2. ✅ compliance   - Test against 378 real-world scenarios
-    3. 📈 improve      - Get specific fixes and track progress
-    4. 📚 export-guide - Learn how to capture agent outputs
+    🔄 COMPLETE WORKFLOW:
+      1. 🔍 debug        - Find what's broken in your agent
+      2. ✅ compliance   - Test against 378 real-world scenarios
+      3. 📈 improve      - Get specific fixes and track progress
+      4. 📚 export-guide - Learn how to capture agent outputs
 
-    💡 EXAMPLES:
-        arc-eval debug --input agent_outputs.json
-        arc-eval compliance --domain security --quick-start
-        arc-eval improve --from-evaluation latest
+    \b
+    💡 COMMON EXAMPLES:
+      arc-eval debug --input agent_outputs.json
+      arc-eval compliance --domain security --quick-start
+      arc-eval improve --from-evaluation latest
+      arc-eval analyze --input outputs.json --domain finance
 
-    🆘 NEED HELP? Run any command with --help for detailed guidance
+    \b
+    📊 AVAILABLE DOMAINS:
+      • finance   - 110 scenarios (SOX, KYC, AML, PCI-DSS, GDPR)
+      • security  - 120 scenarios (OWASP, prompt injection, data leaks)
+      • ml        - 148 scenarios (bias detection, EU AI Act, model safety)
+
+    \b
+    🆘 NEED HELP?
+      Run any command with --help for detailed guidance
+      Visit: https://github.com/arc-computer/arc-eval
     """
     # If no command provided, show interactive workflow selector
     if ctx.invoked_subcommand is None:
@@ -141,19 +152,40 @@ def show_workflow_selector():
 
 
 @cli.command()
-@click.option('--input', 'input_file', type=click.Path(exists=True, path_type=Path), required=True, help='Agent outputs to analyze')
-@click.option('--domain', type=click.Choice(['finance', 'security', 'ml']), required=True, help='Evaluation domain')
-@click.option('--quick', is_flag=True, help='Quick analysis without agent-judge')
-@click.option('--no-interactive', is_flag=True, help='Skip interactive menu for automation')
-@click.option('--verbose', is_flag=True, help='Enable verbose output')
+@click.option('--input', 'input_file', type=click.Path(exists=True, path_type=Path), required=True,
+              help='📁 Agent outputs to analyze')
+@click.option('--domain', type=click.Choice(['finance', 'security', 'ml']), required=True,
+              help='🎯 Evaluation domain')
+@click.option('--quick', is_flag=True, help='⚡ Quick analysis without agent-judge')
+@click.option('--no-interactive', is_flag=True, help='🤖 Skip interactive menu for automation')
+@click.option('--verbose', is_flag=True, help='🔍 Enable verbose output')
 def analyze(input_file: Path, domain: str, quick: bool, no_interactive: bool, verbose: bool):
     """
-    Unified analysis workflow that chains debug → compliance → improve.
+    🔄 Analyze: Complete evaluation workflow
 
+    \b
+    Unified analysis workflow that chains debug → compliance → improve.
     This is the recommended entry point for comprehensive agent evaluation.
 
-    Example:
-        arc-eval analyze --input agent_outputs.json --domain finance
+    \b
+    💡 QUICK START:
+      arc-eval analyze --input agent_outputs.json --domain finance
+
+    \b
+    🔄 WORKFLOW STEPS:
+      1. 🔍 Debug analysis - Find performance issues
+      2. ✅ Compliance check - Test against scenarios
+      3. 📈 Improvement plan - Get actionable fixes
+
+    \b
+    ⚡ QUICK MODE:
+      Use --quick to skip agent-judge evaluation (faster, offline)
+      Recommended for initial testing and CI/CD pipelines
+
+    \b
+    📊 EXAMPLE:
+      arc-eval analyze --input outputs.json --domain finance --quick
+      arc-eval analyze --input outputs.json --domain security --verbose
     """
     command = AnalyzeCommand()
     return command.execute(input_file, domain, quick, no_interactive, verbose)
@@ -161,7 +193,7 @@ def analyze(input_file: Path, domain: str, quick: bool, no_interactive: bool, ve
 
 @cli.command()
 @click.option('--input', 'input_file', type=click.Path(exists=True, path_type=Path), required=True,
-              help='📁 Your agent output file (JSON format). Try: agent_outputs.json')
+              help='📁 Agent output file (JSON format)')
 @click.option('--framework', type=click.Choice(['langchain', 'langgraph', 'crewai', 'autogen', 'openai', 'anthropic', 'generic']),
               help='🔧 Agent framework (auto-detected if not specified)')
 @click.option('--output-format', type=click.Choice(['console', 'json', 'html']), default='console',
@@ -172,20 +204,31 @@ def debug(input_file: Path, framework: Optional[str], output_format: str, no_int
     """
     🔍 Debug: Why is my agent failing?
 
+    \b
     FINDS: Performance issues, tool failures, timeout problems, error patterns
     SHOWS: Success rates, framework analysis, specific fixes
     NEXT:  Suggests running compliance check on same outputs
 
+    \b
     💡 QUICK START:
-        arc-eval debug --input your_agent_outputs.json
+      arc-eval debug --input your_agent_outputs.json
 
+    \b
     📚 NEED HELP CREATING JSON FILES?
-        arc-eval export-guide
+      arc-eval export-guide --framework openai
+      arc-eval export-guide --framework langchain
 
+    \b
     🎯 EXAMPLE OUTPUT:
-        ✅ Success Rate: 73% (22/30 outputs)
-        ❌ Issues: 5 timeouts, 3 parsing errors
-        💡 Fixes: Add retry logic, validate JSON schemas
+      ✅ Success Rate: 73% (22/30 outputs)
+      ❌ Issues: 5 timeouts, 3 parsing errors
+      💡 Fixes: Add retry logic, validate JSON schemas
+
+    \b
+    📋 SUPPORTED FRAMEWORKS:
+      • OpenAI API, Anthropic API (auto-detected)
+      • LangChain, LangGraph, CrewAI, AutoGen
+      • Generic format (works with any agent)
     """
     command = DebugCommand()
     return command.execute(input_file, framework, output_format, no_interactive, verbose)
@@ -193,9 +236,9 @@ def debug(input_file: Path, framework: Optional[str], output_format: str, no_int
 
 @cli.command()
 @click.option('--domain', type=click.Choice(['finance', 'security', 'ml']), required=True,
-              help='🎯 Choose: finance (banking/fintech), security (AI safety), ml (bias/governance)')
+              help='🎯 Evaluation domain: finance, security, or ml')
 @click.option('--input', 'input_file', type=click.Path(path_type=Path),
-              help='📁 Agent outputs file, or try --quick-start for demo')
+              help='📁 Agent outputs file (or use --quick-start for demo)')
 @click.option('--folder-scan', is_flag=True, help='🔍 Auto-find JSON files in current directory')
 @click.option('--export', type=click.Choice(['pdf', 'csv', 'json']),
               help='📄 Export format (PDF auto-generated for audit trail)')
@@ -207,47 +250,84 @@ def compliance(domain: str, input_file: Optional[Path], folder_scan: bool, expor
     """
     ✅ Compliance: Does it meet requirements?
 
+    \b
     TESTS: 378 real-world scenarios across finance, security, ML domains
     FINDS: Regulatory violations, security risks, bias issues
     EXPORTS: Audit-ready PDF reports for compliance teams
 
+    \b
     💡 QUICK START (try this first!):
-        arc-eval compliance --domain finance --quick-start
+      arc-eval compliance --domain finance --quick-start
 
+    \b
     📊 DOMAIN COVERAGE:
-        • finance: 110 scenarios (SOX, KYC, AML, PCI-DSS, GDPR)
-        • security: 120 scenarios (OWASP, prompt injection, data leaks)
-        • ml: 148 scenarios (bias detection, EU AI Act, model safety)
+      • finance   - 110 scenarios (SOX, KYC, AML, PCI-DSS, GDPR)
+      • security  - 120 scenarios (OWASP, prompt injection, data leaks)
+      • ml        - 148 scenarios (bias detection, EU AI Act, model safety)
 
+    \b
     🎯 WITH YOUR DATA:
-        arc-eval compliance --domain finance --input your_outputs.json
+      arc-eval compliance --domain finance --input your_outputs.json
+      arc-eval compliance --domain security --input outputs.json --export pdf
+
+    \b
+    📋 COMMON USE CASES:
+      • Financial services compliance audits
+      • AI safety and security assessments
+      • ML bias detection and governance
+      • Regulatory reporting (SOX, GDPR, EU AI Act)
     """
     command = ComplianceCommand()
     return command.execute(domain, input_file, folder_scan, export, no_export, no_interactive, quick_start, verbose)
 
 
 @cli.command()
-@click.option('--from-evaluation', 'evaluation_file', type=click.Path(exists=True, path_type=Path), help='Generate plan from evaluation file')
-@click.option('--baseline', type=click.Path(exists=True, path_type=Path), help='Baseline evaluation for comparison')
-@click.option('--current', type=click.Path(exists=True, path_type=Path), help='Current evaluation for comparison')
-@click.option('--auto-detect', is_flag=True, help='Auto-detect latest evaluation file')
-@click.option('--verbose', is_flag=True, help='Enable verbose output')
-def improve(evaluation_file: Optional[Path], baseline: Optional[Path], current: Optional[Path], auto_detect: bool, verbose: bool):
+@click.option('--from-evaluation', 'evaluation_file', type=click.Path(exists=True, path_type=Path),
+              help='📊 Evaluation file to generate improvement plan from')
+@click.option('--baseline', type=click.Path(exists=True, path_type=Path),
+              help='📋 Baseline evaluation for comparison')
+@click.option('--current', type=click.Path(exists=True, path_type=Path),
+              help='📈 Current evaluation for comparison')
+@click.option('--auto-detect', is_flag=True, help='🔍 Auto-detect latest evaluation file')
+@click.option('--no-interactive', is_flag=True, help='🤖 Skip menus (for CI/CD automation)')
+@click.option('--verbose', is_flag=True, help='🔍 Enable verbose output')
+def improve(evaluation_file: Optional[Path], baseline: Optional[Path], current: Optional[Path], auto_detect: bool, no_interactive: bool, verbose: bool):
     """
-    Improve: How do I make it better?
+    📈 Improve: How do I make it better?
 
+    \b
     Creates actionable improvement plans with:
     • Prioritized fixes for failed scenarios
     • Expected improvement projections
     • Step-by-step implementation guidance
     • Progress tracking between versions
 
-    Examples:
-        arc-eval improve --from-evaluation latest
-        arc-eval improve --baseline v1.json --current v2.json
+    \b
+    💡 QUICK START:
+      arc-eval improve --auto-detect
+      arc-eval improve --from-evaluation finance_evaluation_*.json
+
+    \b
+    📊 COMPARISON MODE:
+      arc-eval improve --baseline v1.json --current v2.json
+
+    \b
+    🔄 TYPICAL WORKFLOW:
+      1. Run compliance evaluation first
+      2. Generate improvement plan
+      3. Implement suggested changes
+      4. Re-evaluate to measure progress
+
+    \b
+    ⚠️  PREREQUISITES:
+      Must have evaluation file from 'arc-eval compliance' command
+      Run 'arc-eval compliance --domain <domain> --quick-start' first
     """
     command = ImproveCommand()
-    return command.execute(evaluation_file, baseline, current, auto_detect, verbose)
+    exit_code = command.execute(evaluation_file, baseline, current, auto_detect, no_interactive, verbose)
+    if exit_code != 0:
+        raise click.ClickException("Improvement workflow failed")
+    return exit_code
 
 
 # ==================== Legacy CLI Support ====================
@@ -305,19 +385,40 @@ def _display_list_domains() -> None:
 
 
 @cli.command()
-@click.option('--framework', type=click.Choice(['openai', 'openai_agents', 'anthropic', 'langchain', 'crewai', 'google_adk', 'agno', 'generic']), help='Show export example for specific framework')
+@click.option('--framework', type=click.Choice(['openai', 'openai_agents', 'anthropic', 'langchain', 'crewai', 'google_adk', 'agno', 'generic']),
+              help='🔧 Show export example for specific framework')
 def export_guide(framework: Optional[str]):
     """
-    Export Guide: How to create JSON files from your agent outputs.
-    
+    📚 Export Guide: How to create JSON files from your agent outputs
+
+    \b
     Shows code examples for capturing agent responses in JSON format.
-    
-    Example:
-        arc-eval export-guide --framework openai
+    Supports all major agent frameworks and APIs.
+
+    \b
+    💡 QUICK START:
+      arc-eval export-guide --framework openai
+      arc-eval export-guide --framework langchain
+
+    \b
+    🔧 SUPPORTED FRAMEWORKS:
+      • openai        - OpenAI API (GPT-4, o1, etc.)
+      • openai_agents - OpenAI Agents SDK
+      • anthropic     - Anthropic API (Claude)
+      • langchain     - LangChain framework
+      • crewai        - CrewAI multi-agent
+      • google_adk    - Google Agent Dev Kit
+      • agno          - Agno (ex-Phidata)
+      • generic       - Universal format
+
+    \b
+    📋 MINIMAL FORMAT:
+      [{"output": "your agent response"}]
+      Works with any agent - just save responses as JSON
     """
     console.print("\n[bold blue]📤 Agent Output Export Guide[/bold blue]")
     console.print("=" * 60)
-    
+
     if framework:
         _show_framework_export(framework)
     else:

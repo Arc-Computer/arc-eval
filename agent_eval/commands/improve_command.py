@@ -29,36 +29,44 @@ class ImproveCommand:
         baseline: Optional[Path] = None,
         current: Optional[Path] = None,
         auto_detect: bool = False,
+        no_interactive: bool = False,
         verbose: bool = False
     ) -> int:
         """
         Execute improvement workflow.
-        
+
         Args:
             evaluation_file: Generate plan from evaluation file
             baseline: Baseline evaluation for comparison
             current: Current evaluation for comparison
             auto_detect: Auto-detect latest evaluation file
+            no_interactive: Skip interactive menus for automation
             verbose: Enable verbose output
-            
+
         Returns:
             Exit code (0 for success, 1 for failure)
-            
+
         Raises:
             FileNotFoundError: If evaluation files not found
             ValueError: If invalid parameters provided
         """
         self.console.print("\n[bold blue]📈 Improvement Workflow[/bold blue]")
         self.console.print("=" * 60)
-        
+
         try:
+            # Check if no arguments provided at all
+            if not evaluation_file and not baseline and not current and not auto_detect:
+                self.console.print("[red]❌ Error: No evaluation file specified![/red]")
+                self._show_evaluation_help()
+                return 1
+
             # Auto-detect latest evaluation if needed
             if not evaluation_file and (auto_detect or not (baseline and current)):
                 evaluation_file = self._auto_detect_evaluation_file()
                 if not evaluation_file:
                     self._show_evaluation_help()
                     return 1
-            
+
             # Validate file existence
             if evaluation_file and not evaluation_file.exists():
                 raise FileNotFoundError(f"Evaluation file not found: {evaluation_file}")
@@ -66,19 +74,19 @@ class ImproveCommand:
                 raise FileNotFoundError(f"Baseline file not found: {baseline}")
             if current and not current.exists():
                 raise FileNotFoundError(f"Current file not found: {current}")
-            
+
             # Execute workflow
             if baseline and current:
-                exit_code = self._execute_comparison_mode(baseline, current, verbose)
+                exit_code = self._execute_comparison_mode(baseline, current, no_interactive, verbose)
             else:
-                exit_code = self._execute_improvement_plan(evaluation_file, verbose)
-            
+                exit_code = self._execute_improvement_plan(evaluation_file, no_interactive, verbose)
+
             if exit_code == 0:
                 self._update_workflow_progress(evaluation_file, baseline, current)
                 self._show_next_step_suggestion()
-            
+
             return exit_code
-            
+
         except FileNotFoundError as e:
             self.console.print(f"[red]File Error:[/red] {e}")
             return 1
@@ -123,24 +131,26 @@ class ImproveCommand:
         self.console.print("  arc-eval improve --auto-detect")
         self.console.print("  arc-eval improve --from-evaluation finance_evaluation_*.json")
     
-    def _execute_comparison_mode(self, baseline: Path, current: Path, verbose: bool) -> int:
+    def _execute_comparison_mode(self, baseline: Path, current: Path, no_interactive: bool, verbose: bool) -> int:
         """Execute comparison mode between baseline and current evaluations."""
         return self.handler.execute(
             baseline=baseline,
             input_file=current,  # Current file as input
             domain='generic',  # Will be detected from files
+            no_interactive=no_interactive,
             verbose=verbose,
             output='table'
         )
     
-    def _execute_improvement_plan(self, evaluation_file: Optional[Path], verbose: bool) -> int:
+    def _execute_improvement_plan(self, evaluation_file: Optional[Path], no_interactive: bool, verbose: bool) -> int:
         """Execute improvement plan generation from evaluation file."""
         if not evaluation_file:
             raise ValueError("No evaluation file specified or found!")
-        
+
         return self.handler.execute(
             improvement_plan=True,
             from_evaluation=evaluation_file,
+            no_interactive=no_interactive,
             verbose=verbose,
             output='table',
             # Auto-generate training data
