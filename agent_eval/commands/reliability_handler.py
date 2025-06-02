@@ -87,52 +87,13 @@ class ReliabilityHandler(BaseCommandHandler):
         unified_debug = kwargs.get('unified_debug', False)
         dev = kwargs.get('dev', False)
         
-        # NEW: Smart input detection for test harness
-        try:
-            from agent_eval.core.input_detector import SmartInputDetector
-            from agent_eval.evaluation.test_harness import DomainAwareTestHarness
-            from agent_eval.ui.result_renderer import ResultRenderer
-            
-            detector = SmartInputDetector()
-            renderer = ResultRenderer()
-            
-            # Detect input type
-            input_type = detector.detect_input_type(agent_outputs)
-            # Safely get first element for domain detection
-            first_output = agent_outputs[0] if isinstance(agent_outputs, list) and len(agent_outputs) > 0 else agent_outputs if isinstance(agent_outputs, dict) else {}
-            detected_domain = detector.get_detected_domain(first_output)
-            
-            # Run test harness if config detected
-            if input_type == 'config':
-                console.print("🧪 [bold green]Detected: Agent Configuration File[/bold green]")
-                console.print("Running Proactive Test Harness...\\n")
-                
-                # Prepare data for test harness
-                prepared_data = detector.prepare_for_test_harness(agent_outputs[0], input_type)
-                
-                # Run domain-aware test harness
-                test_harness = DomainAwareTestHarness(domain=detected_domain)
-                test_results = test_harness.test_agent_config(prepared_data['data'])
-                
-                # Display results using enhanced UI
-                renderer.display_test_harness_results(test_results)
-                
-                # Show next steps
-                console.print("\\n🔄 Next Step: Run [green]arc-eval compliance --domain " + 
-                            f"{detected_domain or 'finance'} --input outputs.json[/green]")
-                
-                return 0
-                
-            elif input_type == 'trace':
-                console.print("🔍 [bold yellow]Detected: Failed Execution Trace[/bold yellow]")
-                console.print("Running failure analysis + similar pattern testing...\\n")
-                
-                # First run standard analysis, then test for similar patterns
-                # (continues with existing flow below)
-                
-        except ImportError:
-            # Continue with standard debugging if test harness not available
-            pass
+        # Enhanced input detection and orchestration
+        analysis_context = self._prepare_analysis_context(agent_outputs, framework, debug_agent, unified_debug)
+
+        # Smart input detection for proactive testing
+        proactive_results = self._attempt_proactive_testing(agent_outputs, analysis_context)
+        if proactive_results:
+            return proactive_results  # Early return if proactive testing was successful
         
         console.print(f"🔧 Starting unified debugging session...")
         console.print(f"📊 Analyzing {len(agent_outputs)} workflow components...")
@@ -140,122 +101,20 @@ class ReliabilityHandler(BaseCommandHandler):
         # Initialize framework_info for later use
         framework_info = None
         
-        # Delegate to core reliability analyzer
-        try:
-            from agent_eval.evaluation.reliability_validator import ReliabilityAnalyzer
-            
-            analyzer = ReliabilityAnalyzer()
-            analysis = analyzer.generate_comprehensive_analysis(
-                agent_outputs=agent_outputs,
-                framework=framework
-            )
-            
-            # Display comprehensive analysis
-            console.print(analysis.reliability_dashboard)
-            
-            # Show insights
-            if analysis.insights_summary:
-                console.print(f"\\n💡 [bold cyan]Key Insights:[/bold cyan]")
-                for insight in analysis.insights_summary:
-                    console.print(f"  {insight}")
-            
-            # Show mode-specific guidance
-            if debug_agent:
-                console.print(f"\\n💡 [bold cyan]Debug Agent Mode Insights:[/bold cyan]")
-                console.print("• Focus on step-by-step failure analysis")
-                console.print("• Identify root causes of agent failures") 
-                console.print("• Get framework-specific optimization suggestions")
-            elif unified_debug:
-                console.print(f"\\n💡 [bold cyan]Unified Debug Mode Insights:[/bold cyan]")
-                console.print("• Single view of tool calls, prompts, memory, timeouts")
-                console.print("• Cross-stack visibility for production debugging")
-                console.print("• Comprehensive workflow reliability assessment")
-            
-            # Show next steps
-            if analysis.next_steps:
-                console.print(f"\\n📋 [bold]Next Steps:[/bold]")
-                for i, step in enumerate(analysis.next_steps, 1):
-                    if step.startswith(f"{i}."):
-                        console.print(step)
-                    else:
-                        console.print(f"{i}. {step}")
-            
-            # Show compliance bonus value
-            console.print("\\n📋 [bold cyan]Enterprise Compliance Ready[/bold cyan] (Bonus Value)")
-            console.print("✅ 355 compliance scenarios available across finance, security, ML")
-            
-            if dev:
-                console.print(f"\\n[dim]Debug: Framework={analysis.detected_framework}, "
-                            f"Confidence={analysis.framework_confidence:.2f}, "
-                            f"Evidence={analysis.evidence_quality}, "
-                            f"Outputs={analysis.sample_size}[/dim]")
-            
-        except ImportError as e:
-            console.print(f"[yellow]⚠️ Advanced reliability analysis unavailable:[/yellow] {e}")
-            console.print("\n[yellow]💡 Resolution steps:[/yellow]")
-            console.print("  1. Install reliability module: [green]pip install agent-eval[reliability][/green]")
+        # Enhanced reliability analysis with better orchestration
+        analysis_result = self._execute_comprehensive_analysis(
+            agent_outputs, framework, analysis_context, dev
+        )
 
-            console.print(
-                "  2. Check dependencies: "
-                "[green]pip install -r requirements.txt[/green]"
-            )
+        if analysis_result is None:
+            return 1  # Analysis failed
 
-            console.print("  3. Verify installation: [green]python -c 'from agent_eval.evaluation.reliability_validator import ReliabilityAnalyzer'[/green]")
-            console.print(f"\n[blue]📋 Log details saved to:[/blue] {self._get_log_file_path()}")
-            console.print("\n💡 Falling back to basic analysis...")
+        # Extract analysis from result for menu integration
+        analysis = analysis_result.get('analysis') if isinstance(analysis_result, dict) else None
 
-            # Basic fallback
-            framework_info = self._basic_framework_detection(agent_outputs, framework)
-            console.print(f"\\n🎯 [bold]Basic Analysis Results:[/bold]")
-            console.print(f"✅ Total Components: {len(agent_outputs)}")
-            console.print(f"🔧 Framework: {framework_info}")
-            console.print(f"📋 Debug Mode: {'Agent Debugging' if debug_agent else 'Unified Debug'}")
-        
-        # Show debug-specific post-evaluation menu (NEW - Task 9)
+        # Show debug-specific post-evaluation menu
         if unified_debug and not kwargs.get('no_interaction', False):
-            try:
-                from agent_eval.ui.debug_post_evaluation_menu import DebugPostEvaluationMenu
-                from pathlib import Path
-                
-                # Get input file path for debugging session
-                input_file = kwargs.get('input_file')
-                if isinstance(input_file, str):
-                    input_file = Path(input_file)
-                
-                # Create debug session data if available
-                debug_session_data = None
-                if 'analysis' in locals() and analysis:
-                    debug_session_data = {
-                        "session_id": f"debug_{analysis.detected_framework or 'unknown'}",
-                        "start_time": "Live Session",
-                        "duration": "Active",
-                        "status": "completed",
-                        "framework": analysis.detected_framework or "unknown",
-                        "sample_size": analysis.sample_size,
-                        "critical_issues": analysis.sample_size if hasattr(analysis, 'sample_size') else 0
-                    }
-                
-                # Create and display debug-specific menu
-                debug_menu = DebugPostEvaluationMenu(
-                    reliability_analysis=analysis if 'analysis' in locals() else None,
-                    cognitive_analysis=analysis.cognitive_analysis if ('analysis' in locals() and hasattr(analysis, 'cognitive_analysis')) else None,
-                    input_file=input_file,
-                    debug_session_data=debug_session_data
-                )
-                
-                # Display menu and handle user choice
-                choice = debug_menu.display_menu()
-                debug_menu.execute_choice(choice)
-                
-            except Exception as e:
-                console.print(f"\n[yellow]⚠️  Debug menu unavailable: {str(e)}[/yellow]")
-                self.logger.debug(f"Debug menu error: {e}")
-                
-                # Fallback to basic guidance
-                console.print("\n[cyan]💡 Debug workflow complete. Next steps:[/cyan]")
-                console.print("• Review analysis results above")
-                console.print("• Run compliance evaluation for production readiness")
-                console.print("• Use framework-specific optimization recommendations")
+            self._show_debug_post_evaluation_menu(analysis, kwargs)
         
         return 0
     
@@ -630,6 +489,238 @@ class ReliabilityHandler(BaseCommandHandler):
         console.print("4. Run full reliability analysis: [green]arc-eval --workflow-reliability --input data.json[/green]")
         
         return 0
+
+    def _prepare_analysis_context(self, agent_outputs, framework, debug_agent, unified_debug):
+        """Prepare analysis context for enhanced orchestration."""
+        return {
+            'agent_outputs': agent_outputs,
+            'framework': framework,
+            'debug_agent': debug_agent,
+            'unified_debug': unified_debug,
+            'sample_size': len(agent_outputs),
+            'input_type': self._detect_input_type(agent_outputs),
+            'detected_domain': self._detect_domain(agent_outputs)
+        }
+
+    def _attempt_proactive_testing(self, agent_outputs, analysis_context):
+        """Attempt proactive testing if input is suitable for test harness."""
+        try:
+            from agent_eval.core.input_detector import SmartInputDetector
+            from agent_eval.evaluation.test_harness import DomainAwareTestHarness
+            from agent_eval.ui.result_renderer import ResultRenderer
+
+            detector = SmartInputDetector()
+            renderer = ResultRenderer()
+
+            input_type = analysis_context['input_type']
+            detected_domain = analysis_context['detected_domain']
+
+            # Run test harness if config detected
+            if input_type == 'config':
+                console.print("🧪 [bold green]Detected: Agent Configuration File[/bold green]")
+                console.print("Running Proactive Test Harness...\\n")
+
+                # Prepare data for test harness
+                prepared_data = detector.prepare_for_test_harness(agent_outputs[0], input_type)
+
+                # Run domain-aware test harness
+                test_harness = DomainAwareTestHarness(domain=detected_domain)
+                test_results = test_harness.test_agent_config(prepared_data['data'])
+
+                # Display results using enhanced UI
+                renderer.display_test_harness_results(test_results)
+
+                # Show next steps
+                console.print("\\n🔄 Next Step: Run [green]arc-eval compliance --domain " +
+                            f"{detected_domain or 'finance'} --input outputs.json[/green]")
+
+                return 0
+
+            elif input_type == 'trace':
+                console.print("🔍 [bold yellow]Detected: Failed Execution Trace[/bold yellow]")
+                console.print("Running failure analysis + similar pattern testing...\\n")
+                # Continue with standard analysis flow
+
+        except ImportError:
+            # Continue with standard debugging if test harness not available
+            pass
+
+        return None  # Continue with standard analysis
+
+    def _detect_input_type(self, agent_outputs):
+        """Detect the type of input data for appropriate handling."""
+        if not agent_outputs:
+            return 'unknown'
+
+        first_output = agent_outputs[0] if isinstance(agent_outputs, list) else agent_outputs
+
+        if isinstance(first_output, dict):
+            # Check for configuration patterns
+            config_indicators = ['agent_config', 'tools', 'system_prompt', 'model_config']
+            if any(key in first_output for key in config_indicators):
+                return 'config'
+
+            # Check for trace patterns
+            trace_indicators = ['error', 'stack_trace', 'execution_time', 'tool_calls']
+            if any(key in first_output for key in trace_indicators):
+                return 'trace'
+
+            # Check for output patterns
+            output_indicators = ['output', 'result', 'response']
+            if any(key in first_output for key in output_indicators):
+                return 'output'
+
+        return 'generic'
+
+    def _detect_domain(self, agent_outputs):
+        """Detect the domain from agent outputs for context-aware analysis."""
+        if not agent_outputs:
+            return None
+
+        first_output = agent_outputs[0] if isinstance(agent_outputs, list) else agent_outputs
+
+        if isinstance(first_output, dict):
+            # Check for domain indicators in the data
+            content = str(first_output).lower()
+
+            if any(term in content for term in ['finance', 'trading', 'investment', 'portfolio']):
+                return 'finance'
+            elif any(term in content for term in ['security', 'vulnerability', 'threat', 'compliance']):
+                return 'security'
+            elif any(term in content for term in ['model', 'training', 'ml', 'ai', 'machine learning']):
+                return 'ml'
+            elif any(term in content for term in ['healthcare', 'medical', 'patient', 'diagnosis']):
+                return 'healthcare'
+
+        return None
+
+    def _execute_comprehensive_analysis(self, agent_outputs, framework, analysis_context, dev):
+        """Execute comprehensive reliability analysis with enhanced error handling."""
+        try:
+            from agent_eval.evaluation.reliability_validator import ReliabilityAnalyzer
+
+            analyzer = ReliabilityAnalyzer()
+            analysis = analyzer.generate_comprehensive_analysis(
+                agent_outputs=agent_outputs,
+                framework=framework
+            )
+
+            # Display comprehensive analysis
+            console.print(analysis.reliability_dashboard)
+
+            # Show insights
+            if analysis.insights_summary:
+                console.print(f"\\n💡 [bold cyan]Key Insights:[/bold cyan]")
+                for insight in analysis.insights_summary:
+                    console.print(f"  {insight}")
+
+            # Show mode-specific guidance
+            debug_agent = analysis_context.get('debug_agent', False)
+            unified_debug = analysis_context.get('unified_debug', False)
+
+            if debug_agent:
+                console.print(f"\\n💡 [bold cyan]Debug Agent Mode Insights:[/bold cyan]")
+                console.print("• Focus on step-by-step failure analysis")
+                console.print("• Identify root causes of agent failures")
+                console.print("• Get framework-specific optimization suggestions")
+            elif unified_debug:
+                console.print(f"\\n💡 [bold cyan]Unified Debug Mode Insights:[/bold cyan]")
+                console.print("• Single view of tool calls, prompts, memory, timeouts")
+                console.print("• Cross-stack visibility for production debugging")
+                console.print("• Comprehensive workflow reliability assessment")
+
+            # Show next steps
+            if analysis.next_steps:
+                console.print(f"\\n📋 [bold]Next Steps:[/bold]")
+                for i, step in enumerate(analysis.next_steps, 1):
+                    if step.startswith(f"{i}."):
+                        console.print(step)
+                    else:
+                        console.print(f"{i}. {step}")
+
+            # Show compliance bonus value
+            console.print("\\n📋 [bold cyan]Enterprise Compliance Ready[/bold cyan] (Bonus Value)")
+            console.print("✅ 355 compliance scenarios available across finance, security, ML")
+
+            if dev:
+                console.print(f"\\n[dim]Debug: Framework={analysis.detected_framework}, "
+                            f"Confidence={analysis.framework_confidence:.2f}, "
+                            f"Evidence={analysis.evidence_quality}, "
+                            f"Outputs={analysis.sample_size}[/dim]")
+
+            return {'analysis': analysis, 'success': True}
+
+        except ImportError as e:
+            console.print(f"[yellow]⚠️ Advanced reliability analysis unavailable:[/yellow] {e}")
+            console.print("\\n[yellow]💡 Resolution steps:[/yellow]")
+            console.print("  1. Install reliability module: [green]pip install agent-eval[reliability][/green]")
+            console.print("  2. Check dependencies: [green]pip install -r requirements.txt[/green]")
+            console.print("  3. Verify installation: [green]python -c 'from agent_eval.evaluation.reliability_validator import ReliabilityAnalyzer'[/green]")
+            console.print(f"\\n[blue]📋 Log details saved to:[/blue] {self._get_log_file_path()}")
+            console.print("\\n💡 Falling back to basic analysis...")
+
+            # Basic fallback
+            framework_info = self._basic_framework_detection(agent_outputs, framework)
+            console.print(f"\\n🎯 [bold]Basic Analysis Results:[/bold]")
+            console.print(f"✅ Total Components: {len(agent_outputs)}")
+            console.print(f"🔧 Framework: {framework_info}")
+            debug_agent = analysis_context.get('debug_agent', False)
+            unified_debug = analysis_context.get('unified_debug', False)
+            console.print(f"📋 Debug Mode: {'Agent Debugging' if debug_agent else 'Unified Debug'}")
+
+            return {'analysis': None, 'success': False}
+
+        except Exception as e:
+            console.print(f"[red]❌ Analysis failed:[/red] {e}")
+            if dev:
+                console.print_exception()
+            return None
+
+    def _show_debug_post_evaluation_menu(self, analysis, kwargs):
+        """Show debug-specific post-evaluation menu with enhanced error handling."""
+        try:
+            from agent_eval.ui.debug_post_evaluation_menu import DebugPostEvaluationMenu
+            from pathlib import Path
+
+            # Get input file path for debugging session
+            input_file = kwargs.get('input_file')
+            if isinstance(input_file, str):
+                input_file = Path(input_file)
+
+            # Create debug session data if available
+            debug_session_data = None
+            if analysis:
+                debug_session_data = {
+                    "session_id": f"debug_{analysis.detected_framework or 'unknown'}",
+                    "start_time": "Live Session",
+                    "duration": "Active",
+                    "status": "completed",
+                    "framework": analysis.detected_framework or "unknown",
+                    "sample_size": analysis.sample_size,
+                    "critical_issues": analysis.sample_size if hasattr(analysis, 'sample_size') else 0
+                }
+
+            # Create and display debug-specific menu
+            debug_menu = DebugPostEvaluationMenu(
+                reliability_analysis=analysis,
+                cognitive_analysis=analysis.cognitive_analysis if (analysis and hasattr(analysis, 'cognitive_analysis')) else None,
+                input_file=input_file,
+                debug_session_data=debug_session_data
+            )
+
+            # Display menu and handle user choice
+            choice = debug_menu.display_menu()
+            debug_menu.execute_choice(choice)
+
+        except Exception as e:
+            console.print(f"\\n[yellow]⚠️  Debug menu unavailable: {str(e)}[/yellow]")
+            self.logger.debug(f"Debug menu error: {e}")
+
+            # Fallback to basic guidance
+            console.print("\\n[cyan]💡 Debug workflow complete. Next steps:[/cyan]")
+            console.print("• Review analysis results above")
+            console.print("• Run compliance evaluation for production readiness")
+            console.print("• Use framework-specific optimization recommendations")
 
     def _load_and_validate_inputs(self, **kwargs) -> tuple[Optional[List[Any]], Optional[str]]:
         """Load and validate input data for reliability analysis."""
