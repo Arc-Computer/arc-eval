@@ -207,7 +207,6 @@ class ImproveCommand:
                 raise ValueError("No evaluation file specified for enhanced improvement!")
 
             # Load evaluation results
-            import json
             from agent_eval.core.parser_registry import FrameworkDetector
 
             with open(evaluation_file, 'r') as f:
