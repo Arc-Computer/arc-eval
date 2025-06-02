@@ -2,10 +2,10 @@
   "current_cycle": {
     "started_at": "2025-06-02T15:25:17.358238",
     "debug": {
-      "completed_at": "2025-06-02T16:35:11.864834",
-      "input_file": "/var/folders/db/b_7_hw4x1pgg4ntrggcdgzt80000gn/T/tmp1miujcmd_config.json",
+      "completed_at": "2025-06-02T16:49:16.929378",
+      "input_file": "/var/folders/db/b_7_hw4x1pgg4ntrggcdgzt80000gn/T/tmp_u_w45a5.json",
       "framework": "langchain",
-      "timestamp": "2025-06-02T16:35:11.864777"
+      "timestamp": "2025-06-02T16:49:16.929285"
     },
     "compliance": null,
     "improve": null

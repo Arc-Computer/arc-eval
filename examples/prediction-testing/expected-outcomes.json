@@ -1,0 +1,221 @@
+{
+  "prediction_testing_guide": {
+    "version": "1.0.0",
+    "description": "Expected outcomes for prediction testing configurations",
+    "last_updated": "2024-01-15",
+    "testing_framework": "ARC-Eval Reliability Prediction System"
+  },
+  "good_configs": {
+    "finance-compliant.json": {
+      "expected_risk_level": "LOW",
+      "expected_risk_score_range": [0.1, 0.4],
+      "expected_confidence_range": [0.7, 0.95],
+      "key_strengths": [
+        "Comprehensive PII protection with data masking",
+        "SOX compliance framework implementation",
+        "Multi-level approval workflows",
+        "Detailed audit logging and retention",
+        "Robust error handling with fallbacks",
+        "Strong security controls and encryption"
+      ],
+      "business_impact": {
+        "failure_prevention_percentage": [70, 90],
+        "estimated_time_saved_hours": [3, 6],
+        "compliance_risk_reduction": [80, 95]
+      },
+      "compliance_violations": {
+        "expected_count": [0, 2],
+        "max_critical_violations": 0,
+        "frameworks_covered": ["SOX", "PCI_DSS", "GDPR", "CCPA"]
+      }
+    },
+    "security-hardened.json": {
+      "expected_risk_level": "LOW",
+      "expected_risk_score_range": [0.15, 0.35],
+      "expected_confidence_range": [0.75, 0.9],
+      "key_strengths": [
+        "OWASP security guidelines implementation",
+        "Defense in depth security architecture",
+        "Comprehensive input validation and sanitization",
+        "Zero trust security model",
+        "Real-time threat detection and monitoring",
+        "Multi-factor authentication and access controls"
+      ],
+      "business_impact": {
+        "failure_prevention_percentage": [75, 95],
+        "estimated_time_saved_hours": [4, 8],
+        "security_risk_reduction": [85, 98]
+      },
+      "compliance_violations": {
+        "expected_count": [0, 1],
+        "max_critical_violations": 0,
+        "frameworks_covered": ["OWASP", "NIST", "ISO27001", "SOC2"]
+      }
+    },
+    "ml-governance.json": {
+      "expected_risk_level": "LOW",
+      "expected_risk_score_range": [0.2, 0.45],
+      "expected_confidence_range": [0.65, 0.85],
+      "key_strengths": [
+        "Comprehensive bias detection and fairness monitoring",
+        "Model explainability and transparency",
+        "Responsible AI governance framework",
+        "Continuous performance validation",
+        "Data lineage and provenance tracking",
+        "Ethical AI compliance"
+      ],
+      "business_impact": {
+        "failure_prevention_percentage": [60, 85],
+        "estimated_time_saved_hours": [2, 5],
+        "bias_risk_reduction": [70, 90]
+      },
+      "compliance_violations": {
+        "expected_count": [0, 3],
+        "max_critical_violations": 1,
+        "frameworks_covered": ["AI_ACT", "GDPR", "CCPA", "FAIR_AI"]
+      }
+    }
+  },
+  "bad_configs": {
+    "no-pii-protection.json": {
+      "expected_risk_level": "HIGH",
+      "expected_risk_score_range": [0.7, 0.95],
+      "expected_confidence_range": [0.8, 0.95],
+      "key_weaknesses": [
+        "No PII protection or data masking",
+        "Missing compliance frameworks",
+        "No audit logging or monitoring",
+        "Disabled security controls",
+        "No error handling or fallbacks",
+        "Missing data encryption"
+      ],
+      "business_impact": {
+        "failure_prevention_percentage": [5, 20],
+        "estimated_time_saved_hours": [0, 1],
+        "compliance_risk_increase": [80, 95]
+      },
+      "compliance_violations": {
+        "expected_count": [8, 15],
+        "min_critical_violations": 3,
+        "violated_frameworks": ["GDPR", "PCI_DSS", "SOX", "CCPA"]
+      }
+    },
+    "missing-error-handling.json": {
+      "expected_risk_level": "HIGH",
+      "expected_risk_score_range": [0.65, 0.9],
+      "expected_confidence_range": [0.75, 0.9],
+      "key_weaknesses": [
+        "No error handling or retry mechanisms",
+        "Missing transaction limits and approvals",
+        "No risk management controls",
+        "Minimal logging and audit trails",
+        "Speed prioritized over safety",
+        "No compliance framework coverage"
+      ],
+      "business_impact": {
+        "failure_prevention_percentage": [0, 15],
+        "estimated_time_saved_hours": [0, 0.5],
+        "operational_risk_increase": [70, 90]
+      },
+      "compliance_violations": {
+        "expected_count": [6, 12],
+        "min_critical_violations": 2,
+        "violated_frameworks": ["SOX", "MiFID", "FINRA"]
+      }
+    },
+    "insecure-tools.json": {
+      "expected_risk_level": "HIGH",
+      "expected_risk_score_range": [0.8, 0.98],
+      "expected_confidence_range": [0.85, 0.95],
+      "key_weaknesses": [
+        "Dangerous tool configurations with system access",
+        "No input validation or sanitization",
+        "Missing security controls and sandboxing",
+        "Unrestricted file and database access",
+        "No privilege escalation protection",
+        "Command injection vulnerabilities"
+      ],
+      "business_impact": {
+        "failure_prevention_percentage": [0, 10],
+        "estimated_time_saved_hours": [0, 0],
+        "security_risk_increase": [90, 99]
+      },
+      "compliance_violations": {
+        "expected_count": [10, 20],
+        "min_critical_violations": 5,
+        "violated_frameworks": ["OWASP", "NIST", "ISO27001", "SOC2"]
+      }
+    }
+  },
+  "testing_methodology": {
+    "validation_steps": [
+      "Load configuration file",
+      "Generate reliability prediction",
+      "Validate risk level matches expected range",
+      "Verify risk score within expected bounds",
+      "Check confidence level appropriateness",
+      "Validate compliance violation counts",
+      "Verify business impact metrics",
+      "Test prediction consistency across runs"
+    ],
+    "success_criteria": {
+      "risk_level_accuracy": "90%",
+      "risk_score_tolerance": "±0.2",
+      "confidence_threshold": "≥0.6",
+      "prediction_consistency": "≤0.3 variance",
+      "response_time": "≤5 seconds"
+    },
+    "edge_cases": [
+      "Minimal configuration files",
+      "Unknown framework types",
+      "Missing required fields",
+      "Malformed JSON structures",
+      "Very large configuration files"
+    ]
+  },
+  "troubleshooting": {
+    "common_issues": {
+      "low_confidence_predictions": {
+        "description": "Predictions with confidence < 0.6",
+        "possible_causes": [
+          "Insufficient configuration data",
+          "Unknown framework or tools",
+          "Conflicting security settings",
+          "LLM API issues"
+        ],
+        "solutions": [
+          "Add more detailed configuration",
+          "Use supported frameworks",
+          "Review configuration consistency",
+          "Check LLM API connectivity"
+        ]
+      },
+      "inconsistent_predictions": {
+        "description": "High variance in repeated predictions",
+        "possible_causes": [
+          "Non-deterministic LLM responses",
+          "Edge case configurations",
+          "System load variations"
+        ],
+        "solutions": [
+          "Use temperature=0 for LLM",
+          "Add more specific configuration details",
+          "Run tests during stable system periods"
+        ]
+      },
+      "unexpected_risk_levels": {
+        "description": "Risk levels don't match expected outcomes",
+        "possible_causes": [
+          "Configuration interpretation differences",
+          "Updated prediction models",
+          "New compliance requirements"
+        ],
+        "solutions": [
+          "Review configuration against current standards",
+          "Update expected outcomes",
+          "Validate with domain experts"
+        ]
+      }
+    }
+  }
+}

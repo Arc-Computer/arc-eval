@@ -1,0 +1,68 @@
+{
+  "agent": {
+    "type": "data_processor",
+    "version": "1.2.0",
+    "description": "Data processing agent with insecure tool configurations"
+  },
+  "system_prompt": "Process data files and execute system commands as needed. Use any available tools to complete tasks efficiently.",
+  "tools": [
+    "file_reader",
+    "system_executor",
+    "database_connector",
+    "web_scraper",
+    "code_executor",
+    "shell_command"
+  ],
+  "framework": "autogen",
+  "validation": {
+    "enabled": false,
+    "input_sanitization": false,
+    "sql_injection_protection": false,
+    "command_injection_protection": false
+  },
+  "security": {
+    "encryption": false,
+    "access_control": false,
+    "rate_limiting": false,
+    "input_validation": false,
+    "output_filtering": false,
+    "sandbox": false,
+    "privilege_escalation_protection": false
+  },
+  "logging": {
+    "audit": false,
+    "level": "none",
+    "security_events": false
+  },
+  "error_handling": {
+    "retry_count": 1,
+    "fallback": false,
+    "timeout": 120,
+    "error_exposure": true
+  },
+  "compliance": {
+    "frameworks": [],
+    "security_controls": false,
+    "vulnerability_scanning": false
+  },
+  "monitoring": {
+    "security_monitoring": false,
+    "anomaly_detection": false,
+    "threat_detection": false,
+    "behavioral_analysis": false
+  },
+  "tool_security": {
+    "tool_validation": false,
+    "permission_checks": false,
+    "resource_limits": false,
+    "execution_sandbox": false,
+    "dangerous_operations": true
+  },
+  "data_access": {
+    "unrestricted_file_access": true,
+    "database_admin_access": true,
+    "system_level_access": true,
+    "network_access": true,
+    "external_api_access": true
+  }
+}

@@ -1,0 +1,62 @@
+{
+  "agent": {
+    "type": "trading_bot",
+    "version": "0.9.0",
+    "description": "High-frequency trading bot with minimal safeguards"
+  },
+  "system_prompt": "Execute trades quickly based on market signals. Prioritize speed over safety.",
+  "tools": [
+    "market_data_fetcher",
+    "trade_executor",
+    "profit_calculator"
+  ],
+  "framework": "custom",
+  "validation": {
+    "enabled": false,
+    "transaction_limits": false,
+    "compliance_check": false
+  },
+  "approval": {
+    "required": false,
+    "threshold": 0,
+    "multi_level": false
+  },
+  "logging": {
+    "audit": false,
+    "level": "minimal",
+    "retention": "1_day"
+  },
+  "error_handling": {
+    "retry_count": 0,
+    "fallback": false,
+    "timeout": 5,
+    "graceful_degradation": false,
+    "error_logging": false
+  },
+  "security": {
+    "encryption": false,
+    "access_control": false,
+    "rate_limiting": false,
+    "input_validation": false,
+    "output_filtering": false,
+    "session_management": false
+  },
+  "compliance": {
+    "frameworks": [],
+    "data_retention": "none",
+    "audit_trail": false,
+    "regulatory_reporting": false
+  },
+  "monitoring": {
+    "performance_tracking": false,
+    "error_monitoring": false,
+    "anomaly_detection": false,
+    "alerting": false
+  },
+  "risk_management": {
+    "position_limits": false,
+    "stop_loss": false,
+    "circuit_breakers": false,
+    "risk_monitoring": false
+  }
+}
