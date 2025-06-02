@@ -130,11 +130,18 @@ class ReliabilityAnalyzer:
         # NEW: Initialize hybrid predictor for reliability prediction
         try:
             from agent_eval.prediction.hybrid_predictor import HybridReliabilityPredictor
+            from agent_eval.prediction.prediction_tracker import PredictionTracker
+            from agent_eval.prediction.outcome_detector import OutcomeDetector
+
             self.hybrid_predictor = HybridReliabilityPredictor(api_manager)
+            self.prediction_tracker = PredictionTracker()
+            self.outcome_detector = OutcomeDetector()
             self.prediction_enabled = True
         except ImportError as e:
             logger.warning(f"Prediction module not available: {e}")
             self.hybrid_predictor = None
+            self.prediction_tracker = None
+            self.outcome_detector = None
             self.prediction_enabled = False
 
         # Keep backward compatibility with tool_patterns attribute
@@ -1419,6 +1426,26 @@ Required parameters:
                         temp_analysis, agent_config
                     )
                     logger.info(f"Generated reliability prediction with risk level: {reliability_prediction.get('risk_level', 'UNKNOWN')}")
+
+                    # Log prediction for tracking (Task 2.2)
+                    if self.prediction_tracker and reliability_prediction:
+                        prediction_id = self.prediction_tracker.log_prediction(reliability_prediction, agent_config)
+                        if prediction_id:
+                            logger.info(f"Logged prediction {prediction_id} for tracking")
+
+                    # Detect outcome from current agent outputs (Task 2.2)
+                    if self.outcome_detector and reliability_prediction:
+                        outcome, confidence, evidence = self.outcome_detector.detect_outcome(agent_outputs)
+                        if outcome != 'unknown' and confidence > 0.5:
+                            # Update prediction with detected outcome
+                            if self.prediction_tracker:
+                                self.prediction_tracker.update_prediction_outcome(
+                                    reliability_prediction.get('prediction_id'),
+                                    outcome,
+                                    confidence,
+                                    evidence
+                                )
+                                logger.info(f"Updated prediction outcome: {outcome} (confidence: {confidence:.2f})")
 
             except Exception as e:
                 logger.warning(f"Reliability prediction failed: {e}")
