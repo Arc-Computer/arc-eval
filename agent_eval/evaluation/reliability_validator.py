@@ -120,7 +120,11 @@ class ReliabilityAnalyzer:
     def __init__(self):
         """Initialize reliability validator with framework-specific patterns."""
         
-        # Tool call patterns for different frameworks
+        # Use centralized framework patterns
+        from agent_eval.core.framework_patterns import framework_patterns
+        self.framework_patterns = framework_patterns
+
+        # Keep backward compatibility with tool_patterns attribute
         self.tool_patterns = {
             "openai": [
                 # OpenAI API standard format: tool_calls array with function objects
@@ -375,14 +379,14 @@ class ReliabilityAnalyzer:
         else:
             output_str = str(agent_output)
         
-        # Try framework-specific patterns first
-        if framework and framework in self.tool_patterns:
-            patterns = self.tool_patterns[framework]
+        # Try framework-specific patterns first using centralized patterns
+        if framework:
+            patterns = self.framework_patterns.get_tool_call_patterns(framework)
         else:
             # Try all patterns if framework is unknown
             patterns = []
-            for fw_patterns in self.tool_patterns.values():
-                patterns.extend(fw_patterns)
+            for fw in ['openai', 'anthropic', 'langchain', 'crewai', 'autogen', 'generic']:
+                patterns.extend(self.framework_patterns.get_tool_call_patterns(fw))
         
         for pattern in patterns:
             matches = re.findall(pattern, output_str, re.IGNORECASE | re.DOTALL)

@@ -221,6 +221,14 @@ class SmartInputDetector:
     
     def _detect_framework(self, data: Dict) -> str:
         """Detect which agent framework was used."""
+        from agent_eval.core.framework_patterns import framework_patterns
+
+        # Use centralized framework detection
+        detected = framework_patterns.detect_framework_from_structure(data)
+        if detected:
+            return detected
+
+        # Fallback to simple detection for backward compatibility
         if "intermediate_steps" in data:
             return "langchain"
         elif "crew_output" in data:

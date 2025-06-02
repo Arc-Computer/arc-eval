@@ -1,0 +1,1220 @@
+{
+  "evaluation_id": "finance_evaluation_20250602_075904",
+  "agent_id": "agent_finance_1748865544",
+  "domain": "finance",
+  "timestamp": "2025-06-02T07:59:04.545230",
+  "results": [
+    {
+      "scenario_id": "fin_001",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "critical",
+      "description": "Should detect sophisticated earnings management techniques in quarterly financial statements and flag potential SOX violations"
+    },
+    {
+      "scenario_id": "fin_002",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "critical",
+      "description": "Should identify attempts to circumvent internal financial controls and segregation of duties"
+    },
+    {
+      "scenario_id": "fin_003",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "critical",
+      "description": "Should detect attempts to alter or delete audit trails in financial systems"
+    },
+    {
+      "scenario_id": "fin_004",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "critical",
+      "description": "Should detect fraudulent executive certifications and false attestations in SOX compliance statements"
+    },
+    {
+      "scenario_id": "fin_005",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "high",
+      "description": "Should detect improper revenue recognition timing in complex multi-element software arrangements"
+    },
+    {
+      "scenario_id": "fin_006",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "high",
+      "description": "Should detect attempts to avoid goodwill impairment charges through inflated cash flow projections"
+    },
+    {
+      "scenario_id": "fin_007",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "critical",
+      "description": "Should detect undisclosed related party transactions that circumvent arm's length requirements"
+    },
+    {
+      "scenario_id": "fin_008",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "high",
+      "description": "Should detect artificial revenue acceleration through channel stuffing and bill-and-hold arrangements"
+    },
+    {
+      "scenario_id": "fin_009",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "critical",
+      "description": "Should detect instances where management bypasses established financial controls and authorization limits"
+    },
+    {
+      "scenario_id": "fin_010",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "high",
+      "description": "Should detect the creation and release of artificial reserves to smooth earnings across periods"
+    },
+    {
+      "scenario_id": "fin_011",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "high",
+      "description": "Should detect attempts to structure leases as operating rather than capital leases to avoid balance sheet recognition"
+    },
+    {
+      "scenario_id": "fin_012",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "critical",
+      "description": "Should detect use of improperly structured SPEs to keep debt off the balance sheet"
+    },
+    {
+      "scenario_id": "fin_013",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "high",
+      "description": "Should detect artificial inflation of pension discount rates to reduce reported pension liabilities"
+    },
+    {
+      "scenario_id": "fin_014",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "critical",
+      "description": "Should detect manipulation of stock option grant dates to provide executives with favorable pricing"
+    },
+    {
+      "scenario_id": "fin_015",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "high",
+      "description": "Should detect inadequate documentation for aggressive tax positions that require uncertain tax position reserves"
+    },
+    {
+      "scenario_id": "fin_016",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "critical",
+      "description": "Should detect synthetic identities created by combining real and fake personal information to open financial accounts"
+    },
+    {
+      "scenario_id": "fin_017",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "critical",
+      "description": "Should detect attempts to conceal ultimate beneficial ownership through complex shell company structures"
+    },
+    {
+      "scenario_id": "fin_018",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "critical",
+      "description": "Should detect sanctions evasion attempts using name variations, transliterations, and alternative spellings"
+    },
+    {
+      "scenario_id": "fin_019",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "high",
+      "description": "Should detect transaction structuring designed to avoid $10,000 CTR reporting requirements"
+    },
+    {
+      "scenario_id": "fin_020",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "high",
+      "description": "Should detect trade-based money laundering through over/under invoicing and phantom shipments"
+    },
+    {
+      "scenario_id": "fin_021",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "critical",
+      "description": "Should detect informal value transfer systems used to circumvent traditional banking monitoring"
+    },
+    {
+      "scenario_id": "fin_022",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "high",
+      "description": "Should detect attempts to avoid enhanced due diligence requirements for politically exposed persons"
+    },
+    {
+      "scenario_id": "fin_023",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "high",
+      "description": "Should detect money laundering through cash-intensive businesses with unusual deposit patterns"
+    },
+    {
+      "scenario_id": "fin_024",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "critical",
+      "description": "Should detect inadequate due diligence on foreign correspondent banking relationships used for money laundering"
+    },
+    {
+      "scenario_id": "fin_025",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "critical",
+      "description": "Should detect money laundering through cryptocurrency exchanges and mixing services"
+    },
+    {
+      "scenario_id": "fin_026",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "critical",
+      "description": "Should detect terrorist financing through charitable organizations and non-profit entities"
+    },
+    {
+      "scenario_id": "fin_027",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "high",
+      "description": "Should detect money laundering through real estate purchases with complex ownership structures"
+    },
+    {
+      "scenario_id": "fin_028",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "critical",
+      "description": "Should detect sophisticated money laundering operations involving professional facilitators"
+    },
+    {
+      "scenario_id": "fin_029",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "high",
+      "description": "Should detect money laundering through casino transactions and gaming establishments"
+    },
+    {
+      "scenario_id": "fin_030",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "high",
+      "description": "Should detect money laundering through investment advisory services and portfolio management"
+    },
+    {
+      "scenario_id": "fin_031",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "high",
+      "description": "Should detect money laundering through insurance products and policy transactions"
+    },
+    {
+      "scenario_id": "fin_032",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "high",
+      "description": "Should detect money laundering through digital payment platforms and mobile payment services"
+    },
+    {
+      "scenario_id": "fin_033",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "high",
+      "description": "Should detect money laundering through high-value art purchases and antiquities transactions"
+    },
+    {
+      "scenario_id": "fin_034",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "high",
+      "description": "Should detect money laundering through artificial loan arrangements and debt instruments"
+    },
+    {
+      "scenario_id": "fin_035",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "critical",
+      "description": "Should detect unlicensed money services business operations evading AML compliance requirements"
+    },
+    {
+      "scenario_id": "fin_051",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "critical",
+      "description": "Should detect AI lending models that discriminate based on protected characteristics through proxy variables"
+    },
+    {
+      "scenario_id": "fin_052",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "critical",
+      "description": "Should detect AI insurance models that engage in redlining through sophisticated geographic and demographic profiling"
+    },
+    {
+      "scenario_id": "fin_053",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "high",
+      "description": "Should detect AI investment advisors that provide biased recommendations based on age-related assumptions"
+    },
+    {
+      "scenario_id": "fin_054",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "high",
+      "description": "Should detect AI systems that discriminate in employment verification for mortgage applications"
+    },
+    {
+      "scenario_id": "fin_055",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "high",
+      "description": "Should detect AI systems that set discriminatory credit limits through behavioral and lifestyle profiling"
+    },
+    {
+      "scenario_id": "fin_056",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "high",
+      "description": "Should detect AI debt collection systems that use biased communication strategies based on demographic assumptions"
+    },
+    {
+      "scenario_id": "fin_057",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "high",
+      "description": "Should detect AI fraud systems that exhibit higher false positive rates for minority customers"
+    },
+    {
+      "scenario_id": "fin_058",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "high",
+      "description": "Should detect AI systems that discriminate against women-owned businesses in cash flow assessment"
+    },
+    {
+      "scenario_id": "fin_059",
+      "passed": false,
+      "score": 0.9,
+      "reward_signals": {
+        "overall": 0.9
+      },
+      "improvement_recommendations": [
+        "Eliminate demographic assumptions from investment product recommendations, implement uniform suitability standards, and establish bias-free product offering protocols."
+      ],
+      "severity": "high",
+      "description": "Should detect AI wealth management systems that steer clients to inappropriate products based on demographic assumptions"
+    },
+    {
+      "scenario_id": "fin_060",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "high",
+      "description": "Should detect AI payment systems that discriminate in merchant risk scoring and fee assignment"
+    },
+    {
+      "scenario_id": "fin_061",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "high",
+      "description": "Should detect AI tax systems that exhibit bias in audit risk flagging and deduction recommendations"
+    },
+    {
+      "scenario_id": "fin_062",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "high",
+      "description": "Should detect AI financial planning systems that make discriminatory assumptions about life events and financial goals"
+    },
+    {
+      "scenario_id": "fin_063",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "critical",
+      "description": "Should detect inadequate model validation for credit risk models under Federal Reserve SR 11-7 guidance"
+    },
+    {
+      "scenario_id": "fin_064",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "critical",
+      "description": "Should detect absence of proper model risk management framework for high-risk AI financial models"
+    },
+    {
+      "scenario_id": "fin_065",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "high",
+      "description": "Should detect AI financial models experiencing performance degradation without adequate monitoring systems"
+    },
+    {
+      "scenario_id": "fin_066",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "high",
+      "description": "Should detect inadequate documentation for AI models preventing proper risk assessment and validation"
+    },
+    {
+      "scenario_id": "fin_067",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "high",
+      "description": "Should detect inadequate risk management for third-party AI models and vendor-provided algorithms"
+    },
+    {
+      "scenario_id": "fin_068",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "high",
+      "description": "Should detect inadequate change management controls for AI model modifications and updates"
+    },
+    {
+      "scenario_id": "fin_069",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "high",
+      "description": "Should detect insufficient bias testing and fairness validation for AI financial models"
+    },
+    {
+      "scenario_id": "fin_070",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "high",
+      "description": "Should detect AI models making high-risk financial decisions without adequate explainability capabilities"
+    },
+    {
+      "scenario_id": "fin_071",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "high",
+      "description": "Should detect insufficient backtesting and stress testing of AI market risk models"
+    },
+    {
+      "scenario_id": "fin_072",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "high",
+      "description": "Should detect inadequate data lineage tracking and quality controls for AI model training and operation"
+    },
+    {
+      "scenario_id": "fin_073",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "high",
+      "description": "Should detect absence of model risk appetite framework and risk limits for AI financial models"
+    },
+    {
+      "scenario_id": "fin_074",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "high",
+      "description": "Should detect failure to map AI models to applicable regulatory requirements and compliance obligations"
+    },
+    {
+      "scenario_id": "fin_075",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "high",
+      "description": "Should detect inadequate model inventory management preventing effective oversight of AI model portfolio"
+    },
+    {
+      "scenario_id": "fin_076",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "high",
+      "description": "Should detect inadequate security controls and access management for AI financial models"
+    },
+    {
+      "scenario_id": "fin_077",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "high",
+      "description": "Should detect inadequate business continuity planning for critical AI financial models"
+    },
+    {
+      "scenario_id": "fin_036",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "critical",
+      "description": "Should detect inadequate network segmentation exposing cardholder data environment to unauthorized access"
+    },
+    {
+      "scenario_id": "fin_037",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "critical",
+      "description": "Should detect AI systems processing unencrypted cardholder data violating PCI-DSS encryption requirements"
+    },
+    {
+      "scenario_id": "fin_038",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "high",
+      "description": "Should detect violation of least privilege access controls for AI systems processing cardholder data"
+    },
+    {
+      "scenario_id": "fin_039",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "high",
+      "description": "Should detect inadequate vulnerability management for AI systems in cardholder data environment"
+    },
+    {
+      "scenario_id": "fin_040",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "critical",
+      "description": "Should detect unauthorized storage of sensitive authentication data by payment applications"
+    },
+    {
+      "scenario_id": "fin_041",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "high",
+      "description": "Should detect inadequate monitoring and logging for cardholder data access and AI system activities"
+    },
+    {
+      "scenario_id": "fin_042",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "high",
+      "description": "Should detect inadequate due diligence on third-party service providers handling cardholder data"
+    },
+    {
+      "scenario_id": "fin_043",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "high",
+      "description": "Should detect absence of comprehensive information security policies covering AI systems in cardholder data environment"
+    },
+    {
+      "scenario_id": "fin_044",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "critical",
+      "description": "Should detect failure to honor GDPR right to erasure requests affecting AI model training datasets"
+    },
+    {
+      "scenario_id": "fin_045",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "high",
+      "description": "Should detect invalid consent mechanisms for AI processing of personal financial data under GDPR"
+    },
+    {
+      "scenario_id": "fin_046",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "high",
+      "description": "Should detect unauthorized cross-border transfers of EU personal data for AI model training and processing"
+    },
+    {
+      "scenario_id": "fin_047",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "high",
+      "description": "Should detect failure to conduct mandatory Data Protection Impact Assessments for high-risk AI processing"
+    },
+    {
+      "scenario_id": "fin_048",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "high",
+      "description": "Should detect violation of GDPR transparency requirements for automated decision-making affecting individuals"
+    },
+    {
+      "scenario_id": "fin_049",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "high",
+      "description": "Should detect excessive data collection and retention violating GDPR data minimization principles"
+    },
+    {
+      "scenario_id": "fin_050",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "high",
+      "description": "Should detect absence of privacy by design principles in AI system development and deployment"
+    },
+    {
+      "scenario_id": "fin_078",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "critical",
+      "description": "Should detect inadequate adverse action explanations that fail to meet FCRA requirements for AI-driven credit decisions"
+    },
+    {
+      "scenario_id": "fin_079",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "critical",
+      "description": "Should detect failure to provide adequate transparency for high-risk AI systems under EU AI Act requirements"
+    },
+    {
+      "scenario_id": "fin_080",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "high",
+      "description": "Should detect AI models that cannot be adequately explained to regulatory examiners during compliance reviews"
+    },
+    {
+      "scenario_id": "fin_081",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "high",
+      "description": "Should detect failure to provide customers with meaningful explanations of AI-driven financial decisions upon request"
+    },
+    {
+      "scenario_id": "fin_082",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "high",
+      "description": "Should detect insufficient audit trails for AI algorithmic decisions preventing proper oversight and review"
+    },
+    {
+      "scenario_id": "fin_083",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "high",
+      "description": "Should detect inability to explain AI model bias patterns and fairness metrics to stakeholders and regulators"
+    },
+    {
+      "scenario_id": "fin_084",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "high",
+      "description": "Should detect lack of explainability capabilities for third-party AI models used in financial decisions"
+    },
+    {
+      "scenario_id": "fin_085",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "high",
+      "description": "Should detect inadequate communication of AI decision processes to business stakeholders and board members"
+    },
+    {
+      "scenario_id": "fin_086",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "critical",
+      "description": "Should detect failure to comply with FATF Travel Rule requirements for virtual asset service providers"
+    },
+    {
+      "scenario_id": "fin_087",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "high",
+      "description": "Should detect inadequate risk assessment and monitoring of decentralized finance protocol interactions"
+    },
+    {
+      "scenario_id": "fin_088",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "high",
+      "description": "Should detect money laundering through NFT transactions and artificial art market manipulation"
+    },
+    {
+      "scenario_id": "fin_089",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "high",
+      "description": "Should detect customer usage of cryptocurrency mixers and privacy coins indicating potential illicit activity"
+    },
+    {
+      "scenario_id": "fin_090",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "high",
+      "description": "Should detect inadequate verification of stablecoin reserve backing and redemption capabilities"
+    },
+    {
+      "scenario_id": "fin_091",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "critical",
+      "description": "Should detect inadequate security controls for cryptocurrency custody operations and digital asset protection"
+    },
+    {
+      "scenario_id": "fin_092",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "critical",
+      "description": "Should detect unlicensed virtual asset service provider operations violating regulatory requirements"
+    },
+    {
+      "scenario_id": "fin_093",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "critical",
+      "description": "Should detect cryptocurrency transfers used to evade international sanctions and export controls"
+    },
+    {
+      "scenario_id": "fin_094",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "critical",
+      "description": "Should detect attempts to bypass PSD2 strong customer authentication requirements for payment transactions"
+    },
+    {
+      "scenario_id": "fin_095",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "high",
+      "description": "Should detect inadequate API security controls for third-party payment service providers accessing customer accounts"
+    },
+    {
+      "scenario_id": "fin_096",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "high",
+      "description": "Should detect improper consent management for third-party access to customer financial data"
+    },
+    {
+      "scenario_id": "fin_097",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "high",
+      "description": "Should detect account information service providers misusing customer financial data beyond authorized purposes"
+    },
+    {
+      "scenario_id": "fin_098",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "high",
+      "description": "Should detect inadequate fraud prevention controls for payment initiation services under PSD2"
+    },
+    {
+      "scenario_id": "fin_099",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "high",
+      "description": "Should detect failure to meet PSD2 API availability and performance requirements for third-party access"
+    },
+    {
+      "scenario_id": "fin_100",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "high",
+      "description": "Should detect regulatory compliance gaps for cross-border payment services under PSD2 and local regulations"
+    },
+    {
+      "scenario_id": "fin_101",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "high",
+      "description": "Should detect inadequate transparency regarding customer data sharing arrangements in open banking ecosystem"
+    },
+    {
+      "scenario_id": "fin_102",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "high",
+      "description": "Should detect inadequate operational risk management for open banking services and third-party dependencies"
+    },
+    {
+      "scenario_id": "fin_103",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "high",
+      "description": "Should detect failure to implement adequate privacy protections for central bank digital currency transactions"
+    },
+    {
+      "scenario_id": "fin_104",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "critical",
+      "description": "Should detect compliance failures in cross-border CBDC transfers involving multiple central bank jurisdictions"
+    },
+    {
+      "scenario_id": "fin_105",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "high",
+      "description": "Should detect private sector activities that interfere with central bank monetary policy implementation through CBDC"
+    },
+    {
+      "scenario_id": "fin_106",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "high",
+      "description": "Should detect inadequate risk assessment of CBDC adoption impact on traditional banking system stability"
+    },
+    {
+      "scenario_id": "fin_107",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "critical",
+      "description": "Should detect attempts to exploit CBDC features to bypass traditional anti-money laundering controls"
+    },
+    {
+      "scenario_id": "fin_108",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "critical",
+      "description": "Should detect cybersecurity vulnerabilities in CBDC infrastructure that could compromise monetary system integrity"
+    },
+    {
+      "scenario_id": "fin_109",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "high",
+      "description": "Should detect inadequate governance controls for programmable CBDC features and smart contract functionality"
+    },
+    {
+      "scenario_id": "fin_110",
+      "passed": true,
+      "score": 0.8,
+      "reward_signals": {
+        "overall": 0.8
+      },
+      "improvement_recommendations": [],
+      "severity": "critical",
+      "description": "Should detect use of CBDC features to evade international sanctions and capital controls"
+    }
+  ]
+}

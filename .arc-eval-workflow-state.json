@@ -1,0 +1,15 @@
+{
+  "current_cycle": {
+    "started_at": "2025-06-02T07:59:04.546816",
+    "debug": null,
+    "compliance": {
+      "completed_at": "2025-06-02T07:59:04.546818",
+      "domain": "finance",
+      "input_file": "quick-start",
+      "evaluation_file": "/Users/jarrodbarnes/arc-eval/finance_evaluation_20250602_075904.json",
+      "timestamp": "2025-06-02T07:59:04.546797"
+    },
+    "improve": null
+  },
+  "history": []
+}
