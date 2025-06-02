@@ -9,8 +9,8 @@ import json
 from pathlib import Path
 
 from rich.console import Console
-from agent_eval.commands.reliability import ReliabilityCommandHandler
-from agent_eval.commands.compliance import ComplianceCommandHandler
+from agent_eval.commands.reliability_handler import ReliabilityHandler
+from agent_eval.commands.compliance_handler import ComplianceHandler
 
 
 class AnalyzeCommand:
@@ -85,7 +85,7 @@ class AnalyzeCommand:
         """Execute debug analysis step."""
         self.console.print("\n[bold cyan]Step 1: Debug Analysis[/bold cyan]")
         
-        handler = ReliabilityCommandHandler()
+        handler = ReliabilityHandler()
         return handler.execute(
             input_file=input_file,
             unified_debug=True,
@@ -105,7 +105,7 @@ class AnalyzeCommand:
         """Execute compliance evaluation step."""
         self.console.print("\n[bold cyan]Step 2: Compliance Evaluation[/bold cyan]")
         
-        compliance_handler = ComplianceCommandHandler()
+        compliance_handler = ComplianceHandler()
         return compliance_handler.execute(
             domain=domain,
             input_file=input_file,

@@ -13,7 +13,7 @@ from datetime import datetime
 
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn
-from agent_eval.commands.compliance import ComplianceCommandHandler
+from agent_eval.commands.compliance_handler import ComplianceHandler
 from agent_eval.core.workflow_state import update_workflow_progress
 
 
@@ -23,7 +23,7 @@ class ComplianceCommand:
     def __init__(self) -> None:
         """Initialize compliance command with console and handler."""
         self.console = Console()
-        self.handler = ComplianceCommandHandler()
+        self.handler = ComplianceHandler()
     
     def execute(
         self,

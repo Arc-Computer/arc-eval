@@ -1,5 +1,5 @@
 """
-Benchmark command handlers for ARC-Eval CLI.
+Benchmark command for ARC-Eval CLI.
 
 Handles benchmark evaluation, quick start demos, and input validation.
 """
@@ -23,8 +23,8 @@ from agent_eval.benchmarks.adapter import QuickBenchmarkAdapter
 console = Console()
 
 
-class BenchmarkCommandHandler(BaseCommandHandler):
-    """Handler for benchmark and demo commands."""
+class BenchmarkCommand(BaseCommandHandler):
+    """Command for benchmark and demo execution."""
     
     def execute(self, **kwargs) -> int:
         """Execute benchmark commands based on parameters."""

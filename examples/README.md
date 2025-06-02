@@ -21,7 +21,7 @@ Explore these files to understand the types of data ARC-Eval processes and how t
 While the full, up-to-date scenario definitions reside within the core `agent_eval/domains/` directory (as YAML files), this section provides context.
 
 *   **`/complete-datasets/README.md`**: Points you to the canonical location of our **378+ open-source evaluation scenarios** covering Finance, Security, and Machine Learning domains.
-*   **Learn More**: To explore the actual scenarios, you can directly view files like `agent_eval/domains/finance.yaml` or use the CLI command `arc-eval compliance --domain security --list-scenarios`.
+*   **Learn More**: To explore the actual scenarios, you can directly view files like `agent_eval/domains/finance.yaml` or run `arc-eval compliance --domain security --help` to see domain coverage details.
 
 ### ⚙️ Integration & Automation
 *   **`/integration/ci-cd`**: Contains templates and examples (e.g., `github-actions.yml`) to help you integrate ARC-Eval into your Continuous Integration/Continuous Deployment (CI/CD) pipelines. Automate your agent evaluations to catch regressions and ensure reliability with every code change.
@@ -46,6 +46,6 @@ By testing your agent against realistic scenarios, analyzing failures, and apply
 1.  **Begin with `/quickstart/README.md`**: This is the most structured way to learn the basics.
 2.  **Examine Agent Outputs**: Browse the `.json` files in `/sample-data`, `/enhanced-traces`, and `/workflow-reliability` to see how to structure your agent's data for ARC-Eval.
 3.  **Explore Integration Options**: Check out `/integration` to see how to automate evaluations in your CI/CD pipeline or use the Python SDK.
-4.  **Reference Scenario Domains**: While exploring, remember that the actual test scenarios are in `agent_eval/domains/`. Use `arc-eval --list-scenarios` for a specific domain to see all available test IDs and names.
+4.  **Reference Scenario Domains**: While exploring, remember that the actual test scenarios are in `agent_eval/domains/`. Use `arc-eval compliance --domain <domain> --help` to see domain coverage and scenario counts.
 
 These examples are open-source. We encourage you to use them, adapt them for your specific needs, and even contribute new examples that can help the community!

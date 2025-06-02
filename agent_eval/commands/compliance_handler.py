@@ -1,5 +1,5 @@
 """
-Compliance command handlers for ARC-Eval CLI.
+Compliance handler for ARC-Eval CLI.
 
 Handles domain-specific compliance evaluation, agent judge evaluation, and export functionality.
 """
@@ -25,7 +25,7 @@ console = Console()
 logger = logging.getLogger(__name__)
 
 
-class ComplianceCommandHandler(BaseCommandHandler):
+class ComplianceHandler(BaseCommandHandler):
     """Handler for compliance evaluation commands."""
     
     def execute(self, **kwargs) -> int:
@@ -778,30 +778,8 @@ class ComplianceCommandHandler(BaseCommandHandler):
                     'scenario_id': scenario_id
                 })
             
-            # Build prioritized fixes (mock data for now - will be populated by FixGenerator)
-            prioritized_fixes = []
-            if metrics.get("fixes_generated", 0) > 0:
-                # This would come from FixGenerator in a real implementation
-                prioritized_fixes = [
-                    {
-                        'severity': 'critical',
-                        'description': 'JWT token validation',
-                        'failures_prevented': 8,
-                        'file_path': 'agent_eval/fixes/auth_jwt_validation.py'
-                    },
-                    {
-                        'severity': 'high',
-                        'description': 'Transaction amount validation',
-                        'failures_prevented': 5,
-                        'file_path': 'agent_eval/fixes/transaction_bounds.py'
-                    },
-                    {
-                        'severity': 'medium',
-                        'description': 'Feature distribution check',
-                        'failures_prevented': 3,
-                        'file_path': 'agent_eval/fixes/ml_feature_validation.py'
-                    }
-                ][:min(3, metrics.get("fixes_generated", 0))]
+            # Generate prioritized fixes using FixGenerator
+            prioritized_fixes = self._generate_prioritized_fixes(judge_results, domain, top_patterns)
             
             # Build comprehensive learning metrics
             baseline_scenarios = DOMAIN_SCENARIO_COUNTS.get(domain, 378)
@@ -840,6 +818,80 @@ class ComplianceCommandHandler(BaseCommandHandler):
         except Exception as e:
             logger.warning(f"Failed to collect learning metrics: {e}")
             return {}
+
+    def _generate_prioritized_fixes(self, judge_results: List[Any], domain: str, top_patterns: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Generate prioritized fixes using FixGenerator based on actual failure patterns."""
+        try:
+            from agent_eval.analysis.fix_generator import FixGenerator
+
+            fix_generator = FixGenerator()
+            prioritized_fixes = []
+
+            # Convert judge results and patterns to fix generator format
+            failure_patterns = []
+            for result in judge_results:
+                if result.judgment == "fail":
+                    failure_patterns.append({
+                        "domain": domain,
+                        "scenario_id": result.scenario_id,
+                        "failure_reason": result.reasoning if hasattr(result, 'reasoning') else "Unknown failure",
+                        "severity": getattr(result, 'severity', 'medium'),
+                        "remediation": getattr(result, 'remediation', '')
+                    })
+
+            # Generate fixes using the actual FixGenerator
+            if failure_patterns:
+                fixes_by_domain = fix_generator.generate_fixes(failure_patterns)
+                domain_fixes = fixes_by_domain.get(domain, [])
+
+                # Convert to prioritized format with severity mapping
+                severity_order = {'critical': 3, 'high': 2, 'medium': 1, 'low': 0}
+
+                for i, fix in enumerate(domain_fixes[:3]):  # Limit to top 3 fixes
+                    # Extract severity from fix content or use pattern severity
+                    fix_severity = 'medium'  # default
+                    if i < len(failure_patterns):
+                        fix_severity = failure_patterns[i].get('severity', 'medium')
+
+                    # Estimate failures prevented based on pattern frequency
+                    failures_prevented = len([p for p in failure_patterns if p.get('severity') == fix_severity])
+
+                    prioritized_fixes.append({
+                        'severity': fix_severity,
+                        'description': self._extract_fix_description(fix),
+                        'failures_prevented': failures_prevented,
+                        'fix_content': fix,
+                        'domain': domain
+                    })
+
+                # Sort by severity and failures prevented
+                prioritized_fixes.sort(key=lambda x: (severity_order.get(x['severity'], 0), x['failures_prevented']), reverse=True)
+
+            return prioritized_fixes
+
+        except Exception as e:
+            logger.warning(f"Failed to generate prioritized fixes: {e}")
+            return []
+
+    def _extract_fix_description(self, fix_content: str) -> str:
+        """Extract a concise description from fix content."""
+        try:
+            # Look for the first line that contains a description
+            lines = fix_content.strip().split('\n')
+            for line in lines:
+                if line.startswith('# Fix for') and ':' in line:
+                    # Extract description after the colon
+                    return line.split(':', 2)[-1].strip()
+
+            # Fallback: use first meaningful line
+            for line in lines:
+                if line.strip() and not line.startswith('#') and not line.startswith('```'):
+                    return line.strip()[:50] + "..." if len(line.strip()) > 50 else line.strip()
+
+            return "Code improvement fix"
+
+        except Exception:
+            return "Generated fix"
 
     def _calculate_historical_metrics(self, judge_results: List[Any], domain: str) -> Dict[str, Any]:
         """Calculate real metrics from historical evaluation data."""
