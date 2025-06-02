@@ -1,5 +1,6 @@
 # ARC-Eval: Debug, Evaluate, and Improve AI Agents
-*Bring your own agent (BYOA) — spot risks, fix failures, and improve performance with every run.*
+
+> “ARC-Eval helps teams rapidly debug, test, and improve AI agents for real-world reliability, compliance, and risk, no matter your stack.”
 
 [![PyPI version](https://badge.fury.io/py/arc-eval.svg)](https://badge.fury.io/py/arc-eval)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -29,6 +30,8 @@ It's built to be **agent-agnostic**, meaning you can bring your own agent (BYOA)
 
 ## ⚡ Quick Start (2 minutes)
 
+> **💡 Pro Tip:** Use `--quick-start` for an instant, no-setup demo. See [Flexible Input & Auto-Detection](#flexible-input--auto-detection) for all ingestion options.
+
 ```bash
 # 1. Install ARC-Eval (Python 3.9+ required)
 pip install arc-eval
@@ -42,6 +45,10 @@ arc-eval --help
 
 <details>
 <summary><strong>Next Steps with Your Agent</strong></summary>
+
+> **⚠️ Important:** For agent-as-judge evaluation, set your API key:  
+> `export ANTHROPIC_API_KEY="your-anthropic-api-key"`  
+> _See [Flexible Input & Auto-Detection](#flexible-input--auto-detection) for details._
 
 ```bash
 # For agent-as-judge evaluation (optional but highly recommended for deeper insights)
@@ -63,6 +70,9 @@ arc-eval
 ---
 
 ## Core Workflows
+
+> See [Scenario Libraries & Regulations](#scenario-libraries--regulations) for full coverage details.  
+> See [Flexible Input & Auto-Detection](#flexible-input--auto-detection) for all ingestion options.
 
 <details>
 <summary><strong>Debug: "Why is my agent failing?"</strong></summary>
@@ -107,6 +117,8 @@ This command automatically runs the debug process, then the compliance checks, a
 ---
 
 ## Key Features & Dashboard
+
+> **Agent-as-a-Judge:** ARC-Eval uses LLMs as domain-specific judges to evaluate agent outputs, provide continuous feedback, and drive improvement. This is implemented in [`agent_eval/evaluation/judges/`](./agent_eval/evaluation/judges/), with feedback and retraining handled by [`agent_eval/analysis/self_improvement.py`](./agent_eval/analysis/self_improvement.py) and adaptive scenario generation in [`agent_eval/core/scenario_bank.py`](./agent_eval/core/scenario_bank.py).
 
 ### Interactive Menus
 After each workflow (like `debug` or `compliance`), see an interactive menu guiding you to logical next steps, making it easy to navigate the platform's capabilities.
@@ -206,7 +218,7 @@ No need to reformat your agent logs. ARC-Eval automatically detects and parses o
   "metadata": {"run_id": "run_789"}
 }
 ```
-ARC-Eval intelligently extracts the core agent response, tool calls, and relevant metadata for evaluation. For adding custom parsers, see `agent_eval/core/parser_registry.py`.
+ARC-Eval intelligently extracts the core agent response, tool calls, and relevant metadata for evaluation. For adding custom parsers, see [`agent_eval/core/parser_registry.py`](./agent_eval/core/parser_registry.py).
 
 ---
 
@@ -260,10 +272,44 @@ graph LR
 
 ---
 
+🔄 ARC-Eval Data Flywheel: Complete End-to-End Flow
+
+📊 Core Architecture Overview
+
+```bash
+  Static Domain Knowledge → Dynamic Learning → Performance Analysis → Adaptive Improvement
+          ↓                      ↓                    ↓                      ↓
+     finance.yaml          ScenarioBank      SelfImprovementEngine    FlywheelExperiment
+     (110 scenarios)    (pattern learning)   (performance tracking)    (ACL curriculum)
+          ↑                      ↑                    ↑                      ↑
+          └──────────────── Continuous Feedback Loop ────────────────────────┘
+```
+
+🗃️ Data Sources & Storage
+
+1. Static Domain Knowledge
+- Location: agent_eval/domains/finance.yaml (110 scenarios)
+- Structure: SOX, KYC, AML, PCI-DSS, GDPR compliance scenarios
+- Metadata: Categories, difficulty indicators, compliance frameworks
+- Role: Foundational test scenarios and compliance requirements
+1. Dynamic Pattern Learning
+- Location: .arc-eval/learned_patterns.jsonl (user-specific, git-ignored)
+- Structure: Failure fingerprints, remediation patterns, scenario generations
+- Generated: agent_eval/domains/customer_generated.yaml (auto-generated scenarios)
+- Role: Learns from real failures to create new test scenarios
+1. Performance Tracking Database
+- Location: experiments/flywheel_proof/improvement/retraining_data/
+- Files:
+    - reward_signal_history.jsonl - All evaluation results over time
+    - training_examples.jsonl - Generated training data from failures
+    - improvement_curriculum.json - Adaptive curriculum recommendations
+  
 ## Examples & Integrations
 
 <details>
 <summary><strong>Show Examples & Integrations</strong></summary>
+
+> Explore more in [`examples/`](./examples/) and [`docs/`](./docs/).
 
 </details>
 
@@ -273,6 +319,8 @@ graph LR
 
 <details>
 <summary><strong>Show Advanced Usage (SDK, CI/CD, etc.)</strong></summary>
+
+> See the [GitHub Actions workflow example](./examples/integration/ci-cd/github-actions.yml).
 
 </details>
 
