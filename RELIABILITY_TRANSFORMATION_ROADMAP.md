@@ -75,57 +75,114 @@ Provide users with clear, proactive reliability insights using existing analysis
 
 ---
 
-## **PHASE 2: RELIABILITY VISIBILITY** *(Week 3-4)*
+## **PHASE 2: HYBRID RELIABILITY PREDICTION** *(Week 3-6)*
+*Implementing Advisor-Aligned Hybrid Approach: Rules + LLM Heuristics*
 
-### **Task 2.1: Add Predictive Methods to ReliabilityAnalyzer**
-- **Objective**: Transform post-failure analysis into pre-failure prediction
-- **Current State**: Comprehensive post-failure analysis only
-- **Target State**: Rule-based prediction using existing metrics
-- **Files to Modify**:
-  - `agent_eval/evaluation/reliability_validator.py` (ADD METHODS)
-    - Add `predict_reliability_risk()` method
-    - Add `assess_failure_probability()` method
-    - Add `generate_proactive_recommendations()` method
+### **Task 2.1: Implement Hybrid Prediction Engine**
+- **Objective**: Build rule-based compliance filters + LLM pattern recognition system
+- **Current State**: Post-failure analysis only in `ReliabilityAnalyzer`
+- **Target State**: Hybrid predictor combining deterministic rules with LLM heuristics
+- **Files to Create/Modify**:
+  - `agent_eval/prediction/compliance_rules.py` (NEW)
+    - Deterministic PII/security/compliance rule engine
+    - Hard rules for regulatory requirements (GDPR, PCI, SOX)
+  - `agent_eval/prediction/llm_predictor.py` (NEW)
+    - LLM-powered pattern recognition for complex reliability assessment
+    - Structured prompts for failure probability prediction
+  - `agent_eval/prediction/hybrid_predictor.py` (NEW)
+    - Combines rule-based + LLM scoring with weighted approach
+    - Generates unified reliability risk assessment
+  - `agent_eval/evaluation/reliability_validator.py` (ENHANCE)
+    - Integrate hybrid predictor into existing analysis flow
+    - Add `predict_reliability()` method to `ReliabilityAnalyzer`
 - **Success Criteria**:
-  - Reliability risk scores (0-1) generated from existing metrics
-  - Specific risk factors identified
-  - Actionable recommendations provided
-  - No impact on existing analysis capabilities
+  - Deterministic compliance rules working (PII, security, audit)
+  - LLM pattern recognition generating structured predictions
+  - Hybrid scoring combining both approaches (40% rules, 60% LLM)
+  - Risk scores (0-1) with confidence levels and rationale
+  - Integration with existing `ComprehensiveReliabilityAnalysis`
 - **Dependencies**: Phase 1 complete (proper integration)
-- **Estimated Complexity**: **Low** (using existing data for predictions)
+- **Estimated Complexity**: **Medium** (new prediction architecture)
 
-### **Task 2.2: Enhance Debug Dashboard**
-- **Objective**: Display reliability predictions and risk assessments
-- **Current State**: Rich analysis display capabilities
-- **Target State**: Predictions and risk assessments prominently displayed
+### **Task 2.2: Implement Prediction Logging & Feedback Loop**
+- **Objective**: Track predictions and outcomes for accuracy measurement
+- **Current State**: No prediction tracking infrastructure
+- **Target State**: Complete feedback loop for continuous improvement
+- **Files to Create/Modify**:
+  - `agent_eval/prediction/prediction_tracker.py` (NEW)
+    - Log predictions with unique IDs and timestamps
+    - Track prediction accuracy over time
+    - JSONL-based storage for simplicity
+  - `agent_eval/prediction/feedback_collector.py` (NEW)
+    - User feedback collection interface
+    - Binary outcome tracking (failure/no failure)
+    - Notes and issue type classification
+  - `agent_eval/prediction/analytics.py` (NEW)
+    - Calculate F1, precision, recall, confusion matrix
+    - Weekly accuracy trend analysis
+    - Identify prediction pattern performance
+  - `agent_eval/commands/reliability_handler.py` (ENHANCE)
+    - Integrate prediction logging into debug workflow
+    - Add feedback collection to post-evaluation menu
+- **Success Criteria**:
+  - Every prediction logged with unique ID and metadata
+  - User feedback collection working in debug workflow
+  - Accuracy metrics (F1, confusion matrix) calculated automatically
+  - Weekly trend analysis available
+  - Foundation for 90-day falsifiable metrics
+- **Dependencies**: Task 2.1 (hybrid predictor working)
+- **Estimated Complexity**: **Medium** (new tracking infrastructure)
+
+### **Task 2.3: Enhance Debug Dashboard with Predictions**
+- **Objective**: Display reliability predictions prominently in debug workflow
+- **Current State**: Rich analysis display, no predictions
+- **Target State**: Predictions integrated seamlessly into debug dashboard
 - **Files to Modify**:
   - `agent_eval/ui/debug_dashboard.py` (ENHANCE)
-    - Add reliability prediction display methods
-    - Add risk assessment visualization
-    - Enhance existing dashboard with predictive insights
+    - Add reliability prediction display section
+    - Show risk level, confidence, and top risk factors
+    - Display compliance rule violations prominently
+    - Add LLM rationale in expandable section
+  - `agent_eval/ui/prediction_renderer.py` (NEW)
+    - Specialized rendering for prediction results
+    - Risk level color coding and visual indicators
+    - Business impact metrics display
+  - `agent_eval/commands/reliability_handler.py` (ENHANCE)
+    - Integrate prediction display into debug workflow
+    - Show predictions before standard reliability analysis
 - **Success Criteria**:
-  - Reliability predictions clearly displayed
-  - Risk factors highlighted with actionable guidance
-  - Seamless integration with existing dashboard
-- **Dependencies**: Task 2.1 (predictive methods available)
+  - Predictions displayed prominently in debug dashboard
+  - Risk levels clearly color-coded (LOW/MEDIUM/HIGH)
+  - Compliance violations highlighted with regulatory context
+  - LLM rationale accessible but not overwhelming
+  - Seamless integration with existing debug UI
+- **Dependencies**: Task 2.1 (predictions available), Task 2.2 (logging working)
 - **Estimated Complexity**: **Low** (enhancing existing UI patterns)
 
-### **Task 2.3: Integrate Workflow State Tracking**
-- **Objective**: Track reliability improvements over time
-- **Current State**: Basic workflow state management
-- **Target State**: Reliability trend tracking and historical analysis
-- **Files to Modify**:
-  - `agent_eval/core/workflow_state.py` (ENHANCE)
-    - Add reliability metrics tracking
-    - Add trend analysis capabilities
-  - `agent_eval/commands/debug_command.py` (INTEGRATE)
-    - Save reliability metrics to workflow state
+### **Task 2.4: Debug Workflow End-to-End Testing**
+- **Objective**: Validate complete debug workflow with predictions
+- **Current State**: Phase 1 debug workflow working
+- **Target State**: Full debug workflow with predictions tested and validated
+- **Files to Create/Modify**:
+  - `tests/integration/test_debug_predictions.py` (NEW)
+    - End-to-end debug workflow testing with predictions
+    - Test various agent configurations (good, bad, edge cases)
+    - Validate prediction accuracy on known patterns
+  - `examples/prediction-testing/` (NEW DIRECTORY)
+    - Sample agent configurations for testing predictions
+    - Known failure patterns for validation
+    - Expected prediction outcomes documented
+  - `agent_eval/commands/reliability_handler.py` (ENHANCE)
+    - Add prediction validation mode for testing
+    - Error handling for prediction failures
 - **Success Criteria**:
-  - Reliability trends tracked over time
-  - Historical comparison available
-  - Improvement tracking visible to users
-- **Dependencies**: Task 2.1 (predictive methods), Task 2.2 (dashboard enhancements)
-- **Estimated Complexity**: **Low** (extending existing patterns)
+  - Debug workflow with predictions working end-to-end
+  - Test suite covering prediction accuracy on known patterns
+  - Error handling graceful when predictions fail
+  - Documentation for prediction testing
+  - Ready for pilot user testing
+- **Dependencies**: Task 2.1, 2.2, 2.3 (all prediction components working)
+- **Estimated Complexity**: **Low** (testing and validation)
 
 ---
 
@@ -133,17 +190,19 @@ Provide users with clear, proactive reliability insights using existing analysis
 
 ### **Technical Metrics**
 
-**Phase 1 Success:**
-- ✅ Debug command complexity: 425 lines → ~100 lines
+**Phase 1 Success (COMPLETED):**
+- ✅ Debug command complexity: 425 lines → 274 lines (35% reduction)
 - ✅ Analysis integration: 0% → 100% of existing capabilities used
 - ✅ Code duplication: Eliminated redundant pattern detection
 - ✅ Architecture: Clean separation of concerns
+- ✅ Test harness integration: Proactive domain-specific testing working
 
-**Phase 2 Success:**
-- ✅ Predictive capabilities: Rule-based reliability prediction implemented
-- ✅ User visibility: Proactive reliability insights displayed
-- ✅ Trend tracking: Historical reliability analysis available
-- ✅ Risk assessment: Clear risk factors and recommendations
+**Phase 2 Success Targets:**
+- 🎯 **Hybrid predictor**: Rules + LLM prediction engine implemented
+- 🎯 **Prediction accuracy**: Baseline F1 > 0.3 (better than random)
+- 🎯 **Feedback loop**: Prediction logging and outcome tracking working
+- 🎯 **Data collection**: 50+ predictions logged in first month
+- 🎯 **UI integration**: Predictions prominently displayed in debug dashboard
 
 ### **User Experience Metrics**
 
@@ -153,18 +212,31 @@ Provide users with clear, proactive reliability insights using existing analysis
 - Reliability visibility: Reactive (post-failure)
 - Analysis utilization: Poor integration
 
-**After Transformation:**
+**After Phase 1 (ACHIEVED):**
 - Debug workflow quality: Grade B+
-- User insights: Comprehensive reliability analysis + predictions
-- Reliability visibility: Proactive (pre-failure prediction)
+- User insights: Comprehensive reliability analysis + proactive testing
+- Reliability visibility: Proactive assessment available
 - Analysis utilization: Full leverage of existing capabilities
+
+**After Phase 2 (TARGET):**
+- Debug workflow quality: Grade A-
+- User insights: Predictive reliability assessment with rationale
+- Reliability visibility: Pre-failure prediction with confidence levels
+- Analysis utilization: Full integration + predictive capabilities
 
 ### **Business Impact Metrics**
 
-- **Time to reliability insights**: Immediate (vs. post-failure)
-- **User clarity on agent reliability**: Proactive assessment available
-- **Foundation for cost optimization**: Established through reliability prediction
-- **Advisor vision alignment**: Reliability prediction ✅, Cost optimization foundation ✅
+**Phase 1 Delivered:**
+- ✅ **Time to reliability insights**: Immediate (vs. post-failure)
+- ✅ **User clarity on agent reliability**: Proactive assessment available
+- ✅ **Foundation for cost optimization**: Established through reliability prediction
+- ✅ **Advisor vision alignment**: Reliability prediction foundation ✅
+
+**Phase 2 Targets:**
+- 🎯 **Prediction accuracy validation**: F1 scores and confusion matrices tracked
+- 🎯 **Labeled corpus generation**: 50+ predictions/month for future ML
+- 🎯 **Falsifiable metrics**: 90-day accuracy measurement capability
+- 🎯 **Enterprise credibility**: Deterministic compliance + LLM insights
 
 ---
 
@@ -175,42 +247,80 @@ Provide users with clear, proactive reliability insights using existing analysis
 - **Incremental enhancement**: Add predictions to existing analysis, don't replace
 - **Backward compatibility**: Existing evaluation workflows unaffected
 - **Rollback capability**: Each task can be reverted independently
+- **Debug-first strategy**: Test predictions in lower-stakes debug workflow before enterprise compliance
 
 ### **Validation Strategy**
-- **Phase 1 Validation**: Ensure debug workflow improvement without regression
-- **Phase 2 Validation**: Verify predictions provide actionable insights
-- **Continuous Testing**: Use existing test data from `examples/demo-data/`
-- **User Experience Testing**: Validate Grade D+ → Grade B+ improvement
+- **Phase 1 Validation (COMPLETED)**: Debug workflow improvement without regression ✅
+- **Phase 2 Validation**: Multi-layered prediction accuracy validation
+  - **Synthetic validation**: Test predictions on known good/bad configurations
+  - **Pilot validation**: Partner with 3-5 users for ground truth collection
+  - **Retrospective validation**: Analyze prediction accuracy over time
+- **Continuous Testing**: Use existing test data + new prediction test cases
+- **User Experience Testing**: Validate Grade B+ → Grade A- improvement
+
+### **Prediction Accuracy Risks**
+- **Cold start problem**: Initial predictions will have high variance (mitigated by clear confidence levels)
+- **Ground truth challenges**: User reporting bias (mitigated by multiple feedback channels)
+- **Framework generalization**: LangChain patterns ≠ CrewAI patterns (mitigated by framework-specific prompts)
 
 ---
 
 ## **IMPLEMENTATION DEPENDENCIES**
 
 ```
-Task 1.1 (Simplify Debug Command)
+PHASE 1 (COMPLETED):
+Task 1.1 (Simplify Debug Command) ✅
     ↓
-Task 1.2 (Enhance Orchestration)
+Task 1.2 (Enhance Orchestration) ✅
     ↓
-Task 1.3 (Complete Test Harness Integration)
+Task 1.3 (Complete Test Harness Integration) ✅
+
+PHASE 2 (CURRENT):
+Task 2.1 (Hybrid Prediction Engine)
     ↓
-Task 2.1 (Add Predictive Methods)
+Task 2.2 (Prediction Logging & Feedback Loop)
     ↓
-Task 2.2 (Enhance Dashboard) + Task 2.3 (Workflow State)
+Task 2.3 (Debug Dashboard Enhancement) + Task 2.4 (End-to-End Testing)
 ```
 
 **Parallel Execution Opportunities:**
-- Tasks 2.2 and 2.3 can be executed in parallel after Task 2.1
-- Testing and validation can occur continuously throughout
+- Tasks 2.3 and 2.4 can be executed in parallel after Task 2.2
+- Prediction testing can occur continuously during development
+- UI enhancements can be developed alongside prediction engine
 
 ---
 
-## **NEXT STEPS**
+## **PHASE 2 IMPLEMENTATION PLAN**
 
-1. **Execute Task 1.1**: Simplify debug command and remove redundancy
-2. **Validate Integration**: Ensure proper delegation to `ReliabilityAnalyzer`
-3. **Continue Sequential Execution**: Follow dependency chain
-4. **Continuous Testing**: Use `examples/demo-data/` for validation
-5. **Monitor Success Metrics**: Track progress toward Grade B+ debug workflow
+### **Week 1: Hybrid Prediction Engine (Task 2.1)**
+- **Day 1-2**: Implement `ComplianceRuleEngine` with deterministic rules
+- **Day 3-4**: Build `LLMReliabilityPredictor` with structured prompts
+- **Day 5**: Create `HybridReliabilityPredictor` combining both approaches
+- **Day 6-7**: Integrate with existing `ReliabilityAnalyzer`
 
-**Expected Timeline**: 3-4 weeks for complete transformation
-**Expected Outcome**: Debug workflow that delivers advisor's vision of reliability prediction + foundation for cost optimization
+### **Week 2: Feedback Loop Infrastructure (Task 2.2)**
+- **Day 1-2**: Implement `PredictionTracker` with JSONL logging
+- **Day 3-4**: Build `FeedbackCollector` for user outcome collection
+- **Day 5**: Create `PredictionAnalytics` for accuracy metrics
+- **Day 6-7**: Integrate logging into debug workflow
+
+### **Week 3: UI Integration (Task 2.3)**
+- **Day 1-2**: Enhance debug dashboard with prediction display
+- **Day 3-4**: Create `PredictionRenderer` for specialized UI components
+- **Day 5**: Integrate prediction display into reliability handler
+- **Day 6-7**: Polish UI and user experience
+
+### **Week 4: Testing & Validation (Task 2.4)**
+- **Day 1-2**: Build comprehensive test suite for predictions
+- **Day 3-4**: Create prediction testing examples and documentation
+- **Day 5**: End-to-end workflow testing
+- **Day 6-7**: Performance optimization and error handling
+
+### **Success Milestones:**
+- **End of Week 1**: Hybrid predictions working with sample data
+- **End of Week 2**: Prediction logging and feedback collection active
+- **End of Week 3**: Predictions displayed in debug dashboard
+- **End of Week 4**: Complete debug workflow with predictions ready for pilot users
+
+**Expected Timeline**: 4 weeks for Phase 2 completion
+**Expected Outcome**: Debug workflow with hybrid reliability prediction, feedback loop, and 90-day accuracy validation capability
