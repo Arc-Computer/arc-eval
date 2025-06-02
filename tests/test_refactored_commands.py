@@ -193,22 +193,22 @@ class TestErrorHandling:
 class TestCommandIntegration:
     """Test integration between refactored commands and CLI."""
     
-    @patch('agent_eval.commands.debug_command.ReliabilityCommandHandler')
+    @patch('agent_eval.commands.debug_command.ReliabilityHandler')
     def test_debug_command_integration(self, mock_handler):
         """Test debug command integrates with CLI correctly."""
         mock_handler.return_value.execute.return_value = 0
-        
+
         command = DebugCommand()
-        
+
         with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
             json.dump({"test": "data"}, f)
             f.flush()
-            
+
             result = command.execute(Path(f.name))
             assert result == 0
             mock_handler.return_value.execute.assert_called_once()
-    
-    @patch('agent_eval.commands.compliance_command.ComplianceCommandHandler')
+
+    @patch('agent_eval.commands.compliance_command.ComplianceHandler')
     @patch('agent_eval.commands.compliance_command.update_workflow_progress')
     def test_compliance_command_integration(self, mock_update, mock_handler):
         """Test compliance command integrates with CLI correctly."""

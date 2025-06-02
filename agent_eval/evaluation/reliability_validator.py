@@ -383,13 +383,28 @@ class ReliabilityAnalyzer:
         if framework:
             patterns = self.framework_patterns.get_tool_call_patterns(framework)
         else:
-            # Try all patterns if framework is unknown - use dynamic framework list
-            patterns = []
-            for fw in self.framework_patterns._tool_call_patterns.keys():
-                patterns.extend(self.framework_patterns.get_tool_call_patterns(fw))
+            # Auto-detect framework first
+            framework_detection = self.detect_framework_comprehensive([agent_output])
+            detected_framework = framework_detection.get('detected_framework')
+
+            if detected_framework:
+                # Use detected framework patterns
+                patterns = self.framework_patterns.get_tool_call_patterns(detected_framework)
+            else:
+                # Try all patterns if framework is unknown - use dynamic framework list
+                patterns = []
+                for fw in self.framework_patterns._tool_call_patterns.keys():
+                    patterns.extend(self.framework_patterns.get_tool_call_patterns(fw))
         
         for pattern in patterns:
-            matches = re.findall(pattern, output_str, re.IGNORECASE | re.DOTALL)
+            # Check if pattern is already compiled (Pattern object) or string
+            if hasattr(pattern, 'findall'):
+                # Pattern is already compiled, use it directly
+                matches = pattern.findall(output_str)
+            else:
+                # Pattern is a string, compile it with flags
+                matches = re.findall(pattern, output_str, re.IGNORECASE | re.DOTALL)
+
             for match in matches:
                 if isinstance(match, tuple):
                     # Handle multiple capture groups
@@ -448,8 +463,9 @@ class ReliabilityAnalyzer:
         # Normalize expected tools to lowercase
         expected_tools_norm = [tool.lower() for tool in expected_tools]
         
-        # Detect framework
-        framework = self.detect_framework(output_str)
+        # Detect framework using comprehensive detection
+        framework_detection = self.detect_framework_comprehensive([agent_output])
+        framework = framework_detection.get('detected_framework')
         
         # Extract actual tool calls
         detected_tools = self.extract_tool_calls(agent_output, framework)

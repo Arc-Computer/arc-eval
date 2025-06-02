@@ -405,21 +405,21 @@ class DualTrackEvaluator:
             # Retrieve results
             logger.info(f"📥 Retrieving results for batch {batch_id}...")
             results = []
-            
+
             result_count = 0
             async for result_entry in client.beta.messages.batches.results(batch_id):
                 if result_entry.result.type == "succeeded":
                     message = result_entry.result.message
                     response_text = message.content[0].text if message.content else ""
-                    
+
                     # Extract scenario info from custom_id
                     custom_id = result_entry.custom_id
                     scenario_id = custom_id.replace("eval_", "") if custom_id.startswith("eval_") else custom_id
-                    
+
                     # Calculate metrics
                     confidence = self.api_manager._extract_confidence_from_response(response_text)
                     cost = self._calculate_batch_cost(message.usage.input_tokens, message.usage.output_tokens)
-                    
+
                     result = EvaluationResult(
                         scenario_id=scenario_id,
                         response=response_text,
@@ -429,12 +429,12 @@ class DualTrackEvaluator:
                         cost=cost,
                         error=None
                     )
-                    
+
                 elif result_entry.result.type == "errored":
                     error_msg = result_entry.result.error.message if result_entry.result.error else "Unknown error"
                     custom_id = result_entry.custom_id
                     scenario_id = custom_id.replace("eval_", "") if custom_id.startswith("eval_") else custom_id
-                    
+
                     result = EvaluationResult(
                         scenario_id=scenario_id,
                         response="",
@@ -444,10 +444,10 @@ class DualTrackEvaluator:
                         cost=0.0,
                         error=error_msg
                     )
-                
+
                 results.append(result)
                 result_count += 1
-                
+
                 # Progress update for result processing
                 if progress_callback and result_count % 10 == 0:
                     progress_callback(ProgressUpdate(
@@ -491,3 +491,4 @@ class DualTrackEvaluator:
         """Calculate cost for batch API call (includes 50% discount)."""
         base_cost = self._calculate_iteration_cost(input_tokens, output_tokens)
         return base_cost * 0.5  # 50% batch discount
+

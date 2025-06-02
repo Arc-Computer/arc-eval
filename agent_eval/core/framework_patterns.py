@@ -22,7 +22,7 @@ class FrameworkPatterns:
         """Compile tool call detection patterns for each framework."""
         patterns = {
             "openai": [
-                r'"tool_calls":\s*\[.*?"function".*?"name":\s*"([^"]+)"',
+                r'"function":\s*\{\s*"name":\s*"([^"]+)"',
                 r'"function_call".*?"name":\s*"([^"]+)"',
                 r'"tools".*?"function".*?"name":\s*"([^"]+)"',
                 r'openai.*?function.*?([a-zA-Z_][a-zA-Z0-9_]*)',
@@ -94,7 +94,7 @@ class FrameworkPatterns:
         # Compile all patterns for performance
         compiled_patterns = {}
         for framework, pattern_list in patterns.items():
-            compiled_patterns[framework] = [re.compile(pattern, re.IGNORECASE) for pattern in pattern_list]
+            compiled_patterns[framework] = [re.compile(pattern, re.IGNORECASE | re.DOTALL) for pattern in pattern_list]
         
         return compiled_patterns
     
@@ -153,7 +153,7 @@ class FrameworkPatterns:
         # Compile all patterns for performance
         compiled_patterns = {}
         for framework, pattern_list in patterns.items():
-            compiled_patterns[framework] = [re.compile(pattern, re.IGNORECASE) for pattern in pattern_list]
+            compiled_patterns[framework] = [re.compile(pattern, re.IGNORECASE | re.DOTALL) for pattern in pattern_list]
         
         return compiled_patterns
     

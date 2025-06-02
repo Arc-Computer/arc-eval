@@ -226,7 +226,7 @@ class TestWorkflowIntegration:
         result = runner.invoke(cli, [], input='q\n')
         
         assert result.exit_code == 0
-        assert "ARC-Eval Unified Workflow" in result.output
+        assert "ARC-Eval: Choose Your Starting Point" in result.output
         assert "debug" in result.output
         assert "compliance" in result.output
         assert "improve" in result.output
@@ -247,7 +247,7 @@ class TestSimplifiedCLI:
         result = runner.invoke(cli, [], input='q\n')
         
         assert result.exit_code == 0
-        assert "ARC-Eval Unified Workflow" in result.output
+        assert "ARC-Eval: Choose Your Starting Point" in result.output
         assert any(cmd in result.output for cmd in ["debug", "compliance", "improve"])
 
 
