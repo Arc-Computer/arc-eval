@@ -149,17 +149,24 @@ class SmartInputDetector:
         """Check if data is standard agent output for evaluation."""
         if not isinstance(data, dict):
             return False
-        
-        # Must have output
-        if "output" not in data:
+
+        # Check for various output field names
+        output_fields = ["output", "response", "result", "content", "answer"]
+        has_output = any(field in data for field in output_fields)
+
+        if not has_output:
             return False
-        
+
         # Should have scenario_id for evaluation
         if "scenario_id" in data:
             return True
-        
+
         # Or have messages/tool_calls indicating execution
-        if "messages" in data or "tool_calls" in data:
+        if "messages" in data or "tool_calls" in data or "tools" in data:
+            return True
+
+        # Or have framework/timestamp indicating agent execution
+        if "framework" in data or "timestamp" in data:
             return True
         
         return False
@@ -174,9 +181,13 @@ class SmartInputDetector:
             return input_data["domain"]
         
         # Check for domain-specific keywords
-        finance_keywords = ["transaction", "kyc", "aml", "sox", "payment", "banking"]
-        security_keywords = ["auth", "injection", "owasp", "vulnerability", "exploit"]
-        ml_keywords = ["model", "training", "bias", "fairness", "dataset"]
+        finance_keywords = ["transaction", "kyc", "aml", "sox", "payment", "banking",
+                           "portfolio", "risk", "investment", "financial", "finance",
+                           "trading", "market", "asset", "fund", "credit", "loan"]
+        security_keywords = ["auth", "injection", "owasp", "vulnerability", "exploit",
+                           "security", "penetration", "attack", "breach", "malware"]
+        ml_keywords = ["model", "training", "bias", "fairness", "dataset",
+                      "machine learning", "neural", "algorithm", "prediction", "classification"]
         
         content = json.dumps(input_data).lower()
         

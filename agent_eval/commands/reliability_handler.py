@@ -515,7 +515,7 @@ class ReliabilityHandler(BaseCommandHandler):
             input_type = analysis_context['input_type']
             detected_domain = analysis_context['detected_domain']
 
-            # Run test harness if config detected
+            # Run test harness only for agent configurations
             if input_type == 'config':
                 console.print("🧪 [bold green]Detected: Agent Configuration File[/bold green]")
                 console.print("Running Proactive Test Harness...\\n")
@@ -536,6 +536,12 @@ class ReliabilityHandler(BaseCommandHandler):
 
                 return 0
 
+            elif input_type == 'output' or input_type == 'outputs':
+                # Skip test harness for agent outputs - proceed to reliability analysis
+                console.print("📊 [bold blue]Detected: Agent Output Data[/bold blue]")
+                console.print("Proceeding to reliability analysis...\n")
+                return None  # Continue with standard analysis
+
             elif input_type == 'trace':
                 console.print("🔍 [bold yellow]Detected: Failed Execution Trace[/bold yellow]")
                 console.print("Running failure analysis + similar pattern testing...\\n")
@@ -555,13 +561,29 @@ class ReliabilityHandler(BaseCommandHandler):
         first_output = agent_outputs[0] if isinstance(agent_outputs, list) else agent_outputs
 
         if isinstance(first_output, dict):
-            # Check for configuration patterns
-            config_indicators = ['agent_config', 'tools', 'system_prompt', 'model_config']
+            # Use centralized input detection for consistency
+            try:
+                from agent_eval.core.input_detector import SmartInputDetector
+                detector = SmartInputDetector()
+                return detector.detect_input_type(first_output)
+            except ImportError:
+                # Fallback to local detection
+                pass
+
+            # Check for agent output patterns first (more specific)
+            output_fields = ["output", "response", "result", "content", "answer"]
+            has_output = any(field in first_output for field in output_fields)
+
+            if has_output and ("framework" in first_output or "timestamp" in first_output):
+                return 'outputs'
+
+            # Check for configuration patterns (must have system_prompt or agent_config)
+            config_indicators = ['agent_config', 'system_prompt', 'model_config']
             if any(key in first_output for key in config_indicators):
                 return 'config'
 
             # Check for trace patterns
-            trace_indicators = ['error', 'stack_trace', 'execution_time', 'tool_calls']
+            trace_indicators = ['error', 'stack_trace', 'execution_time']
             if any(key in first_output for key in trace_indicators):
                 return 'trace'
 
