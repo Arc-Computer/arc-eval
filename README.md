@@ -197,7 +197,7 @@ For faster evaluation, include `scenario_id` in your agent outputs to limit eval
 ```json
 {
   "output": "Transaction approved after KYC verification",
-  "scenario_id": "fin_001"  // Evaluates only this scenario (much faster)
+  "scenario_id": "fin_001"
 }
 ```
 
