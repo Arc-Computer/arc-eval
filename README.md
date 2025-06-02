@@ -1,6 +1,6 @@
 # ARC-Eval: Debug, Evaluate, and Improve AI Agents
 
-> “ARC-Eval helps teams rapidly debug, test, and improve AI agents for real-world reliability, compliance, and risk, no matter your stack.”
+> **ARC-Eval helps teams rapidly debug, test, and improve AI agents for real-world reliability, compliance, and risk, no matter your stack.**
 
 [![PyPI version](https://badge.fury.io/py/arc-eval.svg)](https://badge.fury.io/py/arc-eval)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -8,9 +8,9 @@
 
 ![ARC-Eval Dashboard](public/cli_dashboard_rounded.png)
 
-ARC-Eval helps you understand why your AI agents are failing and how to make them better. It tests your agent against **378 real-world scenarios** across finance, security, and machine learning to spot risks like data leaks or bias. With four simple workflows, ARC-Eval identifies failures, checks compliance, and suggests improvements, learning from every run to boost your agent's performance and reliability.
+ARC-Eval helps teams rapidly debug, test, and improve AI agents for real-world reliability, compliance, and risk, no matter your stack. This is a CLI-native tool that tests your agent against **378 real-world scenarios** across finance, security, and machine learning to spot risks like data leaks or bias. With four simple workflows, ARC-Eval identifies failures, checks compliance, and suggests improvements, learning from every run to boost your agent's performance and reliability.
 
-It's built to be **agent-agnostic**, meaning you can bring your own agent (BYOA) regardless of the framework (LangChain, CrewAI, OpenAI SDK, etc.) and get actionable insights with minimal setup.
+It's built to be **agent-agnostic**, meaning you can bring your own agent (BYOA) regardless of the framework (LangChain, OpenAI, Google, Agno, etc.) and get actionable insights with minimal setup.
 
 ---
 
