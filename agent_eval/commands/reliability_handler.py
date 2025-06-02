@@ -1,5 +1,5 @@
 """
-Reliability command handlers for ARC-Eval CLI.
+Reliability handler for ARC-Eval CLI.
 
 Handles workflow reliability analysis, agent debugging, and unified debugging commands.
 Pure presentation layer - all core logic delegated to ReliabilityAnalyzer.
@@ -13,7 +13,7 @@ from .base import BaseCommandHandler
 console = Console()
 
 
-class ReliabilityCommandHandler(BaseCommandHandler):
+class ReliabilityHandler(BaseCommandHandler):
     """Handler for reliability-focused commands - pure presentation layer."""
     
     def execute(self, **kwargs) -> int:

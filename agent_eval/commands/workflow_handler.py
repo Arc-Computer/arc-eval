@@ -1,5 +1,5 @@
 """
-Workflow command handlers for ARC-Eval CLI.
+Workflow handler for ARC-Eval CLI.
 
 Handles improvement plan generation, continue workflow, full cycle workflow, and baseline comparison.
 """
@@ -21,7 +21,7 @@ from .base import BaseCommandHandler
 console = Console()
 
 
-class WorkflowCommandHandler(BaseCommandHandler):
+class WorkflowHandler(BaseCommandHandler):
     """Handler for workflow automation commands."""
     
     def execute(self, **kwargs) -> int:

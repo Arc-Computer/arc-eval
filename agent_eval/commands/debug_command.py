@@ -10,7 +10,7 @@ from typing import Optional
 from datetime import datetime
 
 from rich.console import Console
-from agent_eval.commands.reliability import ReliabilityCommandHandler
+from agent_eval.commands.reliability_handler import ReliabilityHandler
 from agent_eval.core.workflow_state import update_workflow_progress
 
 
@@ -20,7 +20,7 @@ class DebugCommand:
     def __init__(self) -> None:
         """Initialize debug command with console and handler."""
         self.console = Console()
-        self.handler = ReliabilityCommandHandler()
+        self.handler = ReliabilityHandler()
     
     def execute(
         self,

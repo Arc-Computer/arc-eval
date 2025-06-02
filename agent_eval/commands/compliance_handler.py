@@ -1,5 +1,5 @@
 """
-Compliance command handlers for ARC-Eval CLI.
+Compliance handler for ARC-Eval CLI.
 
 Handles domain-specific compliance evaluation, agent judge evaluation, and export functionality.
 """
@@ -25,7 +25,7 @@ console = Console()
 logger = logging.getLogger(__name__)
 
 
-class ComplianceCommandHandler(BaseCommandHandler):
+class ComplianceHandler(BaseCommandHandler):
     """Handler for compliance evaluation commands."""
     
     def execute(self, **kwargs) -> int:

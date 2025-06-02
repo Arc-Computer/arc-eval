@@ -10,7 +10,7 @@ from typing import Optional
 from datetime import datetime
 
 from rich.console import Console
-from agent_eval.commands.workflow import WorkflowCommandHandler
+from agent_eval.commands.workflow_handler import WorkflowHandler
 from agent_eval.core.workflow_state import WorkflowStateManager, update_workflow_progress
 
 
@@ -20,7 +20,7 @@ class ImproveCommand:
     def __init__(self) -> None:
         """Initialize improve command with console and handler."""
         self.console = Console()
-        self.handler = WorkflowCommandHandler()
+        self.handler = WorkflowHandler()
         self.workflow_manager = WorkflowStateManager()
     
     def execute(

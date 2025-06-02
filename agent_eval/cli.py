@@ -31,16 +31,14 @@ from rich.tree import Tree
 from rich import box
 from rich.prompt import Prompt, Confirm
 
-# Import command handlers
+# Import commands
 from agent_eval.commands import (
-    ReliabilityCommandHandler,
-    ComplianceCommandHandler,
-    WorkflowCommandHandler,
-    BenchmarkCommandHandler,
     DebugCommand,
     ComplianceCommand,
     ImproveCommand,
-    AnalyzeCommand
+    AnalyzeCommand,
+    BenchmarkCommand,
+    ReliabilityCommand
 )
 from agent_eval.core.constants import DOMAIN_SCENARIO_COUNTS
 from agent_eval.core.workflow_state import WorkflowStateManager
