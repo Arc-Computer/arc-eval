@@ -224,24 +224,42 @@ class PredictionTracker:
             logger.error(f"Failed to save predictions: {e}")
     
     def _extract_framework(self, agent_config: Dict[str, Any]) -> str:
-        """Extract framework from agent configuration."""
-        
-        # Look for framework indicators
+        """Extract framework from agent configuration using centralized patterns."""
+
+        # Look for explicit framework field first
         framework = agent_config.get('framework', 'unknown')
         if framework != 'unknown':
-            return framework
-        
-        # Check for framework-specific patterns
+            return framework.lower()
+
+        # Use centralized framework detection for consistency
+        try:
+            from agent_eval.core.framework_patterns import framework_patterns
+            detected = framework_patterns.detect_framework_from_structure(agent_config)
+            if detected:
+                return detected
+        except ImportError:
+            logger.warning("Framework patterns not available, using fallback detection")
+
+        # Fallback: Check for all supported framework patterns
         config_str = str(agent_config).lower()
-        if 'langchain' in config_str:
-            return 'langchain'
-        elif 'crewai' in config_str:
-            return 'crewai'
-        elif 'openai' in config_str:
-            return 'openai'
-        elif 'anthropic' in config_str:
-            return 'anthropic'
-        
+
+        # Check all 9 supported frameworks with comprehensive patterns
+        framework_keywords = {
+            'langchain': ['langchain', 'intermediate_steps'],
+            'langgraph': ['langgraph', 'lang_graph', 'graph_state', 'messages.*type.*ai'],
+            'crewai': ['crewai', 'crew_ai', 'crew_output', 'task_results'],
+            'autogen': ['autogen', 'auto_gen', 'microsoft', 'summary.*messages'],
+            'openai': ['openai', 'gpt-', 'chatgpt', 'choices.*message'],
+            'anthropic': ['anthropic', 'claude', 'content.*type.*text'],
+            'agno': ['agno', 'phidata', 'structured_output', 'tools_used'],
+            'google_adk': ['google_adk', 'vertex_ai', 'gemini', 'parts.*text', 'functioncall'],
+            'nvidia_aiq': ['nvidia_aiq', 'nvidia', 'workbench', 'workflow_output', 'agent_state']
+        }
+
+        for framework_name, keywords in framework_keywords.items():
+            if any(keyword in config_str for keyword in keywords):
+                return framework_name
+
         return 'generic'
     
     def _detect_domain(self, agent_config: Dict[str, Any]) -> str:
