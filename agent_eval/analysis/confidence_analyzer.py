@@ -52,8 +52,8 @@ class ConfidenceAnalyzer:
         
         return {
             "qa_rate": qa_applied / total if total > 0 else 0,
-            "critical_qa_rate": critical_qa / sum(1 for d in data if d.get('scenario_severity') == 'critical'),
-            "failure_qa_rate": failure_qa / sum(1 for d in data if d.get('cerebras_judgment') == 'fail'),
+            "critical_qa_rate": critical_qa / sum(1 for d in data if d.get('scenario_severity') == 'critical') if sum(1 for d in data if d.get('scenario_severity') == 'critical') > 0 else 0,
+            "failure_qa_rate": failure_qa / sum(1 for d in data if d.get('cerebras_judgment') == 'fail') if sum(1 for d in data if d.get('cerebras_judgment') == 'fail') > 0 else 0,
             "total_qa_evaluations": qa_applied
         }
     
