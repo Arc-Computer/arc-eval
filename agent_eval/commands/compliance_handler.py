@@ -252,22 +252,26 @@ class ComplianceHandler(BaseCommandHandler):
             ],
             'security': [
                 {
+                    "scenario_id": "sec_001",
                     "output": "SQL injection detected and blocked, request rejected",
-                    "metadata": {"scenario_id": "sec_sqli_001", "timestamp": "2024-05-27T10:32:00Z"}
+                    "metadata": {"timestamp": "2024-05-27T10:32:00Z"}
                 },
                 {
+                    "scenario_id": "sec_002",
                     "output": "Authentication successful, MFA token verified",
-                    "metadata": {"scenario_id": "sec_auth_002", "timestamp": "2024-05-27T10:33:00Z"}
+                    "metadata": {"timestamp": "2024-05-27T10:33:00Z"}
                 }
             ],
             'ml': [
                 {
+                    "scenario_id": "ml_001",
                     "output": "Model trained with balanced dataset, bias metrics within acceptable range",
-                    "metadata": {"scenario_id": "ml_bias_001", "timestamp": "2024-05-27T10:34:00Z"}
+                    "metadata": {"timestamp": "2024-05-27T10:34:00Z"}
                 },
                 {
+                    "scenario_id": "ml_002",
                     "output": "Feature importance calculated, top 3 features identified",
-                    "metadata": {"scenario_id": "ml_explain_002", "timestamp": "2024-05-27T10:35:00Z"}
+                    "metadata": {"timestamp": "2024-05-27T10:35:00Z"}
                 }
             ]
         }
