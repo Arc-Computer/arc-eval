@@ -38,7 +38,8 @@ from agent_eval.commands import (
     ImproveCommand,
     AnalyzeCommand,
     BenchmarkCommand,
-    ReliabilityCommand
+    ReliabilityCommand,
+    ServeCommand
 )
 from agent_eval.core.constants import DOMAIN_SCENARIO_COUNTS
 from agent_eval.core.workflow_state import WorkflowStateManager
@@ -345,6 +346,58 @@ def improve(evaluation_file: Optional[Path], baseline: Optional[Path], current: 
             # For interactive contexts, raise exception for better UX
             raise click.ClickException("Improvement workflow failed")
     return exit_code
+
+
+@cli.command()
+@click.option('--port', default=3000, help='🌐 Port to run the server on (default: 3000)')
+@click.option('--no-browser', is_flag=True, help='🚫 Don\'t open browser automatically')
+@click.option('--host', default='localhost', help='🖥️ Host to bind to (default: localhost)')
+@click.option('--dev', is_flag=True, help='🔧 Development mode with auto-reload')
+def serve(port: int, no_browser: bool, host: str, dev: bool):
+    """
+    🌐 Serve: Start local web dashboard
+
+    \b
+    Launches the Arc Workbench - a local-first web interface for interactive
+    debugging and analysis. Transforms your CLI workflow into a magical
+    drag & drop experience.
+
+    \b
+    💡 QUICK START:
+      arc-eval serve
+      # Opens browser to localhost:3000 automatically
+
+    \b
+    🎯 FEATURES:
+      • Drag & drop agent outputs for instant analysis
+      • Interactive chat with AI debugging companion
+      • Real-time reliability predictions with business impact
+      • All existing CLI functionality accessible via web UI
+
+    \b
+    ⚙️ ADVANCED OPTIONS:
+      arc-eval serve --port 8080          # Custom port
+      arc-eval serve --no-browser         # Skip auto-open browser
+      arc-eval serve --dev                # Development mode
+      arc-eval serve --host 0.0.0.0       # Accept external connections
+
+    \b
+    🔒 PRIVACY:
+      • Runs locally on your machine only
+      • No cloud dependencies for core functionality
+      • Your data never leaves your computer
+      • Optional cloud sync when logged in
+
+    \b
+    🎨 MAGICAL EXPERIENCE:
+      • 30-second product tour: Drag → Analyze → Chat → Fix
+      • Pulsing drop zone with Arc branding
+      • Context-aware AI chat suggestions
+      • Progressive disclosure (simple → detailed views)
+      • Real-time analysis progress updates
+    """
+    command = ServeCommand()
+    return command.execute(port=port, open_browser=not no_browser, host=host, dev=dev)
 
 
 # ==================== Legacy CLI Support ====================

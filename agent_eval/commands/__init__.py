@@ -14,6 +14,7 @@ from .improve_command import ImproveCommand
 from .analyze_command import AnalyzeCommand
 from .benchmark_command import BenchmarkCommand
 from .reliability_command import ReliabilityCommand
+from .serve_command import ServeCommand
 
 # Handler classes (core logic) - for internal use
 from .reliability_handler import ReliabilityHandler
@@ -31,6 +32,7 @@ __all__ = [
     'AnalyzeCommand',
     'BenchmarkCommand',
     'ReliabilityCommand',
+    'ServeCommand',
 
     # Handlers (core logic)
     'ReliabilityHandler',
