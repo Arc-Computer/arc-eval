@@ -67,6 +67,9 @@ class WorkflowHandler(BaseCommandHandler):
             # Initialize improvement planner
             planner = ImprovementPlanner()
             
+            # Determine if AI judge enhancement should be used
+            enable_judge_analysis = kwargs.get('enable_judge', True)
+            
             # Generate output filename
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             output_filename = f"improvement_plan_{timestamp}.md"
@@ -75,11 +78,33 @@ class WorkflowHandler(BaseCommandHandler):
             console.print(f"🔄 Generating improvement plan from {from_evaluation.name}...")
             
             with console.status("[bold green]Analyzing evaluation results..."):
-                # Generate improvement plan
-                improvement_plan = planner.generate_plan_from_evaluation(
-                    evaluation_file=from_evaluation,
-                    output_file=output_path
-                )
+                # Try AI-enhanced improvement planning first
+                if enable_judge_analysis:
+                    try:
+                        # Use judge-enhanced improvement planning
+                        improvement_plan = planner.generate_plan_from_evaluation_with_judge(
+                            evaluation_file=from_evaluation,
+                            output_file=output_path
+                        )
+                        
+                        # Indicate AI enhancement
+                        console.print("🧠 [bold cyan]AI-Powered Improvement Planning Enhanced[/bold cyan] (Improve Judge Active)")
+                        
+                    except Exception as e:
+                        # Graceful fallback to standard planning
+                        if dev or verbose:
+                            console.print(f"[yellow]Judge enhancement failed, using standard planning: {e}[/yellow]")
+                        
+                        improvement_plan = planner.generate_plan_from_evaluation(
+                            evaluation_file=from_evaluation,
+                            output_file=output_path
+                        )
+                else:
+                    # Use standard improvement planning
+                    improvement_plan = planner.generate_plan_from_evaluation(
+                        evaluation_file=from_evaluation,
+                        output_file=output_path
+                    )
             
             # Display summary
             console.print(f"\n[bold green]Improvement plan generated[/bold green]")

@@ -1524,6 +1524,130 @@ Required parameters:
             sample_size=0
         )
     
+    # PHASE 2: Judge Integration Methods
+    
+    def generate_comprehensive_analysis_with_judge(
+        self,
+        agent_outputs: List[Any],
+        framework: Optional[str] = None,
+        expected_tools: Optional[List[str]] = None,
+        pipeline_data: Optional[Dict[str, Any]] = None,
+        enable_judge_analysis: bool = True
+    ) -> ComprehensiveReliabilityAnalysis:
+        """Generate comprehensive reliability analysis with optional AI judge enhancement.
+        
+        This method integrates DebugJudge capabilities while maintaining backward compatibility
+        with existing ReliabilityAnalyzer functionality.
+        """
+        
+        # First, run the standard comprehensive analysis
+        standard_analysis = self.generate_comprehensive_analysis(
+            agent_outputs, framework, expected_tools, pipeline_data
+        )
+        
+        # If judge analysis is disabled, return standard analysis
+        if not enable_judge_analysis:
+            return standard_analysis
+        
+        # Enhance with DebugJudge analysis if available
+        try:
+            enhanced_analysis = self._enhance_with_debug_judge(
+                standard_analysis, agent_outputs, framework
+            )
+            return enhanced_analysis
+        except Exception as e:
+            # Fallback to standard analysis if judge enhancement fails
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(f"Judge enhancement failed, using standard analysis: {e}")
+            return standard_analysis
+    
+    def _enhance_with_debug_judge(
+        self,
+        standard_analysis: ComprehensiveReliabilityAnalysis,
+        agent_outputs: List[Any],
+        framework: Optional[str]
+    ) -> ComprehensiveReliabilityAnalysis:
+        """Enhance standard analysis with DebugJudge AI-powered insights.
+        
+        Maintains zero breaking changes by preserving all existing data structures
+        and only adding enhanced insights.
+        """
+        try:
+            # Import DebugJudge and adapter
+            from agent_eval.evaluation.judges.workflow.debug import DebugJudge
+            from agent_eval.evaluation.judges.workflow.judge_output_adapter import JudgeOutputAdapter
+            from agent_eval.evaluation.judges.api_manager import APIManager
+            
+            # Initialize judge with existing API manager if available
+            api_manager = getattr(self, 'api_manager', None) or APIManager()
+            debug_judge = DebugJudge(api_manager)
+            
+            # Analyze failure patterns with judge
+            judge_analysis = debug_judge.evaluate_failure_patterns(agent_outputs, framework or "unknown")
+            
+            # Enhance the existing analysis with judge insights
+            enhanced_analysis = JudgeOutputAdapter.enhance_dashboard_with_judge_reasoning(
+                standard_analysis, judge_analysis
+            )
+            
+            return enhanced_analysis
+            
+        except ImportError as e:
+            # Graceful fallback if judge components not available
+            logger.warning(f"Judge components not available: {e}")
+            return standard_analysis
+        except Exception as e:
+            # Graceful fallback for any other errors
+            logger.warning(f"Judge analysis failed: {e}")
+            return standard_analysis
+    
+    def analyze_with_debug_judge(
+        self, 
+        agent_outputs: List[Any], 
+        framework: str
+    ) -> Dict[str, Any]:
+        """Direct access to DebugJudge analysis for advanced users.
+        
+        This method provides direct access to AI-powered failure analysis,
+        replacing rule-based pattern matching with intelligent LLM analysis.
+        """
+        try:
+            from agent_eval.evaluation.judges.workflow.debug import DebugJudge
+            from agent_eval.evaluation.judges.api_manager import APIManager
+            
+            # Initialize judge
+            api_manager = getattr(self, 'api_manager', None) or APIManager()
+            debug_judge = DebugJudge(api_manager)
+            
+            # Perform judge-based analysis
+            return debug_judge.evaluate_failure_patterns(agent_outputs, framework)
+            
+        except ImportError:
+            # Fallback to rule-based analysis if judge not available
+            return {
+                "failure_patterns": self._legacy_detect_planning_failures(agent_outputs),
+                "root_causes": ["Rule-based analysis - upgrade to AI judge for enhanced insights"],
+                "recommended_actions": ["Enable DebugJudge for intelligent analysis"],
+                "confidence": 0.6
+            }
+    
+    def _legacy_detect_planning_failures(self, agent_outputs: List[Any]) -> List[str]:
+        """Legacy rule-based failure detection for fallback compatibility."""
+        failures = []
+        for output in agent_outputs:
+            output_str = str(output).lower()
+            
+            # Basic pattern matching fallback
+            if 'error' in output_str:
+                failures.append("error_detected")
+            if 'timeout' in output_str:
+                failures.append("timeout_detected")
+            if 'failed' in output_str:
+                failures.append("failure_detected")
+        
+        return list(set(failures))
+    
     def _find_consistently_missing_tools(self, validations: List[Dict[str, Any]]) -> List[str]:
         """Find tools that are consistently missing across validations."""
         all_missing = []

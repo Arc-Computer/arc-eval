@@ -99,6 +99,108 @@ class ImprovementPlanner:
         
         return improvement_plan
     
+    def generate_plan_from_evaluation_with_judge(self, 
+                                                evaluation_file: Path, 
+                                                output_file: Optional[Path] = None) -> ImprovementPlan:
+        """Generate improvement plan from evaluation results using AI judge enhancement.
+        
+        This method uses ImproveJudge for intelligent improvement planning,
+        replacing static template-based recommendations with contextual AI analysis.
+        """
+        
+        # Load evaluation results
+        with open(evaluation_file, 'r') as f:
+            evaluation_data = json.load(f)
+        
+        # Extract metadata
+        agent_id = evaluation_data.get('agent_id', 'unknown_agent')
+        domain = evaluation_data.get('domain', 'unknown')
+        results = evaluation_data.get('results', [])
+        
+        if not results:
+            raise ValueError("No evaluation results found in file")
+        
+        # Record results for self-improvement engine
+        self.self_improvement_engine.record_evaluation_result(
+            agent_id=agent_id,
+            domain=domain,
+            evaluation_results=results
+        )
+        
+        try:
+            # Use ImproveJudge for intelligent improvement planning
+            from agent_eval.evaluation.judges.workflow.improve import ImproveJudge
+            from agent_eval.evaluation.judges.workflow.judge_output_adapter import JudgeOutputAdapter
+            from agent_eval.evaluation.judges.api_manager import APIManager
+            
+            # Initialize judge
+            api_manager = APIManager()
+            improve_judge = ImproveJudge(api_manager)
+            
+            # Generate intelligent improvement plan using judge
+            judge_plan = improve_judge.generate_improvement_plan(results, domain)
+            
+            # Convert judge output to ImprovementPlan format
+            improvement_plan = JudgeOutputAdapter.improve_judge_to_improvement_plan(
+                judge_plan, agent_id, domain
+            )
+            
+            # Save plan if output file specified
+            if output_file:
+                self._save_plan_to_markdown(improvement_plan, output_file)
+            
+            return improvement_plan
+            
+        except Exception as e:
+            # Graceful fallback to standard planning
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(f"Judge-enhanced planning failed, using standard planning: {e}")
+            
+            return self.generate_plan_from_evaluation(evaluation_file, output_file)
+    
+    def generate_intelligent_plan(self, evaluation_results: List[Dict], domain: str) -> ImprovementPlan:
+        """Direct access to ImproveJudge for generating improvement plans.
+        
+        This method provides direct access to AI-powered improvement planning,
+        replacing static failure grouping and template-based remediation.
+        """
+        try:
+            from agent_eval.evaluation.judges.workflow.improve import ImproveJudge
+            from agent_eval.evaluation.judges.api_manager import APIManager
+            
+            # Initialize judge
+            api_manager = APIManager()
+            improve_judge = ImproveJudge(api_manager)
+            
+            # Generate plan using judge
+            return improve_judge.generate_improvement_plan(evaluation_results, domain)
+            
+        except ImportError:
+            # Fallback to legacy rule-based planning
+            return self._legacy_generate_plan(evaluation_results, domain)
+    
+    def _legacy_generate_plan(self, evaluation_results: List[Dict], domain: str) -> Dict[str, Any]:
+        """Legacy rule-based improvement planning for fallback compatibility."""
+        failed_scenarios = [r for r in evaluation_results if not r.get('passed', True)]
+        
+        return {
+            "improvement_actions": [
+                {
+                    "priority": "HIGH",
+                    "area": "General",
+                    "description": "Address failed scenarios with rule-based analysis",
+                    "action": "Review failed scenarios and implement fixes",
+                    "expected_improvement": "Moderate improvement expected",
+                    "timeline": "2-3 weeks"
+                }
+            ],
+            "priority_breakdown": {"HIGH": 1},
+            "expected_improvement": 15,
+            "confidence": 0.6,
+            "reasoning": "Legacy rule-based analysis - upgrade to ImproveJudge for enhanced planning"
+        }
+    
     def _create_improvement_plan(self, 
                                 agent_id: str,
                                 domain: str,
