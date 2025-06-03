@@ -32,6 +32,10 @@ arc-eval debug --input <file> [options]
   - Choices: `console`, `json`, `html`
 - `--no-interactive`: Skip interactive menus (for CI/CD)
 - `--verbose`: Show detailed technical output
+- `--pattern-analysis`: Perform universal failure pattern analysis
+- `--root-cause`: Deep root cause analysis with remediation
+- `--framework-agnostic`: Show insights from other frameworks
+- `--cross-framework-learning`: Show how other frameworks solve similar issues
 
 **Examples:**
 ```bash
@@ -46,6 +50,12 @@ arc-eval debug --input outputs.json --no-interactive --output-format json
 
 # Verbose debug analysis
 arc-eval debug --input outputs.json --verbose
+
+# Advanced pattern analysis
+arc-eval debug --input outputs.json --pattern-analysis --root-cause
+
+# Cross-framework learning
+arc-eval debug --input outputs.json --framework-agnostic --cross-framework-learning
 ```
 
 ### `compliance` - Validate Requirements
@@ -106,6 +116,9 @@ arc-eval improve [options]
 - `--auto-detect`: Auto-detect latest evaluation file
 - `--no-interactive`: Skip interactive menus
 - `--verbose`: Enable verbose output
+- `--framework-specific`: Generate framework-specific improvements
+- `--code-examples`: Include copy-paste ready code examples
+- `--cross-framework-solutions`: Show solutions from other frameworks
 
 **Examples:**
 ```bash
@@ -120,6 +133,12 @@ arc-eval improve --baseline v1.json --current v2.json
 
 # Verbose improvement analysis
 arc-eval improve --from-evaluation results.json --verbose
+
+# Framework-specific improvements with code examples
+arc-eval improve --from-evaluation results.json --framework-specific --code-examples
+
+# Cross-framework solutions
+arc-eval improve --from-evaluation results.json --cross-framework-solutions
 ```
 
 ### `analyze` - Complete Workflow
