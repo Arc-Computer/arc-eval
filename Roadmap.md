@@ -332,4 +332,26 @@ All existing commands work with runtime data:
 
 We already built a sophisticated agent analysis system. We just need runtime data capture + a simple web interface to display the existing intelligence.
 
-**Customer gets the same intelligent analysis they'd get from static traces, but with runtime data flowing through our existing Data Flywheel.** 
+**Customer gets the same intelligent analysis they'd get from static traces, but with runtime data flowing through our existing Data Flywheel.**
+
+---
+
+## 🧠 **Intelligence Architecture Enhancement**
+
+### **Judge System Unification (Parallel Track)**
+
+**Problem**: Debug and improve workflows use 3,600+ lines of rule-based pattern matching while compliance uses sophisticated AI-powered analysis, creating inconsistent customer experience.
+
+**Solution**: Extend our proven Agent-as-a-Judge architecture to debug and improve workflows for unified AI-powered intelligence across all three workflows.
+
+**Scope**: See detailed implementation plan in [`JUDGE_REFACTOR_SCOPE.md`](JUDGE_REFACTOR_SCOPE.md)
+
+**Key Benefits**:
+- **Consistent AI Experience**: All workflows (debug → compliance → improve) use same intelligent analysis
+- **Dramatic Quality Upgrade**: From "73% tool call accuracy" to "LangChain agent fails due to insufficient input validation in financial workflows, creating SOX compliance risk"
+- **Code Simplification**: Remove 2,500+ lines of regex patterns, add 800 lines of judge logic
+- **Zero UI Changes**: Existing dashboard and interfaces display enhanced intelligence seamlessly
+
+**Customer Impact**: Addresses Problems #5 and #6 by providing actionable AI-powered fixes and shareable intelligent analysis across all workflows.
+
+**Implementation**: Can proceed in parallel with runtime tracing - both projects leverage existing analysis infrastructure. 
