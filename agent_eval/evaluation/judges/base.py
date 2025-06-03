@@ -309,9 +309,11 @@ class BaseJudge(ABC):
         try:
             # Check if hybrid architecture is enabled (Cerebras + Gemini QA)
             use_hybrid = (
-                self.api_manager.provider == "cerebras" and
-                hasattr(self.api_manager, 'enable_hybrid_qa') and
-                self.api_manager.enable_hybrid_qa
+                (
+                    self.api_manager.provider == "cerebras" and
+                    hasattr(self.api_manager, 'enable_hybrid_qa') and
+                    self.api_manager.enable_hybrid_qa
+                )
             )
 
             if use_hybrid:
