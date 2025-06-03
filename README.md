@@ -328,7 +328,19 @@ graph LR
 <details>
 <summary><strong>Show Examples & Integrations</strong></summary>
 
-> Explore more in [`examples/`](./examples/) and [`docs/`](./docs/).
+> **📚 Complete Documentation**: See [`docs/`](./docs/) for comprehensive guides including:
+> - [Quick Start Guide](./docs/quickstart.md) - Get running in 5 minutes
+> - [Workflows Guide](./docs/workflows/) - Debug, compliance, and improvement workflows
+> - [Prediction System](./docs/prediction/) - Hybrid reliability prediction framework
+> - [Framework Integration](./docs/frameworks/) - Support for 9+ agent frameworks
+> - [API Reference](./docs/api/) - Complete Python SDK documentation
+> - [Enterprise Integration](./docs/enterprise/integration.md) - CI/CD pipeline integration
+>
+> **🔧 Practical Examples**: Explore [`examples/`](./examples/) for:
+> - Framework-specific integration examples
+> - CI/CD pipeline templates
+> - Sample agent outputs and configurations
+> - Prediction testing and validation
 
 </details>
 
