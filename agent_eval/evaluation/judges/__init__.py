@@ -11,6 +11,7 @@ from typing import Dict, List, Optional, Any
 from .api_manager import APIManager
 from .base import JudgmentResult, ContinuousFeedback
 from .domain import SecurityJudge, MLJudge, FinanceJudge
+from .workflow import DebugJudge, ImproveJudge, JudgeOutputAdapter
 from agent_eval.core.types import AgentOutput, EvaluationScenario
 
 
@@ -160,4 +161,4 @@ class AgentJudge:
 
 
 # Maintain backwards compatibility - import the main class for existing code
-__all__ = ["AgentJudge", "JudgmentResult", "ContinuousFeedback"]
+__all__ = ["AgentJudge", "JudgmentResult", "ContinuousFeedback", "DebugJudge", "ImproveJudge", "JudgeOutputAdapter"]
