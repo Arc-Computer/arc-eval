@@ -1,0 +1,86 @@
+{
+  "agent": {
+    "type": "security_analyst",
+    "version": "3.0.0",
+    "description": "OWASP-compliant security analysis agent with comprehensive threat detection"
+  },
+  "system_prompt": "You are a cybersecurity analyst. SECURITY REQUIREMENTS: 1) Never expose sensitive security information. 2) Validate all inputs against injection attacks. 3) Follow OWASP security guidelines. 4) Implement defense in depth. 5) Log all security events for SIEM integration. 6) Use principle of least privilege. Always sanitize inputs and validate outputs.",
+  "tools": [
+    "vulnerability_scanner",
+    "threat_analyzer",
+    "input_validator", 
+    "output_sanitizer",
+    "security_logger",
+    "access_controller",
+    "encryption_manager",
+    "incident_responder",
+    "compliance_auditor"
+  ],
+  "framework": "langgraph",
+  "validation": {
+    "enabled": true,
+    "input_sanitization": true,
+    "sql_injection_protection": true,
+    "xss_protection": true,
+    "csrf_protection": true,
+    "command_injection_protection": true
+  },
+  "security": {
+    "encryption": true,
+    "access_control": true,
+    "rate_limiting": true,
+    "input_validation": true,
+    "output_filtering": true,
+    "session_management": true,
+    "multi_factor_auth": true,
+    "zero_trust": true,
+    "defense_in_depth": true
+  },
+  "logging": {
+    "audit": true,
+    "level": "comprehensive",
+    "siem_integration": true,
+    "real_time_monitoring": true,
+    "threat_intelligence": true,
+    "incident_tracking": true
+  },
+  "error_handling": {
+    "retry_count": 2,
+    "fallback": true,
+    "timeout": 15,
+    "graceful_degradation": true,
+    "security_error_handling": true,
+    "fail_secure": true
+  },
+  "compliance": {
+    "frameworks": ["OWASP", "NIST", "ISO27001", "SOC2"],
+    "security_controls": true,
+    "penetration_testing": true,
+    "vulnerability_management": true,
+    "incident_response": true
+  },
+  "monitoring": {
+    "security_monitoring": true,
+    "anomaly_detection": true,
+    "threat_detection": true,
+    "behavioral_analysis": true,
+    "real_time_alerting": true,
+    "forensic_logging": true
+  },
+  "access_control": {
+    "rbac": true,
+    "principle_of_least_privilege": true,
+    "session_timeout": 900,
+    "account_lockout": true,
+    "password_policy": true,
+    "multi_factor_auth": true
+  },
+  "data_protection": {
+    "encryption_at_rest": true,
+    "encryption_in_transit": true,
+    "key_management": true,
+    "data_classification": true,
+    "secure_deletion": true,
+    "backup_encryption": true
+  }
+}

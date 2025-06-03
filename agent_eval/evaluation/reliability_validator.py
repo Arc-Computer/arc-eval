@@ -107,7 +107,10 @@ class ComprehensiveReliabilityAnalysis:
     
     # Cognitive Analysis (NEW - Task 8)
     cognitive_analysis: Optional[Any]  # CognitiveAnalyzer results
-    
+
+    # Reliability Prediction (NEW - Task 2.1)
+    reliability_prediction: Optional[Dict[str, Any]]  # Hybrid prediction results
+
     # Evidence and Confidence
     analysis_confidence: float
     evidence_quality: str      # "high", "medium", "low"
@@ -116,13 +119,30 @@ class ComprehensiveReliabilityAnalysis:
 
 class ReliabilityAnalyzer:
     """Comprehensive reliability analyzer combining validation, framework analysis, and dashboard generation."""
-    
-    def __init__(self):
+
+    def __init__(self, api_manager=None):
         """Initialize reliability validator with framework-specific patterns."""
-        
+
         # Use centralized framework patterns
         from agent_eval.core.framework_patterns import framework_patterns
         self.framework_patterns = framework_patterns
+
+        # NEW: Initialize hybrid predictor for reliability prediction
+        try:
+            from agent_eval.prediction.hybrid_predictor import HybridReliabilityPredictor
+            from agent_eval.prediction.prediction_tracker import PredictionTracker
+            from agent_eval.prediction.outcome_detector import OutcomeDetector
+
+            self.hybrid_predictor = HybridReliabilityPredictor(api_manager)
+            self.prediction_tracker = PredictionTracker()
+            self.outcome_detector = OutcomeDetector()
+            self.prediction_enabled = True
+        except ImportError as e:
+            logger.warning(f"Prediction module not available: {e}")
+            self.hybrid_predictor = None
+            self.prediction_tracker = None
+            self.outcome_detector = None
+            self.prediction_enabled = False
 
         # Keep backward compatibility with tool_patterns attribute
         self.tool_patterns = {
@@ -1282,10 +1302,11 @@ Required parameters:
         return template
 
     def generate_comprehensive_analysis(
-        self, 
-        agent_outputs: List[Any], 
+        self,
+        agent_outputs: List[Any],
         framework: Optional[str] = None,
-        expected_tools: Optional[List[str]] = None
+        expected_tools: Optional[List[str]] = None,
+        pipeline_data: Optional[Dict[str, Any]] = None
     ) -> ComprehensiveReliabilityAnalysis:
         """Generate comprehensive reliability analysis combining all functionality."""
         
@@ -1374,7 +1395,65 @@ Required parameters:
         
         # 6.2. Cognitive Analysis Integration (NEW - Task 8)
         cognitive_analysis = self._perform_cognitive_analysis(agent_outputs)
-        
+
+        # 6.3. Reliability Prediction (NEW - Task 2.1)
+        reliability_prediction = None
+        if self.prediction_enabled and len(agent_outputs) > 0:
+            try:
+                # Extract agent config from first output for prediction
+                agent_config = self._extract_agent_config(agent_outputs[0])
+                if agent_config:
+                    # Create analysis object for prediction
+                    temp_analysis = ComprehensiveReliabilityAnalysis(
+                        detected_framework=detected_framework,
+                        framework_confidence=framework_detection['confidence'],
+                        auto_detection_successful=framework_detection['auto_detection_successful'],
+                        framework_performance=framework_performance,
+                        workflow_metrics=workflow_metrics,
+                        tool_call_summary=tool_call_summary,
+                        validation_results=[],
+                        reliability_dashboard="",
+                        insights_summary=[],
+                        next_steps=[],
+                        cognitive_analysis=cognitive_analysis,
+                        reliability_prediction=None,
+                        analysis_confidence=0.0,
+                        evidence_quality="",
+                        sample_size=sample_size
+                    )
+
+                    # Generate prediction
+                    reliability_prediction = self.hybrid_predictor.predict_reliability(
+                        temp_analysis, agent_config
+                    )
+                    logger.info(f"Generated reliability prediction with risk level: {reliability_prediction.get('risk_level', 'UNKNOWN')}")
+
+                    # Log prediction for tracking (Task 2.2) with unified pipeline data
+                    if self.prediction_tracker and reliability_prediction:
+                        prediction_id = self.prediction_tracker.log_prediction(
+                            reliability_prediction, agent_config, pipeline_data
+                        )
+                        if prediction_id:
+                            logger.info(f"Logged prediction {prediction_id} for tracking with pipeline data")
+
+                    # Detect outcome from current agent outputs (Task 2.2)
+                    if self.outcome_detector and reliability_prediction:
+                        outcome, confidence, evidence = self.outcome_detector.detect_outcome(agent_outputs)
+                        if outcome != 'unknown' and confidence > 0.5:
+                            # Update prediction with detected outcome
+                            if self.prediction_tracker:
+                                self.prediction_tracker.update_prediction_outcome(
+                                    reliability_prediction.get('prediction_id'),
+                                    outcome,
+                                    confidence,
+                                    evidence
+                                )
+                                logger.info(f"Updated prediction outcome: {outcome} (confidence: {confidence:.2f})")
+
+            except Exception as e:
+                logger.warning(f"Reliability prediction failed: {e}")
+                reliability_prediction = None
+
         next_steps = self._generate_next_steps(
             detected_framework,
             framework_performance,
@@ -1403,6 +1482,7 @@ Required parameters:
             insights_summary=insights_summary,
             next_steps=next_steps,
             cognitive_analysis=cognitive_analysis,  # NEW - Task 8
+            reliability_prediction=reliability_prediction,  # NEW - Task 2.1
             analysis_confidence=analysis_confidence,
             evidence_quality=evidence_quality,
             sample_size=sample_size
@@ -1438,6 +1518,7 @@ Required parameters:
             insights_summary=["No agent outputs provided for analysis"],
             next_steps=["Provide agent output data for analysis"],
             cognitive_analysis=None,  # NEW - Task 8
+            reliability_prediction=None,  # NEW - Task 2.1
             analysis_confidence=0.0,
             evidence_quality="none",
             sample_size=0
@@ -1654,7 +1735,58 @@ Required parameters:
                 insights.append(f"💡 Top optimization: {top_opportunity['description']}")
         
         return insights
-    
+
+    def _extract_agent_config(self, agent_output: Any) -> Optional[Dict[str, Any]]:
+        """Extract agent configuration from output for prediction."""
+        def standardize_config(config: Dict[str, Any]) -> Dict[str, Any]:
+            """Ensure the configuration has a consistent structure."""
+            return {
+                'system_prompt': config.get('system_prompt', ''),
+                'tools': config.get('tools', []),
+                'framework': config.get('framework', 'unknown'),
+                'model': config.get('model', 'unknown'),
+            }
+
+        try:
+            # Handle different output formats
+            if isinstance(agent_output, dict):
+                # Direct dictionary - look for config-like structure
+                if any(key in agent_output for key in ['system_prompt', 'tools', 'model', 'agent_config']):
+                    return standardize_config(agent_output)
+
+                # Look for nested config
+                for key, value in agent_output.items():
+                    if isinstance(value, dict) and any(config_key in value for config_key in ['system_prompt', 'tools', 'model']):
+                        return standardize_config(value)
+
+            # Handle string representations
+            elif isinstance(agent_output, str):
+                import json
+                try:
+                    parsed = json.loads(agent_output)
+                    if isinstance(parsed, dict):
+                        return self._extract_agent_config(parsed)
+                except json.JSONDecodeError:
+                    pass
+
+            # Handle AgentOutput objects
+            from agent_eval.core.types import AgentOutput
+            if isinstance(agent_output, AgentOutput):
+                if hasattr(agent_output, 'raw_output') and agent_output.raw_output:
+                    return self._extract_agent_config(agent_output.raw_output)
+
+            # Fallback: create minimal config from available data
+            return {
+                'system_prompt': str(agent_output)[:500] if agent_output else '',
+                'tools': [],
+                'framework': getattr(agent_output, 'framework', 'unknown'),
+                'model': 'unknown'
+            }
+
+        except Exception as e:
+            logger.warning(f"Failed to extract agent config: {e}")
+            return None
+
     def _generate_next_steps(
         self,
         detected_framework: Optional[str],

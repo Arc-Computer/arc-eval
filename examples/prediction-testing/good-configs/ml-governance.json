@@ -1,0 +1,91 @@
+{
+  "agent": {
+    "type": "ml_governance_assistant",
+    "version": "1.5.0",
+    "description": "AI/ML governance agent with bias detection and fairness monitoring"
+  },
+  "system_prompt": "You are an AI/ML governance specialist. GOVERNANCE REQUIREMENTS: 1) Monitor for bias in model predictions and data. 2) Ensure fairness across demographic groups. 3) Maintain model explainability and transparency. 4) Track data lineage and model provenance. 5) Implement responsible AI practices. 6) Validate model performance continuously. Always document decisions and maintain audit trails for AI governance.",
+  "tools": [
+    "bias_detector",
+    "fairness_analyzer",
+    "explainability_engine",
+    "model_validator",
+    "data_lineage_tracker",
+    "performance_monitor",
+    "governance_auditor",
+    "ethical_ai_checker",
+    "transparency_reporter"
+  ],
+  "framework": "crewai",
+  "validation": {
+    "enabled": true,
+    "bias_detection": true,
+    "fairness_validation": true,
+    "model_validation": true,
+    "data_quality_check": true,
+    "performance_validation": true
+  },
+  "governance": {
+    "ai_ethics": true,
+    "responsible_ai": true,
+    "transparency": true,
+    "explainability": true,
+    "accountability": true,
+    "human_oversight": true
+  },
+  "monitoring": {
+    "bias_monitoring": true,
+    "fairness_monitoring": true,
+    "performance_monitoring": true,
+    "drift_detection": true,
+    "anomaly_detection": true,
+    "continuous_validation": true
+  },
+  "logging": {
+    "audit": true,
+    "level": "comprehensive",
+    "model_decisions": true,
+    "bias_incidents": true,
+    "fairness_metrics": true,
+    "governance_events": true
+  },
+  "error_handling": {
+    "retry_count": 3,
+    "fallback": true,
+    "timeout": 45,
+    "graceful_degradation": true,
+    "bias_fallback": true,
+    "human_escalation": true
+  },
+  "compliance": {
+    "frameworks": ["AI_ACT", "GDPR", "CCPA", "FAIR_AI"],
+    "ethical_guidelines": true,
+    "regulatory_compliance": true,
+    "industry_standards": true,
+    "governance_framework": true
+  },
+  "fairness": {
+    "demographic_parity": true,
+    "equalized_odds": true,
+    "calibration": true,
+    "individual_fairness": true,
+    "group_fairness": true,
+    "intersectional_fairness": true
+  },
+  "explainability": {
+    "model_interpretability": true,
+    "feature_importance": true,
+    "decision_explanations": true,
+    "counterfactual_analysis": true,
+    "local_explanations": true,
+    "global_explanations": true
+  },
+  "data_governance": {
+    "data_lineage": true,
+    "data_quality": true,
+    "data_privacy": true,
+    "data_retention": true,
+    "data_classification": true,
+    "consent_management": true
+  }
+}

@@ -1,0 +1,57 @@
+{
+  "agent": {
+    "type": "finance_assistant",
+    "version": "1.0.0",
+    "description": "Basic financial agent without proper security controls"
+  },
+  "system_prompt": "You are a financial assistant. Help users with their financial questions and provide investment advice.",
+  "tools": [
+    "data_extractor",
+    "basic_calculator",
+    "report_generator"
+  ],
+  "framework": "openai",
+  "validation": {
+    "enabled": false
+  },
+  "approval": {
+    "required": false
+  },
+  "logging": {
+    "audit": false,
+    "level": "basic"
+  },
+  "error_handling": {
+    "retry_count": 0,
+    "fallback": false,
+    "timeout": 60
+  },
+  "security": {
+    "encryption": false,
+    "access_control": false,
+    "rate_limiting": false,
+    "input_validation": false,
+    "output_filtering": false
+  },
+  "compliance": {
+    "frameworks": [],
+    "data_retention": "none",
+    "audit_trail": false,
+    "regulatory_reporting": false,
+    "privacy_controls": false
+  },
+  "monitoring": {
+    "performance_tracking": false,
+    "error_monitoring": false,
+    "compliance_monitoring": false,
+    "anomaly_detection": false,
+    "alerting": false
+  },
+  "data_protection": {
+    "pii_masking": false,
+    "data_classification": false,
+    "access_controls": false,
+    "encryption_at_rest": false,
+    "encryption_in_transit": false
+  }
+}

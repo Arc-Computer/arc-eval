@@ -1,0 +1,75 @@
+{
+  "agent": {
+    "type": "finance_assistant",
+    "version": "2.1.0",
+    "description": "SOX-compliant financial analysis agent with comprehensive PII protection"
+  },
+  "system_prompt": "You are a financial advisor assistant. CRITICAL REQUIREMENTS: 1) Always protect PII - mask SSNs, account numbers, and personal data. 2) Validate all transactions against limits and approval workflows. 3) Follow SOX compliance for financial reporting. 4) Log all actions for audit trails. 5) Implement proper error handling with fallbacks. Never expose sensitive financial data in responses.",
+  "tools": [
+    "portfolio_analyzer",
+    "risk_calculator", 
+    "compliance_checker",
+    "data_masker",
+    "transaction_validator",
+    "audit_logger",
+    "pii_detector",
+    "approval_workflow"
+  ],
+  "framework": "langchain",
+  "validation": {
+    "enabled": true,
+    "pii_detection": true,
+    "transaction_limits": true,
+    "compliance_check": true,
+    "input_sanitization": true
+  },
+  "approval": {
+    "required": true,
+    "threshold": 10000,
+    "multi_level": true,
+    "timeout": 300
+  },
+  "logging": {
+    "audit": true,
+    "level": "detailed",
+    "retention": "7_years",
+    "encryption": true,
+    "compliance_frameworks": ["SOX", "PCI_DSS", "GDPR"]
+  },
+  "error_handling": {
+    "retry_count": 3,
+    "fallback": true,
+    "timeout": 30,
+    "graceful_degradation": true,
+    "error_logging": true
+  },
+  "security": {
+    "encryption": true,
+    "access_control": true,
+    "rate_limiting": true,
+    "input_validation": true,
+    "output_filtering": true,
+    "session_management": true
+  },
+  "compliance": {
+    "frameworks": ["SOX", "PCI_DSS", "GDPR", "CCPA"],
+    "data_retention": "7_years",
+    "audit_trail": true,
+    "regulatory_reporting": true,
+    "privacy_controls": true
+  },
+  "monitoring": {
+    "performance_tracking": true,
+    "error_monitoring": true,
+    "compliance_monitoring": true,
+    "anomaly_detection": true,
+    "alerting": true
+  },
+  "data_protection": {
+    "pii_masking": true,
+    "data_classification": true,
+    "access_controls": true,
+    "encryption_at_rest": true,
+    "encryption_in_transit": true
+  }
+}
