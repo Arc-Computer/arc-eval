@@ -13,6 +13,7 @@ ARC-Eval supports 9+ agent frameworks with automatic detection and framework-spe
 | [OpenAI](#openai) | `choices`, `message` structure | Token optimization, response quality | Cost and latency optimization |
 | [Anthropic](#anthropic) | Claude API format | Context management, safety | Response quality and safety |
 | [Google ADK](#google-adk) | Google Agent Dev Kit format | Agent development toolkit | Development workflow optimization |
+| [NVIDIA AIQ](#nvidia-aiq) | `workflow_output`, `agent_state` | Agent Intelligence Toolkit | Workflow optimization and state management |
 | [Agno](#agno) | Agno-specific fields | Emerging framework patterns | Framework-specific features |
 | [Generic](#generic) | Fallback for custom frameworks | Basic reliability patterns | Universal optimization |
 
@@ -52,7 +53,11 @@ def detect_and_extract(raw_data: Any) -> Tuple[str, str]:
     # Anthropic detection
     if "content" in raw_data and "role" in raw_data:
         return "anthropic", extract_anthropic_output(raw_data)
-    
+
+    # NVIDIA AIQ detection
+    if "workflow_output" in raw_data and "agent_state" in raw_data:
+        return "nvidia_aiq", extract_nvidia_aiq_output(raw_data)
+
     # Generic fallback
     return "generic", extract_generic_output(raw_data)
 ```
@@ -307,6 +312,79 @@ with open("openai_outputs.json", "w") as f:
     json.dump(outputs, f, indent=2)
 ```
 
+## NVIDIA AIQ
+
+### Output Format
+
+NVIDIA AIQ (Agent Intelligence Toolkit) provides workflow-based agent execution with state management:
+
+```json
+{
+  "workflow_output": "Analysis completed: Risk assessment shows moderate exposure with recommended mitigation strategies",
+  "agent_state": {
+    "observation": "Market volatility detected in technology sector",
+    "thought": "Need to analyze risk factors and provide recommendations",
+    "action": "risk_assessment",
+    "action_input": {"sector": "technology", "timeframe": "30d"}
+  },
+  "input_message": "Analyze portfolio risk for Q4 2024",
+  "metadata": {
+    "workflow_id": "risk_analysis_001",
+    "execution_time": 3.2,
+    "tools_executed": ["market_data", "risk_calculator", "report_generator"]
+  }
+}
+```
+
+### Reliability Analysis
+
+NVIDIA AIQ-specific analysis includes:
+
+- **Workflow State Management**: Analyzes agent state transitions and workflow execution
+- **Tool Execution Patterns**: Evaluates tool usage within workflow context
+- **State Consistency**: Validates observation-thought-action cycles
+- **Workflow Optimization**: Identifies opportunities to streamline agent workflows
+
+### Integration Example
+
+```python
+from nvidia_aiq import WorkflowAgent
+from agent_eval.core import EvaluationEngine, AgentOutput
+import json
+
+# Your existing NVIDIA AIQ agent
+workflow_agent = WorkflowAgent(...)
+
+# Capture outputs for evaluation
+outputs = []
+test_scenarios = [
+    "Analyze portfolio risk for Q4 2024",
+    "Generate compliance report for trading activities"
+]
+
+for scenario in test_scenarios:
+    result = workflow_agent.execute(scenario)
+    outputs.append({
+        "workflow_output": result.output,
+        "agent_state": result.state,
+        "input_message": scenario,
+        "metadata": {
+            "workflow_id": result.workflow_id,
+            "execution_time": result.execution_time,
+            "tools_executed": result.tools_used
+        }
+    })
+
+# Save for ARC-Eval
+with open("nvidia_aiq_outputs.json", "w") as f:
+    json.dump(outputs, f, indent=2)
+
+# Evaluate with ARC-Eval
+engine = EvaluationEngine(domain="finance")
+agent_outputs = [AgentOutput.from_raw(data) for data in outputs]
+results = engine.evaluate(agent_outputs)
+```
+
 ## Generic Framework
 
 ### Output Format
@@ -396,6 +474,7 @@ Framework-specific reliability patterns identified by ARC-Eval:
 - **LangChain**: Tool chain reliability, agent executor patterns
 - **CrewAI**: Multi-agent coordination reliability, task completion patterns
 - **OpenAI**: API reliability, response consistency patterns
+- **NVIDIA AIQ**: Workflow state management, agent intelligence patterns
 
 ## Best Practices
 

@@ -332,7 +332,7 @@ graph LR
 > - [Quick Start Guide](./docs/quickstart.md) - Get running in 5 minutes
 > - [Workflows Guide](./docs/workflows/) - Debug, compliance, and improvement workflows
 > - [Prediction System](./docs/prediction/) - Hybrid reliability prediction framework
-> - [Framework Integration](./docs/frameworks/) - Support for 9+ agent frameworks
+> - [Framework Integration](./docs/frameworks/) - Support for 10+ agent frameworks
 > - [API Reference](./docs/api/) - Complete Python SDK documentation
 > - [Enterprise Integration](./docs/enterprise/integration.md) - CI/CD pipeline integration
 >

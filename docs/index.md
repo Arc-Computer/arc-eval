@@ -14,7 +14,7 @@ ARC-Eval is a CLI-native platform that helps developers debug, validate, and imp
 ### 🔧 Developer Guides  
 - [Workflows](workflows/) - Debug, compliance, and improvement workflows
 - [Prediction System](prediction/) - Hybrid reliability prediction framework
-- [Framework Integration](frameworks/) - Support for 9+ agent frameworks
+- [Framework Integration](frameworks/) - Support for 10+ agent frameworks
 - [API Reference](api/) - Python SDK and programmatic usage
 
 ### 🏢 Enterprise Features

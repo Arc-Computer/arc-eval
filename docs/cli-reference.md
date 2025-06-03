@@ -27,7 +27,7 @@ arc-eval debug --input <file> [options]
 
 **Optional Arguments:**
 - `--framework <name>`: Specify framework (auto-detected if not provided)
-  - Choices: `langchain`, `langgraph`, `crewai`, `autogen`, `openai`, `anthropic`, `generic`
+  - Choices: `langchain`, `langgraph`, `crewai`, `autogen`, `openai`, `anthropic`, `nvidia_aiq`, `generic`
 - `--output-format <format>`: Output format (default: `console`)
   - Choices: `console`, `json`, `html`
 - `--no-interactive`: Skip interactive menus (for CI/CD)
@@ -182,7 +182,7 @@ arc-eval export-guide [options]
 
 **Optional Arguments:**
 - `--framework <name>`: Show examples for specific framework
-  - Choices: `openai`, `openai_agents`, `anthropic`, `langchain`, `crewai`, `google_adk`, `agno`, `generic`
+  - Choices: `openai`, `openai_agents`, `anthropic`, `langchain`, `crewai`, `google_adk`, `agno`, `nvidia_aiq`, `generic`
 
 **Examples:**
 ```bash
