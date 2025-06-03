@@ -356,11 +356,15 @@ class BaseJudge(ABC):
 
         # Step 2: Determine if QA routing is needed
         confidence_threshold = 0.9
+
+        # Add cost circuit breaker - skip QA if cost threshold exceeded
+        cost_threshold_exceeded = self.api_manager.total_cost > (self.api_manager.cost_threshold * 0.8)  # 80% of limit
+
         needs_qa = (
             initial_confidence < confidence_threshold or
             is_critical_domain or
             judgment_data.get("judgment") == "fail"
-        )
+        ) and not cost_threshold_exceeded  # Skip QA if cost limit approaching
 
         # Create performance metrics dictionary
         performance_metrics = {
@@ -377,20 +381,27 @@ class BaseJudge(ABC):
             # Create QA prompt for Gemini
             qa_prompt = self._build_qa_prompt(prompt, response_text, judgment_data)
 
-            # Use context manager for thread-safe provider switching
-            import os
-            with self._api_manager_context(
-                provider="google",
-                primary_model="gemini-2.5-flash-preview-05-20",
-                preferred_model="gemini-2.5-flash-preview-05-20",
-                api_key=os.getenv("GEMINI_API_KEY")
-            ):
-                qa_response, _ = self.api_manager.call_with_logprobs(qa_prompt, enable_logprobs=False)
-                qa_judgment_data = self._parse_response(qa_response)
+            # Add performance circuit breaker - skip QA if Cerebras was too slow
+            if cerebras_evaluation_time > 10.0:  # If Cerebras took >10s, skip QA to prevent timeout
+                logger.warning(f"Cerebras evaluation took {cerebras_evaluation_time:.1f}s - skipping QA to prevent timeout")
+                final_judgment_data = judgment_data
+                final_judgment_data["reasoning"] += "\n[QA skipped due to performance constraints]"
+                model_used = f"{model} (QA skipped - performance)"
+            else:
+                # Use context manager for thread-safe provider switching
+                import os
+                with self._api_manager_context(
+                    provider="google",
+                    primary_model="gemini-2.5-flash-preview-05-20",
+                    preferred_model="gemini-2.5-flash-preview-05-20",
+                    api_key=os.getenv("GEMINI_API_KEY")
+                ):
+                    qa_response, _ = self.api_manager.call_with_logprobs(qa_prompt, enable_logprobs=False)
+                    qa_judgment_data = self._parse_response(qa_response)
 
-                # Combine results: use QA judgment but preserve Cerebras performance metrics
-                final_judgment_data = self._combine_hybrid_results(judgment_data, qa_judgment_data, performance_metrics)
-                model_used = f"{model} + gemini-2.5-flash (QA)"
+                    # Combine results: use QA judgment but preserve Cerebras performance metrics
+                    final_judgment_data = self._combine_hybrid_results(judgment_data, qa_judgment_data, performance_metrics)
+                    model_used = f"{model} + gemini-2.5-flash (QA)"
         else:
             logger.info(f"Cerebras confidence sufficient: {initial_confidence:.2f}")
             # Add performance metrics to Cerebras-only results
