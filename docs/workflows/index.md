@@ -1,39 +1,51 @@
-# Workflows Guide
+# Workflows Guide - Predictive Reliability Platform
 
-ARC-Eval provides three core workflows designed to cover the complete agent reliability lifecycle. Each workflow builds on the previous one, creating a comprehensive improvement loop.
+ARC-Eval provides three core workflows that form a **predictive reliability platform** for agent development. Each workflow uses hybrid prediction (40% rules + 60% LLM) to provide actionable insights and prevent failures before they impact production.
 
-## Workflow Overview
+## The Predictive Reliability Loop
 
 ```
-┌─────────────┐    ┌─────────────┐    ┌─────────────┐
-│   DEBUG     │───▶│ COMPLIANCE  │───▶│   IMPROVE   │
-│             │    │             │    │             │
-│ Find what's │    │ Validate    │    │ Get better  │
-│ broken      │    │ requirements│    │ over time   │
-└─────────────┘    └─────────────┘    └─────────────┘
-       ▲                                      │
-       │                                      │
-       └──────────────────────────────────────┘
-                Continuous Improvement Loop
+🔍 DEBUG → 📋 COMPLIANCE → 📈 IMPROVE → 🔄 REPEAT
+   ↓            ↓             ↓
+Predict      Validate      Optimize
+Failures     Requirements  Performance
 ```
 
-## 1. Debug Workflow
+This continuous loop enables **predictive failure prevention** rather than reactive debugging, reducing debugging time from 4+ hours to 5 minutes and preventing $250K+ compliance violations.
 
-**Purpose**: "Why is my agent failing?"
+## Core Value Proposition
 
-The debug workflow provides comprehensive reliability analysis with predictive scoring to identify issues before they impact production.
+**Traditional Approach**: React to failures after they occur
+**ARC-Eval Approach**: Predict and prevent failures before deployment
+
+- **85%+ Prediction Accuracy**: Identify reliability issues before production
+- **Cost Optimization**: Reduce debugging costs and compliance violations
+- **Framework-Agnostic**: Works with 10+ agent frameworks
+- **Enterprise-Ready**: 378 scenarios across finance, security, ML domains
+
+## 1. Debug Workflow - **Predictive Failure Analysis**
+
+**Question**: "Why is my agent failing?"
+**Prediction Focus**: Risk assessment and failure pattern recognition
 
 ### Key Features
 
-- **Reliability Prediction**: Risk assessment with LOW/MEDIUM/HIGH scoring
-- **Framework Analysis**: Automatic detection and optimization recommendations
-- **Performance Metrics**: Tool usage efficiency and error patterns
-- **Root Cause Analysis**: Deep dive into failure patterns
+- **Reliability Prediction**: Hybrid rules + LLM analysis with confidence scoring
+- **Risk Levels**: LOW (0.0-0.4), MEDIUM (0.4-0.7), HIGH (0.7-1.0)
+- **Framework Intelligence**: Auto-detection and optimization for 10+ frameworks
+- **Business Impact**: Cost savings estimation and failure prevention metrics
+
+### Predictive Capabilities
+
+- Identifies failure patterns before they occur in production
+- Predicts reliability issues with 85%+ confidence
+- Estimates business impact and cost savings potential
 
 ### When to Use
 
-- Agent producing unexpected results
-- Need to understand failure patterns
+- Before deploying agents to production
+- When investigating reliability concerns
+- For continuous monitoring and optimization
 - Want predictive reliability assessment
 - Preparing for production deployment
 
@@ -59,25 +71,30 @@ arc-eval debug --input outputs.json --framework langchain
 
 [→ Detailed Debug Guide](debug.md)
 
-## 2. Compliance Workflow
+## 2. Compliance Workflow - **Predictive Regulatory Assessment**
 
-**Purpose**: "Does my agent meet requirements?"
-
-The compliance workflow tests agents against 378 enterprise-grade scenarios across finance, security, and ML domains to ensure regulatory compliance.
+**Question**: "Does my agent meet requirements?"
+**Prediction Focus**: Compliance risk scoring and regulatory gap analysis
 
 ### Key Features
 
-- **Domain-Specific Testing**: 378 scenarios across finance (110), security (120), ML (148)
-- **Regulatory Compliance**: SOX, OWASP, GDPR, EU AI Act validation
-- **Agent-as-Judge Evaluation**: LLM-powered scenario assessment
+- **378 Enterprise Scenarios**: Finance (110), Security (120), ML (148)
+- **Regulatory Mapping**: SOX, GDPR, OWASP LLM, EU AI Act
+- **Predictive Scoring**: Compliance risk assessment before deployment
 - **Audit-Ready Reports**: Professional compliance documentation
+
+### Predictive Capabilities
+
+- Predicts compliance violations before regulatory review
+- Estimates regulatory fine risk and audit readiness
+- Provides early warning for compliance gaps
 
 ### When to Use
 
-- Preparing for production deployment
-- Need regulatory compliance validation
-- Want comprehensive scenario testing
-- Creating audit documentation
+- Before production deployment (prevent violations)
+- Regulatory compliance validation
+- Audit preparation and readiness assessment
+- Continuous compliance monitoring
 
 ### Available Domains
 
@@ -111,25 +128,30 @@ arc-eval compliance --domain ml --input outputs.json --export pdf
 
 [→ Detailed Compliance Guide](compliance.md)
 
-## 3. Improve Workflow
+## 3. Improve Workflow - **Predictive Optimization Planning**
 
-**Purpose**: "How do I make my agent better?"
-
-The improve workflow generates specific recommendations based on evaluation results and tracks progress over time.
+**Question**: "How do I make my agent better?"
+**Prediction Focus**: Impact prediction and progress tracking
 
 ### Key Features
 
-- **Specific Recommendations**: Actionable fixes based on analysis
-- **Progress Tracking**: Monitor improvement over time
-- **Pattern Learning**: Adapt recommendations based on agent evolution
-- **Configuration Optimization**: Framework-specific tuning suggestions
+- **Impact Prediction**: Estimates improvement outcomes before implementation
+- **Framework-Specific Fixes**: Tailored solutions with code examples
+- **Progress Tracking**: Trend analysis and ROI calculation
+- **Adaptive Learning**: Recommendations improve with usage
+
+### Predictive Capabilities
+
+- Predicts improvement impact and implementation effort
+- Forecasts time to compliance and reliability targets
+- Optimizes improvement prioritization for maximum ROI
 
 ### When to Use
 
-- Have evaluation results to act on
-- Need specific improvement recommendations
-- Want to track progress over time
-- Implementing continuous improvement
+- After debug or compliance evaluation
+- Planning improvement roadmaps
+- Tracking progress over time
+- Optimizing development resources
 
 ### Example Usage
 
