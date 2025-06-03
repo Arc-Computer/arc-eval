@@ -12,11 +12,15 @@ ARC-Eval is a CLI-native platform that helps developers debug, validate, and imp
 - [Core Concepts](concepts.md) - Understanding reliability prediction
 - [CLI Reference](cli-reference.md) - Complete command documentation
 
-### 🔧 Developer Guides  
+### 🔧 Developer Guides
 - [Workflows](workflows/) - Debug, compliance, and improvement workflows
 - [Prediction System](prediction/) - Hybrid reliability prediction framework
 - [Framework Integration](frameworks/) - Support for 10+ agent frameworks
 - [API Reference](api/) - Python SDK and programmatic usage
+
+### 🧪 Testing & Support
+- [Testing Guide](testing/) - Comprehensive testing methodology and validation
+- [Troubleshooting Guide](troubleshooting.md) - Common issues, solutions, and optimization
 
 ### 🏢 Enterprise Features
 - [Compliance](enterprise/compliance.md) - Regulatory framework support
