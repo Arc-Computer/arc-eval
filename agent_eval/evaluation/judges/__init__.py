@@ -159,5 +159,29 @@ class AgentJudge:
         }
 
 
+# Workflow judges - import path to avoid circular import issues
+# Usage: from agent_eval.evaluation.judges.workflow import DebugJudge, ImproveJudge, JudgeOutputAdapter
+def get_debug_judge():
+    """Get DebugJudge class. Use to avoid circular imports."""
+    from .workflow.debug import DebugJudge
+    return DebugJudge
+
+def get_improve_judge():
+    """Get ImproveJudge class. Use to avoid circular imports.""" 
+    from .workflow.improve import ImproveJudge
+    return ImproveJudge
+
+def get_judge_output_adapter():
+    """Get JudgeOutputAdapter class. Use to avoid circular imports."""
+    from .workflow.judge_output_adapter import JudgeOutputAdapter
+    return JudgeOutputAdapter
+
 # Maintain backwards compatibility - import the main class for existing code
-__all__ = ["AgentJudge", "JudgmentResult", "ContinuousFeedback"]
+__all__ = [
+    "AgentJudge", 
+    "JudgmentResult", 
+    "ContinuousFeedback",
+    "get_debug_judge",
+    "get_improve_judge", 
+    "get_judge_output_adapter"
+]

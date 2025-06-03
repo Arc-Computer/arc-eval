@@ -189,17 +189,17 @@ class CognitiveAnalyzer:
             # Analyze cognitive patterns with judge
             judge_analysis = debug_judge.analyze_cognitive_patterns(agent_outputs, "planning")
             
-            # Convert to expected format
+            # Convert to expected format - align with DebugJudge output keys
             return {
-                "planning_coherence_score": judge_analysis.get("coherence_score", 0.7),
-                "goal_alignment_score": judge_analysis.get("alignment_score", 0.7),
-                "strategic_thinking_score": judge_analysis.get("strategic_score", 0.7),
-                "adaptation_capability_score": judge_analysis.get("adaptation_score", 0.7),
-                "planning_issues": judge_analysis.get("issues", []),
-                "planning_strengths": judge_analysis.get("strengths", []),
+                "planning_coherence_score": judge_analysis.get("reasoning_coherence", 0.7),
+                "goal_alignment_score": judge_analysis.get("cognitive_quality_score", 0.7),
+                "strategic_thinking_score": judge_analysis.get("reflection_depth", 0.7),
+                "adaptation_capability_score": judge_analysis.get("self_correction_capability", 0.7),
+                "planning_issues": judge_analysis.get("insights", [])[:3] if judge_analysis.get("overconfidence_indicators") else [],
+                "planning_strengths": judge_analysis.get("insights", [])[:3] if not judge_analysis.get("circular_reasoning_detected") else [],
                 "total_outputs_analyzed": len(agent_outputs),
                 "judge_enhanced": True,
-                "confidence": judge_analysis.get("confidence", 0.8)
+                "confidence": judge_analysis.get("cognitive_quality_score", 0.8)
             }
             
         except Exception:
