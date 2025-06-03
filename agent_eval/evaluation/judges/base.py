@@ -333,8 +333,22 @@ class BaseJudge(ABC):
 
     def _execute_hybrid_evaluation(self, prompt: str, scenario: EvaluationScenario, model: str, start_time: datetime) -> JudgmentResult:
         """Execute hybrid evaluation: Cerebras primary + Gemini QA for low confidence."""
-        # Step 1: Get initial evaluation from Cerebras
+        # Step 1: Get initial evaluation from Cerebras with performance tracking
+        cerebras_start_time = datetime.now()
         response_text, logprobs = self.api_manager.call_with_logprobs(prompt, enable_logprobs=True)
+        cerebras_end_time = datetime.now()
+
+        # Calculate Cerebras-specific performance metrics
+        cerebras_evaluation_time = (cerebras_end_time - cerebras_start_time).total_seconds()
+
+        # Get token counts for accurate throughput calculation
+        input_tokens = self.api_manager._count_tokens(prompt)
+        output_tokens = self.api_manager._count_tokens(response_text)
+        total_tokens = input_tokens + output_tokens
+
+        # Calculate actual Cerebras token throughput
+        cerebras_tokens_per_second = total_tokens / cerebras_evaluation_time if cerebras_evaluation_time > 0 else 0
+
         judgment_data = self._parse_response(response_text)
 
         initial_confidence = judgment_data.get("confidence", 0.5)
@@ -347,6 +361,15 @@ class BaseJudge(ABC):
             is_critical_domain or
             judgment_data.get("judgment") == "fail"
         )
+
+        # Create performance metrics dictionary
+        performance_metrics = {
+            "cerebras_tokens_per_second": cerebras_tokens_per_second,
+            "cerebras_evaluation_time": cerebras_evaluation_time,
+            "input_tokens": input_tokens,
+            "output_tokens": output_tokens,
+            "total_tokens": total_tokens
+        }
 
         if needs_qa:
             logger.info(f"Routing to Gemini QA: confidence={initial_confidence:.2f}, critical={is_critical_domain}")
@@ -365,11 +388,18 @@ class BaseJudge(ABC):
                 qa_response, _ = self.api_manager.call_with_logprobs(qa_prompt, enable_logprobs=False)
                 qa_judgment_data = self._parse_response(qa_response)
 
-                # Combine results: use QA judgment but preserve Cerebras speed metadata
-                final_judgment_data = self._combine_hybrid_results(judgment_data, qa_judgment_data)
+                # Combine results: use QA judgment but preserve Cerebras performance metrics
+                final_judgment_data = self._combine_hybrid_results(judgment_data, qa_judgment_data, performance_metrics)
                 model_used = f"{model} + gemini-2.5-flash (QA)"
         else:
             logger.info(f"Cerebras confidence sufficient: {initial_confidence:.2f}")
+            # Add performance metrics to Cerebras-only results
+            if "reward_signals" not in judgment_data:
+                judgment_data["reward_signals"] = {}
+            judgment_data["reward_signals"]["cerebras_speed"] = cerebras_tokens_per_second
+            judgment_data["reward_signals"]["cerebras_evaluation_time"] = cerebras_evaluation_time
+            judgment_data["reward_signals"]["total_tokens"] = total_tokens
+
             final_judgment_data = judgment_data
             model_used = model
 
@@ -463,6 +493,23 @@ class BaseJudge(ABC):
 
         evaluation_time = (datetime.now() - start_time).total_seconds()
 
+        # Add real performance metrics for Cerebras provider
+        if self.api_manager.provider == "cerebras":
+            # Calculate actual token throughput for Cerebras
+            input_tokens = self.api_manager._count_tokens(prompt)
+            output_tokens = self.api_manager._count_tokens(response_text)
+            total_tokens = input_tokens + output_tokens
+            cerebras_tokens_per_second = total_tokens / evaluation_time if evaluation_time > 0 else 0
+
+            # Add real performance metrics to reward signals
+            if "reward_signals" not in judgment_data:
+                judgment_data["reward_signals"] = {}
+            judgment_data["reward_signals"]["cerebras_speed"] = cerebras_tokens_per_second
+            judgment_data["reward_signals"]["cerebras_evaluation_time"] = evaluation_time
+            judgment_data["reward_signals"]["total_tokens"] = total_tokens
+            judgment_data["reward_signals"]["input_tokens"] = input_tokens
+            judgment_data["reward_signals"]["output_tokens"] = output_tokens
+
         return JudgmentResult(
             scenario_id=scenario.id,
             judgment=judgment_data["judgment"],
@@ -514,17 +561,21 @@ Provide your final judgment in JSON format:
 
 CRITICAL: If the initial evaluation missed important compliance issues or made incorrect judgments, override with the correct assessment."""
 
-    def _combine_hybrid_results(self, cerebras_result: Dict[str, Any], gemini_result: Dict[str, Any]) -> Dict[str, Any]:
-        """Combine Cerebras and Gemini results for final judgment."""
+    def _combine_hybrid_results(self, cerebras_result: Dict[str, Any], gemini_result: Dict[str, Any], performance_metrics: Dict[str, Any]) -> Dict[str, Any]:
+        """Combine Cerebras and Gemini results for final judgment with real performance metrics."""
         # Use Gemini's judgment as authoritative (QA override)
         final_result = gemini_result.copy()
 
-        # Preserve Cerebras speed metadata in reward signals
+        # Preserve Cerebras performance metrics in reward signals
         if "reward_signals" not in final_result:
             final_result["reward_signals"] = {}
 
-        # Add hybrid metadata
-        final_result["reward_signals"]["cerebras_speed"] = 1.0  # Fast initial evaluation
+        # Add real performance metrics instead of hardcoded values
+        final_result["reward_signals"]["cerebras_speed"] = performance_metrics["cerebras_tokens_per_second"]
+        final_result["reward_signals"]["cerebras_evaluation_time"] = performance_metrics["cerebras_evaluation_time"]
+        final_result["reward_signals"]["total_tokens"] = performance_metrics["total_tokens"]
+        final_result["reward_signals"]["input_tokens"] = performance_metrics["input_tokens"]
+        final_result["reward_signals"]["output_tokens"] = performance_metrics["output_tokens"]
         final_result["reward_signals"]["gemini_qa"] = 1.0      # Quality assurance applied
 
         # Combine improvement recommendations
