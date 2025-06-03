@@ -172,7 +172,40 @@ class CognitiveAnalyzer:
         }
     
     def analyze_planning_effectiveness(self, agent_outputs: List[Any]) -> Dict[str, Any]:
-        """Comprehensive planning analysis."""
+        """Analyze planning effectiveness in agent outputs.
+        
+        For enhanced analysis, use DebugJudge.analyze_cognitive_patterns().
+        Provides basic analysis for backward compatibility.
+        """
+        
+        try:
+            # Use DebugJudge for cognitive analysis
+            from agent_eval.evaluation.judges.workflow.debug import DebugJudge
+            from agent_eval.evaluation.judges.api_manager import APIManager
+            
+            api_manager = APIManager(provider="cerebras")
+            debug_judge = DebugJudge(api_manager)
+            
+            # Analyze cognitive patterns with judge
+            judge_analysis = debug_judge.analyze_cognitive_patterns(agent_outputs, "planning")
+            
+            # Convert to expected format
+            return {
+                "planning_coherence_score": judge_analysis.get("coherence_score", 0.7),
+                "goal_alignment_score": judge_analysis.get("alignment_score", 0.7),
+                "strategic_thinking_score": judge_analysis.get("strategic_score", 0.7),
+                "adaptation_capability_score": judge_analysis.get("adaptation_score", 0.7),
+                "planning_issues": judge_analysis.get("issues", []),
+                "planning_strengths": judge_analysis.get("strengths", []),
+                "total_outputs_analyzed": len(agent_outputs),
+                "judge_enhanced": True,
+                "confidence": judge_analysis.get("confidence", 0.8)
+            }
+            
+        except Exception:
+            # Fallback to legacy analysis
+            pass
+        
         planning_analysis = {
             "planning_coherence_score": 0.0,
             "goal_alignment_score": 0.0,

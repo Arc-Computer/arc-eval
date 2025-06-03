@@ -11,7 +11,7 @@ from dataclasses import dataclass
 
 from agent_eval.analysis.self_improvement import SelfImprovementEngine, TrainingExample
 from agent_eval.core.types import EvaluationResult
-from agent_eval.evaluation.judges import AgentJudge
+# from agent_eval.evaluation.judges import AgentJudge  # Removed to avoid circular import
 
 
 @dataclass
@@ -62,8 +62,9 @@ class ImprovementPlanner:
         agent_id = evaluation_data.get('agent_id', 'unknown_agent')
         domain = evaluation_data.get('domain', 'unknown')
         
-        # Initialize AgentJudge with domain
+        # Initialize AgentJudge with domain (lazy import to avoid circular dependencies)
         if not self.agent_judge:
+            from agent_eval.evaluation.judges import AgentJudge
             self.agent_judge = AgentJudge(domain=domain, preferred_model="claude-sonnet-4-20250514")
         
         # Get evaluation results
@@ -102,10 +103,9 @@ class ImprovementPlanner:
     def generate_plan_from_evaluation_with_judge(self, 
                                                 evaluation_file: Path, 
                                                 output_file: Optional[Path] = None) -> ImprovementPlan:
-        """Generate improvement plan from evaluation results using AI judge enhancement.
+        """Generate improvement plan from evaluation results with judge enhancement.
         
-        This method uses ImproveJudge for intelligent improvement planning,
-        replacing static template-based recommendations with contextual AI analysis.
+        Uses ImproveJudge for contextual improvement planning based on evaluation results.
         """
         
         # Load evaluation results
@@ -128,16 +128,16 @@ class ImprovementPlanner:
         )
         
         try:
-            # Use ImproveJudge for intelligent improvement planning
+            # Use ImproveJudge for improvement planning
             from agent_eval.evaluation.judges.workflow.improve import ImproveJudge
             from agent_eval.evaluation.judges.workflow.judge_output_adapter import JudgeOutputAdapter
             from agent_eval.evaluation.judges.api_manager import APIManager
             
-            # Initialize judge
-            api_manager = APIManager()
+            # Initialize judge with Cerebras for fast inference
+            api_manager = APIManager(provider="cerebras")
             improve_judge = ImproveJudge(api_manager)
             
-            # Generate intelligent improvement plan using judge
+            # Generate improvement plan using judge
             judge_plan = improve_judge.generate_improvement_plan(results, domain)
             
             # Convert judge output to ImprovementPlan format
@@ -160,17 +160,16 @@ class ImprovementPlanner:
             return self.generate_plan_from_evaluation(evaluation_file, output_file)
     
     def generate_intelligent_plan(self, evaluation_results: List[Dict], domain: str) -> ImprovementPlan:
-        """Direct access to ImproveJudge for generating improvement plans.
+        """Generate improvement plans using ImproveJudge.
         
-        This method provides direct access to AI-powered improvement planning,
-        replacing static failure grouping and template-based remediation.
+        Provides contextual improvement planning based on evaluation patterns.
         """
         try:
             from agent_eval.evaluation.judges.workflow.improve import ImproveJudge
             from agent_eval.evaluation.judges.api_manager import APIManager
             
-            # Initialize judge
-            api_manager = APIManager()
+            # Initialize judge with Cerebras for fast inference
+            api_manager = APIManager(provider="cerebras")
             improve_judge = ImproveJudge(api_manager)
             
             # Generate plan using judge
@@ -335,7 +334,7 @@ class ImprovementPlanner:
             if not scenarios:
                 continue
                 
-            # Generate AI-powered specific action for this group
+            # Generate specific action for this group
             action = self._generate_ai_action(group_name, scenarios, domain)
             if action:
                 actions.append(action)
@@ -343,102 +342,105 @@ class ImprovementPlanner:
         return actions
     
     def _generate_ai_action(self, group_name: str, scenarios: List[Dict], domain: str) -> Optional[ImprovementAction]:
-        """Generate AI-powered specific action for a group of failed scenarios."""
+        """Generate improvement actions for failure groups.
+        
+        For enhanced analysis, use ImproveJudge.generate_improvement_plan().
+        Provides basic action generation for backward compatibility.
+        """
         
         if not scenarios:
             return None
         
-        # Prepare context for AI analysis
-        scenario_context = []
-        for s in scenarios:
-            scenario_context.append({
-                'id': s.get('scenario_id', ''),
-                'name': s.get('name', ''),
-                'description': s.get('description', ''),
-                'severity': s.get('severity', ''),
-                'compliance': s.get('compliance', []),
-                'remediation': s.get('remediation', ''),
-                'improvement_recommendations': s.get('improvement_recommendations', [])
-            })
+        try:
+            # Use ImproveJudge for action generation
+            from agent_eval.evaluation.judges.workflow.improve import ImproveJudge
+            from agent_eval.evaluation.judges.api_manager import APIManager
+            
+            api_manager = APIManager(provider="cerebras")
+            improve_judge = ImproveJudge(api_manager)
+            
+            # Convert scenarios to judge format
+            evaluation_results = [{
+                "scenario_id": s.get('scenario_id', ''),
+                "passed": False,
+                "severity": s.get('severity', 'medium'),
+                "description": s.get('description', ''),
+                "compliance": s.get('compliance', [])
+            } for s in scenarios]
+            
+            # Generate improvement plan
+            judge_plan = improve_judge.generate_improvement_plan(evaluation_results, domain)
+            
+            # Extract first action from judge plan
+            improvement_actions = judge_plan.get("improvement_actions", [])
+            if improvement_actions:
+                action_data = improvement_actions[0]
+                
+                scenario_ids = [s.get('scenario_id', '') for s in scenarios]
+                compliance_frameworks = list(set([f for s in scenarios for f in s.get('compliance', [])]))
+                
+                return ImprovementAction(
+                    priority=action_data.get("priority", "HIGH"),
+                    area=group_name.replace('_', ' ').title(),
+                    description=action_data.get("description", f"Critical failures in {group_name}"),
+                    action=action_data.get("action", f"Address {group_name} issues"),
+                    expected_improvement=action_data.get("expected_improvement", "Significant improvement expected"),
+                    timeline=action_data.get("timeline", "1-2 weeks"),
+                    scenario_ids=scenario_ids,
+                    compliance_frameworks=compliance_frameworks,
+                    specific_steps=action_data.get("specific_steps", [])
+                )
+            
+        except Exception:
+            # Fallback to legacy action generation
+            pass
         
-        # Generate AI-powered remediation
-        ai_analysis = self._get_ai_remediation_analysis(group_name, scenario_context, domain)
-        
-        if not ai_analysis:
-            return self._generate_fallback_action(group_name, scenarios)
-        
-        scenario_ids = [s.get('scenario_id', '') for s in scenarios]
-        compliance_frameworks = list(set([f for s in scenarios for f in s.get('compliance', [])]))
-        
-        return ImprovementAction(
-            priority=self._determine_priority_from_scenarios(scenarios),
-            area=group_name.replace('_', ' ').title(),
-            description=ai_analysis.get('description', f"Critical failures in {group_name}"),
-            action=ai_analysis.get('action', f"Address {group_name} issues"),
-            expected_improvement=ai_analysis.get('expected_improvement', "Significant improvement expected"),
-            timeline=ai_analysis.get('timeline', "1-2 weeks"),
-            scenario_ids=scenario_ids,
-            compliance_frameworks=compliance_frameworks,
-            specific_steps=ai_analysis.get('specific_steps', [])
-        )
+        return self._generate_fallback_action(group_name, scenarios)
     
     def _get_ai_remediation_analysis(self, group_name: str, scenarios: List[Dict], domain: str) -> Optional[Dict]:
-        """Use AI to generate specific remediation analysis."""
+        """Generate remediation analysis for failure groups.
+        
+        For enhanced analysis, use ImproveJudge.generate_contextual_remediation().
+        Provides basic remediation for backward compatibility.
+        """
         
         try:
-            # Create detailed prompt for AI analysis
-            prompt = f"""You are an MLOps specialist helping teams fix critical evaluation failures.
-
-DOMAIN: {domain}
-FAILURE GROUP: {group_name}
-FAILED SCENARIOS: {len(scenarios)}
-
-SCENARIO DETAILS:
-{self._format_scenarios_for_ai(scenarios)}
-
-Generate a specific remediation plan for an MLOps team with:
-
-1. DESCRIPTION: Clear 1-sentence description of what failed
-2. ACTION: Specific technical action (2-3 sentences max) 
-3. EXPECTED_IMPROVEMENT: Quantified improvement expected
-4. TIMELINE: Realistic implementation timeline
-5. SPECIFIC_STEPS: List of 3-5 concrete implementation steps
-
-Focus on actionable technical steps, not generic advice. Assume the reader is an experienced MLOps engineer.
-
-Return JSON format:
-{{
-  "description": "Clear failure description",
-  "action": "Specific technical action", 
-  "expected_improvement": "Quantified improvement",
-  "timeline": "Realistic timeline",
-  "specific_steps": ["Step 1", "Step 2", "Step 3"]
-}}"""
-
-            # Use AgentJudge's API manager to get client and make call
-            client, _ = self.agent_judge.api_manager.get_client()
-            response = client.messages.create(
-                model="claude-sonnet-4-20250514",
-                messages=[{"role": "user", "content": prompt}],
-                max_tokens=1000,
-                temperature=0.1
-            )
+            # Use ImproveJudge for remediation analysis
+            from agent_eval.evaluation.judges.workflow.improve import ImproveJudge
+            from agent_eval.evaluation.judges.api_manager import APIManager
             
-            # Parse JSON response
-            import json
-            content = response.content[0].text if hasattr(response, 'content') else str(response)
+            api_manager = APIManager(provider="cerebras")
+            improve_judge = ImproveJudge(api_manager)
             
-            # Extract JSON from response
-            start_idx = content.find('{')
-            end_idx = content.rfind('}') + 1
-            if start_idx >= 0 and end_idx > start_idx:
-                json_str = content[start_idx:end_idx]
-                return json.loads(json_str)
+            # Prepare failure patterns for judge
+            failure_patterns = [f"{s.get('name', '')}: {s.get('description', '')}" for s in scenarios]
+            context = {
+                "domain": domain,
+                "group_name": group_name,
+                "scenario_count": len(scenarios)
+            }
+            
+            # Generate contextual remediation
+            remediation = improve_judge.generate_contextual_remediation(failure_patterns, context)
+            
+            # Convert to expected format
+            return {
+                "description": remediation.get("description", f"Critical failures in {group_name}"),
+                "action": remediation.get("action", f"Address {group_name} issues"),
+                "expected_improvement": remediation.get("expected_improvement", "Significant improvement expected"),
+                "timeline": remediation.get("timeline", "1-2 weeks"),
+                "specific_steps": remediation.get("specific_steps", [])
+            }
             
         except Exception as e:
-            print(f"AI analysis failed: {e}")
-        
-        return None
+            # Fallback to basic analysis
+            return {
+                "description": f"Failed {len(scenarios)} scenarios in {group_name.replace('_', ' ')}",
+                "action": f"Address {group_name.replace('_', ' ')} issues through targeted improvements",
+                "expected_improvement": "Moderate improvement expected",
+                "timeline": "1-2 weeks",
+                "specific_steps": ["Review failed scenarios", "Implement fixes", "Validate improvements"]
+            }
     
     def _format_scenarios_for_ai(self, scenarios: List[Dict]) -> str:
         """Format scenarios for AI analysis."""

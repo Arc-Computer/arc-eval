@@ -1,8 +1,7 @@
 """
 JudgeOutputAdapter: UI compatibility layer for workflow judges.
 
-This adapter converts judge outputs to existing UI data structures, ensuring
-zero breaking changes to the dashboard and interface components.
+This adapter converts judge outputs to UI data structures for dashboard compatibility.
 """
 
 from typing import Dict, List, Any, Optional
@@ -17,7 +16,7 @@ from agent_eval.core.improvement_planner import ImprovementPlan, ImprovementActi
 
 
 class JudgeOutputAdapter:
-    """Converts judge outputs to existing UI data structures for backward compatibility."""
+    """Converts judge outputs to UI data structures."""
     
     @staticmethod
     def debug_judge_to_reliability_analysis(

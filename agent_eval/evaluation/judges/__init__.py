@@ -1,8 +1,7 @@
 """
 Agent-as-a-Judge framework with modular judge architecture.
 
-Based on MetaAuto AI's ICML 2025 research, this module implements Agent-as-a-Judge
-methodology that transforms evaluation from simple pass/fail to continuous improvement loops.
+Implements Agent-as-a-Judge methodology for continuous improvement evaluation.
 """
 
 import logging
@@ -11,7 +10,7 @@ from typing import Dict, List, Optional, Any
 from .api_manager import APIManager
 from .base import JudgmentResult, ContinuousFeedback
 from .domain import SecurityJudge, MLJudge, FinanceJudge
-from .workflow import DebugJudge, ImproveJudge, JudgeOutputAdapter
+# from .workflow import DebugJudge, ImproveJudge, JudgeOutputAdapter  # Removed to avoid circular import
 from agent_eval.core.types import AgentOutput, EvaluationScenario
 
 
@@ -51,7 +50,7 @@ class AgentJudge:
     def evaluate_batch(self, agent_outputs: List[AgentOutput], scenarios: List[EvaluationScenario]) -> List[JudgmentResult]:
         """Evaluate multiple scenarios with continuous feedback.
         
-        Automatically uses batch processing for 5+ scenarios to reduce costs by 50%.
+        Uses batch processing for 5+ scenarios.
         """
         # Check if we have enough scenarios for batch processing
         from agent_eval.core.constants import BATCH_PROCESSING_THRESHOLD
@@ -125,7 +124,7 @@ class AgentJudge:
                 "total_cost": total_cost,
                 "bias_risk_level": bias_metrics.overall_bias_risk,
                 "batch_processing_used": total_scenarios >= 5,
-                "estimated_savings": total_cost if total_scenarios >= 5 else 0.0  # 50% savings with batch
+                "estimated_savings": total_cost if total_scenarios >= 5 else 0.0
             },
             "continuous_feedback": {
                 "strengths": feedback.strengths,
@@ -161,4 +160,4 @@ class AgentJudge:
 
 
 # Maintain backwards compatibility - import the main class for existing code
-__all__ = ["AgentJudge", "JudgmentResult", "ContinuousFeedback", "DebugJudge", "ImproveJudge", "JudgeOutputAdapter"]
+__all__ = ["AgentJudge", "JudgmentResult", "ContinuousFeedback"]

@@ -1,8 +1,7 @@
 """
-ImproveJudge: Intelligent improvement recommendation generation.
+ImproveJudge: Improvement recommendation generation.
 
-This judge replaces static template-based remediation with AI-powered improvement
-planning for agent workflows, framework optimization, and performance enhancement.
+This judge generates improvement planning for agent workflows, framework optimization, and performance enhancement.
 """
 
 import logging
@@ -33,7 +32,7 @@ class ImprovementPlan:
 
 
 class ImproveJudge(BaseJudge):
-    """Intelligent judge for generating improvement recommendations and optimization plans."""
+    """Judge for generating improvement recommendations and optimization plans."""
     
     def __init__(self, api_manager, enable_confidence_calibration: bool = False):
         super().__init__(api_manager, enable_confidence_calibration)
@@ -54,10 +53,7 @@ class ImproveJudge(BaseJudge):
         return self._execute_evaluation(prompt, scenario, self.api_manager.preferred_model)
     
     def generate_improvement_plan(self, evaluation_results: List[Dict], domain: str) -> Dict[str, Any]:
-        """Generate intelligent improvement plan from evaluation results.
-        
-        This method replaces the static template-based improvement planning in ImprovementPlanner.
-        """
+        """Generate improvement plan from evaluation results."""
         # Prepare scenario for improvement planning
         scenario = EvaluationScenario(
             id="improvement_planning",

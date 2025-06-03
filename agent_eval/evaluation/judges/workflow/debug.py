@@ -1,8 +1,7 @@
 """
-DebugJudge: Intelligent root cause analysis and failure pattern identification.
+DebugJudge: Root cause analysis and failure pattern identification.
 
-This judge replaces rule-based pattern matching with AI-powered analysis for
-debugging agent workflows, tool call failures, and performance issues.
+This judge performs analysis for debugging agent workflows, tool call failures, and performance issues.
 """
 
 import logging
@@ -16,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 class DebugJudge(BaseJudge):
-    """Intelligent judge for debugging agent workflows and tool call failures."""
+    """Judge for debugging agent workflows and tool call failures."""
     
     def __init__(self, api_manager, enable_confidence_calibration: bool = False):
         super().__init__(api_manager, enable_confidence_calibration)
