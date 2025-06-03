@@ -1738,17 +1738,26 @@ Required parameters:
 
     def _extract_agent_config(self, agent_output: Any) -> Optional[Dict[str, Any]]:
         """Extract agent configuration from output for prediction."""
+        def standardize_config(config: Dict[str, Any]) -> Dict[str, Any]:
+            """Ensure the configuration has a consistent structure."""
+            return {
+                'system_prompt': config.get('system_prompt', ''),
+                'tools': config.get('tools', []),
+                'framework': config.get('framework', 'unknown'),
+                'model': config.get('model', 'unknown'),
+            }
+
         try:
             # Handle different output formats
             if isinstance(agent_output, dict):
                 # Direct dictionary - look for config-like structure
                 if any(key in agent_output for key in ['system_prompt', 'tools', 'model', 'agent_config']):
-                    return agent_output
+                    return standardize_config(agent_output)
 
                 # Look for nested config
                 for key, value in agent_output.items():
                     if isinstance(value, dict) and any(config_key in value for config_key in ['system_prompt', 'tools', 'model']):
-                        return value
+                        return standardize_config(value)
 
             # Handle string representations
             elif isinstance(agent_output, str):
