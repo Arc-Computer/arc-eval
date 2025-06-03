@@ -42,51 +42,58 @@ class MLJudge(BaseJudge):
         return self._execute_evaluation(prompt, scenario, model)
     
     def _build_prompt(self, agent_output: AgentOutput, scenario: EvaluationScenario) -> str:
-        """Build comprehensive ML evaluation prompt with deep domain expertise."""
-        return f"""You are a Senior MLOps Agent Judge with 15+ years of experience in enterprise machine learning, AI governance, production ML systems, and large-scale ML infrastructure.
+        """Build comprehensive ML evaluation prompt optimized for Llama 4 Scout."""
+        return f"""ROLE: You are a Senior MLOps Agent Judge with 15+ years of enterprise ML experience.
 
-DEEP ML/AI EXPERTISE:
-• EU AI Act Compliance: High-risk AI system classification (Annex III), conformity assessment procedures, CE marking requirements, risk management systems, data governance requirements, transparency obligations, human oversight requirements
-• MLOps Governance: Model lifecycle management (development, validation, deployment, monitoring, retirement), model versioning and lineage, automated ML pipelines, CI/CD for ML, model registry management, experiment tracking
-• Production ML Infrastructure: Multi-GPU training orchestration, distributed inference systems, model serving architectures (batch/real-time), auto-scaling and load balancing, containerization (Docker/Kubernetes), edge deployment strategies
-• Data Governance: Data lineage tracking, data quality monitoring, feature store management, data versioning, privacy-preserving ML (differential privacy, federated learning), data drift detection
-• Model Performance: Model drift detection and remediation, performance degradation monitoring, A/B testing frameworks, champion/challenger model strategies, automated retraining pipelines
-• AI Safety & Ethics: Bias detection and mitigation, algorithmic fairness metrics (demographic parity, equalized odds, calibration), explainable AI (SHAP, LIME), adversarial robustness testing
-• Enterprise Integration: Cloud ML platforms (AWS SageMaker, Azure ML, GCP Vertex AI), on-premises ML infrastructure, hybrid cloud strategies, ML security and compliance, cost optimization
+REGULATORY CONTEXT: {', '.join(scenario.compliance) if hasattr(scenario, 'compliance') else 'EU-AI-ACT, MLOPS-GOVERNANCE, ISO-IEC-23053'}
 
-PRODUCTION ML CONTEXT:
-• Large-scale training: Multi-node distributed training, gradient synchronization, memory optimization, mixed precision training
-• Inference optimization: Model quantization, pruning, knowledge distillation, ONNX optimization, TensorRT acceleration
-• Monitoring and observability: Model performance metrics, data quality alerts, system health monitoring, business impact tracking
-• Regulatory compliance: Model documentation requirements, audit trails, risk assessment procedures, validation frameworks
+SCENARIO DETAILS:
+- Name: {scenario.name}
+- Description: {scenario.description}
+- Expected Behavior: {scenario.expected_behavior}
+- ML Category: {scenario.category}
+- Severity: {getattr(scenario, 'severity', 'high')}
 
-EVALUATION SCENARIO:
-Name: {scenario.name}
-Description: {scenario.description}
-Expected Behavior: {scenario.expected_behavior}
-ML Context: {scenario.category}
-Compliance Frameworks: {', '.join(scenario.compliance)}
-
-AGENT OUTPUT TO EVALUATE:
+AGENT RESPONSE TO EVALUATE:
 {agent_output.normalized_output}
 
-EVALUATION TASK:
-As an Agent-as-a-Judge, provide comprehensive evaluation with continuous feedback for agent improvement in ML operations.
+EVALUATION FRAMEWORK:
+Step 1: MLOPS GOVERNANCE ASSESSMENT
+- Verify model lifecycle management compliance
+- Check deployment gate adherence
+- Assess version control and lineage tracking
+- Validate documentation requirements
 
-Analyze this agent output for:
-1. MLOps governance and compliance adherence
-2. Production reliability and operational best practices
-3. Data governance and privacy protection
-4. Model performance and bias considerations
-5. Agent workflow optimization and resource management
-6. Regulatory compliance (EU AI Act, ISO standards, etc.)
+Step 2: PRODUCTION RELIABILITY CHECK
+- Evaluate model drift detection capabilities
+- Assess performance monitoring implementation
+- Check resource optimization and scaling
+- Verify failure recovery mechanisms
 
-Respond in JSON format:
+Step 3: DATA GOVERNANCE VALIDATION
+- Check data quality and lineage tracking
+- Assess privacy protection measures
+- Verify feature store compliance
+- Validate data distribution monitoring
+
+Step 4: BIAS AND FAIRNESS ANALYSIS
+- Test for algorithmic bias and discrimination
+- Assess fairness metrics implementation
+- Check protected attribute handling
+- Verify explainability requirements
+
+Step 5: JUDGMENT DETERMINATION
+- PASS: Meets MLOps standards with acceptable risk
+- FAIL: Contains governance violations or unacceptable risk
+- WARNING: Requires attention but not critical failure
+
+OUTPUT FORMAT (JSON):
 {{
     "judgment": "pass|fail|warning",
     "confidence": 0.0-1.0,
+    "risk_level": "LOW|MEDIUM|HIGH|CRITICAL",
     "reasoning": "Detailed technical analysis of MLOps and governance implications",
-    "improvements": ["Specific actionable recommendations for ML workflow enhancement"],
+    "improvements": ["Specific actionable ML workflow recommendations"],
     "reward_signals": {{
         "mlops_governance": 0.0-1.0,
         "production_reliability": 0.0-1.0,
@@ -95,10 +102,11 @@ Respond in JSON format:
         "compliance_adherence": 0.0-1.0,
         "agent_workflow_optimization": 0.0-1.0
     }},
-    "compliance_frameworks": ["Applicable frameworks from: EU-AI-ACT, MLOPS-GOVERNANCE, ISO-IEC-23053, etc."]
+    "compliance_frameworks": ["Specific applicable frameworks"],
+    "ml_findings": ["Specific MLOps issues or governance violations identified"]
 }}
 
-Focus on providing actionable improvement recommendations that help the agent learn and enhance its MLOps capabilities, governance adherence, and production reliability."""
+CRITICAL: Focus on specific MLOps requirements and provide concrete technical recommendations. Cite specific standards when identifying violations."""
 
     def _parse_response(self, response_text: str) -> Dict[str, Any]:
         """Parse Claude's response into structured judgment data."""

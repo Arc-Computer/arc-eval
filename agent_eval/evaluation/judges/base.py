@@ -279,77 +279,22 @@ class BaseJudge(ABC):
         pass
     
     def _execute_evaluation(self, prompt: str, scenario: EvaluationScenario, model: str) -> JudgmentResult:
-        """Common evaluation execution logic."""
+        """Common evaluation execution logic with hybrid architecture support."""
         start_time = datetime.now()
-        
+
         try:
-            # Call Claude for Agent-as-a-Judge evaluation with optional logprobs
-            if self.enable_confidence_calibration:
-                response_text, logprobs = self.api_manager.call_with_logprobs(prompt, enable_logprobs=True)
-            else:
-                client, model = self.api_manager.get_client()
-                
-                if self.api_manager.provider == "anthropic":
-                    response = client.messages.create(
-                        model=model,
-                        max_tokens=2000,
-                        temperature=0.1,  # Low temperature for consistent evaluation
-                        messages=[
-                            {
-                                "role": "user",
-                                "content": prompt
-                            }
-                        ]
-                    )
-                    response_text = response.content[0].text
-                elif self.api_manager.provider == "openai":
-                    response = client.chat.completions.create(
-                        model=model,
-                        max_tokens=2000,
-                        temperature=0.1,  # Low temperature for consistent evaluation
-                        messages=[
-                            {
-                                "role": "user",
-                                "content": prompt
-                            }
-                        ]
-                    )
-                    response_text = response.choices[0].message.content
-                else:
-                    raise ValueError(f"Unsupported provider: {self.api_manager.provider}")
-                
-                logprobs = None
-                
-                # Track API costs for standard call
-                input_tokens = len(prompt) // 4  # Rough approximation
-                output_tokens = len(response_text) // 4
-                self.api_manager.track_cost(input_tokens, output_tokens, model)
-            
-            # Parse response
-            judgment_data = self._parse_response(response_text)
-            
-            # Apply confidence calibration if enabled
-            if self.enable_confidence_calibration and hasattr(self, 'confidence_calibrator'):
-                calibration = self.confidence_calibrator.calibrate_confidence(response_text, logprobs)
-                # Override the confidence with calibrated value
-                judgment_data["confidence"] = calibration.calibrated_confidence
-                # Add calibration metadata to reward signals
-                judgment_data["reward_signals"]["calibration_quality"] = calibration.quality_score
-                judgment_data["reward_signals"]["uncertainty"] = calibration.uncertainty
-            
-            evaluation_time = (datetime.now() - start_time).total_seconds()
-            
-            return JudgmentResult(
-                scenario_id=scenario.id,
-                judgment=judgment_data["judgment"],
-                confidence=judgment_data["confidence"],
-                reasoning=judgment_data["reasoning"],
-                improvement_recommendations=judgment_data["improvements"],
-                reward_signals=judgment_data["reward_signals"],
-                evaluation_time=evaluation_time,
-                model_used=model
+            # Check if hybrid architecture is enabled (Cerebras + Gemini QA)
+            use_hybrid = (
+                self.api_manager.provider == "cerebras" and
+                hasattr(self.api_manager, 'enable_hybrid_qa') and
+                self.api_manager.enable_hybrid_qa
             )
-            
+
+            if use_hybrid:
+                return self._execute_hybrid_evaluation(prompt, scenario, model, start_time)
+            else:
+                return self._execute_standard_evaluation(prompt, scenario, model, start_time)
+
         except Exception as e:
             logger.error(f"{self.__class__.__name__} evaluation failed: {e}")
             # Fallback to alternative model if primary fails
@@ -359,3 +304,227 @@ class BaseJudge(ABC):
                 return self._execute_evaluation(prompt, scenario, fallback_model)
             else:
                 raise
+
+    def _execute_hybrid_evaluation(self, prompt: str, scenario: EvaluationScenario, model: str, start_time: datetime) -> JudgmentResult:
+        """Execute hybrid evaluation: Cerebras primary + Gemini QA for low confidence."""
+        # Step 1: Get initial evaluation from Cerebras
+        response_text, logprobs = self.api_manager.call_with_logprobs(prompt, enable_logprobs=True)
+        judgment_data = self._parse_response(response_text)
+
+        initial_confidence = judgment_data.get("confidence", 0.5)
+        is_critical_domain = getattr(scenario, 'severity', 'medium') == 'critical'
+
+        # Step 2: Determine if QA routing is needed
+        confidence_threshold = 0.9
+        needs_qa = (
+            initial_confidence < confidence_threshold or
+            is_critical_domain or
+            judgment_data.get("judgment") == "fail"
+        )
+
+        if needs_qa:
+            logger.info(f"Routing to Gemini QA: confidence={initial_confidence:.2f}, critical={is_critical_domain}")
+
+            # Create QA prompt for Gemini
+            qa_prompt = self._build_qa_prompt(prompt, response_text, judgment_data)
+
+            # Switch to Gemini for QA
+            original_provider = self.api_manager.provider
+            original_model = self.api_manager.primary_model
+            original_preferred_model = self.api_manager.preferred_model
+            original_api_key = self.api_manager.api_key
+
+            try:
+                # Temporarily switch to Gemini
+                import os
+                self.api_manager.provider = "google"
+                self.api_manager.primary_model = "gemini-2.5-flash-preview-05-20"
+                self.api_manager.preferred_model = "gemini-2.5-flash-preview-05-20"
+                self.api_manager.api_key = os.getenv("GEMINI_API_KEY")
+
+                qa_response, _ = self.api_manager.call_with_logprobs(qa_prompt, enable_logprobs=False)
+                qa_judgment_data = self._parse_response(qa_response)
+
+                # Combine results: use QA judgment but preserve Cerebras speed metadata
+                final_judgment_data = self._combine_hybrid_results(judgment_data, qa_judgment_data)
+                model_used = f"{model} + gemini-2.5-flash (QA)"
+
+            finally:
+                # Restore original provider
+                self.api_manager.provider = original_provider
+                self.api_manager.primary_model = original_model
+                self.api_manager.preferred_model = original_preferred_model
+                self.api_manager.api_key = original_api_key
+        else:
+            logger.info(f"Cerebras confidence sufficient: {initial_confidence:.2f}")
+            final_judgment_data = judgment_data
+            model_used = model
+
+        evaluation_time = (datetime.now() - start_time).total_seconds()
+
+        return JudgmentResult(
+            scenario_id=scenario.id,
+            judgment=final_judgment_data["judgment"],
+            confidence=final_judgment_data["confidence"],
+            reasoning=final_judgment_data["reasoning"],
+            improvement_recommendations=final_judgment_data["improvements"],
+            reward_signals=final_judgment_data["reward_signals"],
+            evaluation_time=evaluation_time,
+            model_used=model_used
+        )
+
+    def _execute_standard_evaluation(self, prompt: str, scenario: EvaluationScenario, model: str, start_time: datetime) -> JudgmentResult:
+        """Execute standard single-provider evaluation."""
+        # Call API for Agent-as-a-Judge evaluation with optional logprobs
+        if self.enable_confidence_calibration:
+            response_text, logprobs = self.api_manager.call_with_logprobs(prompt, enable_logprobs=True)
+        else:
+            client, model = self.api_manager.get_client()
+
+            if self.api_manager.provider == "anthropic":
+                response = client.messages.create(
+                    model=model,
+                    max_tokens=2000,
+                    temperature=0.1,  # Low temperature for consistent evaluation
+                    messages=[
+                        {
+                            "role": "user",
+                            "content": prompt
+                        }
+                    ]
+                )
+                response_text = response.content[0].text
+            elif self.api_manager.provider == "openai":
+                response = client.chat.completions.create(
+                    model=model,
+                    max_tokens=2000,
+                    temperature=0.1,  # Low temperature for consistent evaluation
+                    messages=[
+                        {
+                            "role": "user",
+                            "content": prompt
+                        }
+                    ]
+                )
+                response_text = response.choices[0].message.content
+            elif self.api_manager.provider == "google":
+                response = client.models.generate_content(
+                    model=model,
+                    contents=prompt
+                )
+                response_text = response.text
+            elif self.api_manager.provider == "cerebras":
+                response = client.chat.completions.create(
+                    model=model,
+                    max_tokens=2000,
+                    temperature=0.1,
+                    messages=[
+                        {
+                            "role": "user",
+                            "content": prompt
+                        }
+                    ]
+                )
+                response_text = response.choices[0].message.content
+            else:
+                raise ValueError(f"Unsupported provider: {self.api_manager.provider}")
+
+            logprobs = None
+
+            # Track API costs for standard call
+            input_tokens = len(prompt) // 4  # Rough approximation
+            output_tokens = len(response_text) // 4
+            self.api_manager.track_cost(input_tokens, output_tokens, model)
+
+        # Parse response
+        judgment_data = self._parse_response(response_text)
+
+        # Apply confidence calibration if enabled
+        if self.enable_confidence_calibration and hasattr(self, 'confidence_calibrator'):
+            calibration = self.confidence_calibrator.calibrate_confidence(response_text, logprobs)
+            # Override the confidence with calibrated value
+            judgment_data["confidence"] = calibration.calibrated_confidence
+            # Add calibration metadata to reward signals
+            judgment_data["reward_signals"]["calibration_quality"] = calibration.quality_score
+            judgment_data["reward_signals"]["uncertainty"] = calibration.uncertainty
+
+        evaluation_time = (datetime.now() - start_time).total_seconds()
+
+        return JudgmentResult(
+            scenario_id=scenario.id,
+            judgment=judgment_data["judgment"],
+            confidence=judgment_data["confidence"],
+            reasoning=judgment_data["reasoning"],
+            improvement_recommendations=judgment_data["improvements"],
+            reward_signals=judgment_data["reward_signals"],
+            evaluation_time=evaluation_time,
+            model_used=model
+        )
+
+    def _build_qa_prompt(self, original_prompt: str, cerebras_response: str, cerebras_judgment: Dict[str, Any]) -> str:
+        """Build QA prompt for Gemini to review Cerebras evaluation."""
+        return f"""You are a Senior Quality Assurance Judge reviewing an AI evaluation for accuracy and completeness.
+
+ORIGINAL EVALUATION TASK:
+{original_prompt}
+
+INITIAL EVALUATION RESPONSE:
+{cerebras_response}
+
+PARSED JUDGMENT:
+- Judgment: {cerebras_judgment.get('judgment', 'unknown')}
+- Confidence: {cerebras_judgment.get('confidence', 0.5)}
+- Reasoning: {cerebras_judgment.get('reasoning', 'No reasoning provided')}
+
+QUALITY ASSURANCE TASK:
+Review the initial evaluation for:
+1. Accuracy of judgment (PASS/FAIL/WARNING)
+2. Completeness of reasoning
+3. Appropriateness of confidence level
+4. Quality of improvement recommendations
+5. Compliance with regulatory requirements
+
+Provide your final judgment in JSON format:
+{{
+    "judgment": "pass|fail|warning",
+    "confidence": 0.0-1.0,
+    "reasoning": "Detailed analysis incorporating QA review",
+    "improvements": ["Specific actionable recommendations"],
+    "reward_signals": {{
+        "accuracy": 0.0-1.0,
+        "completeness": 0.0-1.0,
+        "regulatory_compliance": 0.0-1.0,
+        "recommendation_quality": 0.0-1.0
+    }},
+    "qa_notes": "Quality assurance review notes and corrections"
+}}
+
+CRITICAL: If the initial evaluation missed important compliance issues or made incorrect judgments, override with the correct assessment."""
+
+    def _combine_hybrid_results(self, cerebras_result: Dict[str, Any], gemini_result: Dict[str, Any]) -> Dict[str, Any]:
+        """Combine Cerebras and Gemini results for final judgment."""
+        # Use Gemini's judgment as authoritative (QA override)
+        final_result = gemini_result.copy()
+
+        # Preserve Cerebras speed metadata in reward signals
+        if "reward_signals" not in final_result:
+            final_result["reward_signals"] = {}
+
+        # Add hybrid metadata
+        final_result["reward_signals"]["cerebras_speed"] = 1.0  # Fast initial evaluation
+        final_result["reward_signals"]["gemini_qa"] = 1.0      # Quality assurance applied
+
+        # Combine improvement recommendations
+        cerebras_improvements = cerebras_result.get("improvements", [])
+        gemini_improvements = gemini_result.get("improvements", [])
+
+        # Merge and deduplicate improvements
+        all_improvements = cerebras_improvements + gemini_improvements
+        unique_improvements = list(dict.fromkeys(all_improvements))  # Preserve order, remove duplicates
+        final_result["improvements"] = unique_improvements[:5]  # Limit to top 5
+
+        # Add hybrid reasoning note
+        original_reasoning = final_result.get("reasoning", "")
+        final_result["reasoning"] = f"{original_reasoning}\n\n[Hybrid Evaluation: Cerebras initial assessment + Gemini QA review]"
+
+        return final_result

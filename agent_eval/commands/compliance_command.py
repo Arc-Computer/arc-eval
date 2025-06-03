@@ -36,11 +36,12 @@ class ComplianceCommand:
         quick_start: bool = False,
         high: bool = False,
         provider: Optional[str] = None,
+        hybrid_qa: bool = False,
         verbose: bool = False
     ) -> int:
         """
         Execute compliance evaluation workflow.
-        
+
         Args:
             domain: Evaluation domain (finance, security, ml)
             input_file: Agent outputs to evaluate
@@ -50,11 +51,13 @@ class ComplianceCommand:
             no_interactive: Skip interactive menu for automation
             quick_start: Run with sample data
             high: High accuracy mode (slower, premium models)
+            provider: AI provider (openai, anthropic, google, cerebras)
+            hybrid_qa: Enable hybrid QA mode (Cerebras + Gemini)
             verbose: Enable verbose output
-            
+
         Returns:
             Exit code (0 for success, 1 for failure)
-            
+
         Raises:
             ValueError: If invalid domain or missing required inputs
             FileNotFoundError: If input file doesn't exist
@@ -99,6 +102,7 @@ class ComplianceCommand:
                 no_interactive=no_interactive,  # Pass no_interactive flag
                 high_accuracy=high,  # Pass high accuracy flag
                 provider=provider,  # Pass provider selection
+                hybrid_qa=hybrid_qa,  # Pass hybrid QA flag
                 # Performance tracking for compliance
                 performance=True,
                 timing=True,

@@ -46,6 +46,7 @@ class ComplianceHandler(BaseCommandHandler):
         agent_judge = kwargs.get('agent_judge', False)
         high_accuracy = kwargs.get('high_accuracy', False)
         provider = kwargs.get('provider', None)
+        hybrid_qa = kwargs.get('hybrid_qa', False)
         judge_model = kwargs.get('judge_model', 'claude-3-5-haiku-latest')
         verify = kwargs.get('verify', False)
         confidence_calibration = kwargs.get('confidence_calibration', False)
@@ -160,7 +161,7 @@ class ComplianceHandler(BaseCommandHandler):
         if agent_judge:
             results, improvement_report, performance_metrics, reliability_metrics, learning_metrics = self._run_agent_judge_evaluation(
                 domain, judge_model, verify, performance, reliability, scenario_count,
-                engine, agent_outputs, verbose, dev, agent_judge, batch_mode, high_accuracy, provider
+                engine, agent_outputs, verbose, dev, agent_judge, batch_mode, high_accuracy, provider, hybrid_qa
             )
         else:
             results = self._run_standard_evaluation(
@@ -358,10 +359,10 @@ class ComplianceHandler(BaseCommandHandler):
     def _run_agent_judge_evaluation(self, domain: str, judge_model: str, verify: bool,
                                    performance: bool, reliability: bool, scenario_count: int,
                                    engine: EvaluationEngine, agent_outputs: List[Dict[str, Any]],
-                                   verbose: bool, dev: bool, agent_judge: bool, batch_mode: bool = False, high_accuracy: bool = False, provider: Optional[str] = None) -> tuple:
+                                   verbose: bool, dev: bool, agent_judge: bool, batch_mode: bool = False, high_accuracy: bool = False, provider: Optional[str] = None, hybrid_qa: bool = False) -> tuple:
         """Run Agent-as-a-Judge evaluation with all enhancements."""
         # Use Agent-as-a-Judge evaluation with model preference and accuracy mode
-        agent_judge_instance = AgentJudge(domain=domain, preferred_model=judge_model, high_accuracy=high_accuracy, provider=provider)
+        agent_judge_instance = AgentJudge(domain=domain, preferred_model=judge_model, high_accuracy=high_accuracy, provider=provider, enable_hybrid_qa=hybrid_qa)
         
         # Initialize performance tracking if requested OR for Agent Judge mode (always track performance for judges)
         if performance or agent_judge:

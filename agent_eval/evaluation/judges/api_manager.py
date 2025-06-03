@@ -31,10 +31,11 @@ logger = logging.getLogger(__name__)
 class APIManager:
     """Enterprise API management with cost tracking and fallback."""
     
-    def __init__(self, preferred_model: str = "auto", provider: str = None, high_accuracy: bool = False):
+    def __init__(self, preferred_model: str = "auto", provider: str = None, high_accuracy: bool = False, enable_hybrid_qa: bool = False):
         # Determine provider - default to OpenAI for speed
         self.provider = provider or os.getenv("LLM_PROVIDER", "openai")
         self.high_accuracy = high_accuracy
+        self.enable_hybrid_qa = enable_hybrid_qa
 
         # Initialize provider-specific settings with speed-optimized defaults
         if self.provider == "anthropic":
@@ -67,6 +68,16 @@ class APIManager:
             self.api_key = os.getenv("GEMINI_API_KEY")
             if not self.api_key:
                 raise ValueError("GEMINI_API_KEY environment variable not set")
+        elif self.provider == "cerebras":
+            if high_accuracy:
+                self.primary_model = "llama-3.3-70b"  # High accuracy
+                self.fallback_model = "llama-4-scout-17b-16e-instruct"  # Fast fallback
+            else:
+                self.primary_model = "llama-4-scout-17b-16e-instruct"  # Fast default (~2600 tokens/s)
+                self.fallback_model = "llama-4-scout-17b-16e-instruct"  # Same for consistency
+            self.api_key = os.getenv("CEREBRAS_API_KEY")
+            if not self.api_key:
+                raise ValueError("CEREBRAS_API_KEY environment variable not set")
         else:
             raise ValueError(f"Unsupported provider: {self.provider}")
 
@@ -80,6 +91,8 @@ class APIManager:
             elif self.provider == "openai" and preferred_model in ["gpt-4.1-2025-04-14", "gpt-4.1-mini-2025-04-14"]:
                 self.preferred_model = preferred_model
             elif self.provider == "google" and preferred_model in ["gemini-2.5-flash-preview-05-20", "gemini-2.0-flash-lite", "gemini-2.0-flash-exp"]:
+                self.preferred_model = preferred_model
+            elif self.provider == "cerebras" and preferred_model in ["llama-4-scout-17b-16e-instruct", "llama-3.3-70b"]:
                 self.preferred_model = preferred_model
             else:
                 logger.warning(f"Unknown model {preferred_model} for provider {self.provider}, using auto selection")
@@ -115,6 +128,13 @@ class APIManager:
 
             # Create client with API key
             client = genai.Client(api_key=self.api_key)
+        elif self.provider == "cerebras":
+            try:
+                from cerebras.cloud.sdk import Cerebras
+            except ImportError:
+                raise ImportError("cerebras_cloud_sdk library not installed. Run: pip install cerebras_cloud_sdk")
+
+            client = Cerebras(api_key=self.api_key)
         
         # Model selection logic
         if self.total_cost > self.cost_threshold or not prefer_primary:
@@ -188,6 +208,17 @@ class APIManager:
             else:
                 # Default to flash pricing if unknown
                 cost = (input_tokens * 0.075 + output_tokens * 0.30) / 1_000_000
+        elif self.provider == "cerebras":
+            # Cerebras pricing (January 2025)
+            if "llama-4-scout-17b-16e-instruct" in model:
+                # Llama 4 Scout pricing: $0.65 input / $0.85 output per MTok
+                cost = (input_tokens * 0.65 + output_tokens * 0.85) / 1_000_000
+            elif "llama-3.3-70b" in model:
+                # Llama 3.3 70B pricing: $0.85 input / $1.20 output per MTok
+                cost = (input_tokens * 0.85 + output_tokens * 1.20) / 1_000_000
+            else:
+                # Default to Scout pricing if unknown
+                cost = (input_tokens * 0.65 + output_tokens * 0.85) / 1_000_000
         else:
             cost = 0.0
         
@@ -262,6 +293,7 @@ class APIManager:
                         logprobs = None
 
                 elif self.provider == "google":
+                    # Use the correct 2025 Google GenAI SDK syntax
                     response = client.models.generate_content(
                         model=model,
                         contents=prompt
@@ -269,14 +301,48 @@ class APIManager:
 
                     response_text = response.text
 
-                    # Estimate token counts (Google doesn't provide exact counts in response)
-                    input_tokens = self._count_tokens(prompt)
-                    output_tokens = self._count_tokens(response_text)
+                    # Extract token counts from usage metadata if available
+                    if hasattr(response, 'usage_metadata') and response.usage_metadata:
+                        input_tokens = response.usage_metadata.prompt_token_count or self._count_tokens(prompt)
+                        output_tokens = response.usage_metadata.candidates_token_count or self._count_tokens(response_text)
+                    else:
+                        # Fallback to estimation if usage metadata not available
+                        input_tokens = self._count_tokens(prompt)
+                        output_tokens = self._count_tokens(response_text)
+
                     self.track_cost(input_tokens, output_tokens, model)
 
                     # Google doesn't provide logprobs, use pseudo-logprobs
                     logprobs = self._extract_enhanced_pseudo_logprobs(response_text) if enable_logprobs else None
-                
+
+                elif self.provider == "cerebras":
+                    response = client.chat.completions.create(
+                        model=model,
+                        max_tokens=4000,  # Increased for comprehensive domain analysis
+                        temperature=0.1,
+                        messages=[
+                            {
+                                "role": "user",
+                                "content": prompt
+                            }
+                        ]
+                    )
+
+                    response_text = response.choices[0].message.content
+
+                    # Use actual token counts from API if available, otherwise estimate
+                    if hasattr(response, 'usage') and response.usage:
+                        input_tokens = response.usage.prompt_tokens
+                        output_tokens = response.usage.completion_tokens
+                    else:
+                        input_tokens = self._count_tokens(prompt)
+                        output_tokens = self._count_tokens(response_text)
+
+                    self.track_cost(input_tokens, output_tokens, model)
+
+                    # Cerebras doesn't provide logprobs, use pseudo-logprobs
+                    logprobs = self._extract_enhanced_pseudo_logprobs(response_text) if enable_logprobs else None
+
                 return response_text, logprobs
                 
             except Exception as e:
@@ -810,6 +876,14 @@ class IntelligentBatchOptimizer:
                 return "gpt-4.1-2025-04-14"  # Use full model for complex scenarios
             else:
                 return "gpt-4.1-mini-2025-04-14"  # Cost-efficient for simple scenarios
+
+        elif provider == "cerebras":
+            if complexity == "critical":
+                return "llama-3.3-70b"  # Best quality for critical scenarios
+            elif complexity == "complex":
+                return "llama-3.3-70b"  # Good balance for complex scenarios
+            else:
+                return "llama-4-scout-17b-16e-instruct"  # Fast and cost-efficient for simple scenarios
 
         # Default fallback
         return "claude-3-5-haiku-20241022"
