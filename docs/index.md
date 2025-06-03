@@ -50,6 +50,14 @@ Built for production environments with regulatory requirements:
 
 ## Core Workflows
 
+### Complete Analysis (Recommended Entry Point)
+```bash
+arc-eval analyze --input agent_outputs.json --domain finance
+```
+- **Unified workflow**: Chains debug → compliance → improve automatically
+- **Guided experience**: Interactive menus for next steps
+- **Single command**: Complete Arc Loop execution
+
 ### 1. Debug: "Why is my agent failing?"
 ```bash
 arc-eval debug --input agent_outputs.json

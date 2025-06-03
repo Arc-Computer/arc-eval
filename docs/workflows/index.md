@@ -172,19 +172,24 @@ arc-eval improve --from-evaluation results.json --export pdf
 
 ## Workflow Combinations
 
-### Complete Analysis Workflow
+### Complete Analysis Workflow (Recommended)
 
-Run all three workflows in sequence with guided transitions:
+**The `analyze` command is the recommended entry point** that executes the entire Arc Loop automatically:
 
 ```bash
 arc-eval analyze --input outputs.json --domain finance
 ```
 
-This command:
-1. Runs debug analysis
-2. Performs compliance checking
-3. Generates improvement recommendations
-4. Provides interactive menus for next steps
+This unified command:
+1. **🔍 Debug Analysis**: Reliability prediction and failure pattern detection
+2. **✅ Compliance Check**: Tests against 378 enterprise scenarios
+3. **📈 Improvement Plan**: Generates actionable fixes and recommendations
+4. **🎯 Unified Menu**: Provides guided next steps for continuous improvement
+
+**Key Benefits**:
+- **Single Command**: Complete workflow in one execution
+- **Guided Experience**: Interactive menus guide you through next steps
+- **Automation Ready**: Use `--no-interactive` for CI/CD pipelines
 
 ### Automated CI/CD Workflow
 

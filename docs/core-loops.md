@@ -218,6 +218,13 @@ Static Domain Knowledge → Dynamic Learning → Performance Analysis → Adapti
 
 ### 1. Start the Arc Loop
 
+**Option A: Complete Workflow (Recommended)**
+```bash
+# Execute the entire Arc Loop in one command
+arc-eval analyze --input your_agent_outputs.json --domain finance
+```
+
+**Option B: Step-by-Step Workflow**
 ```bash
 # Begin with debug analysis
 arc-eval debug --input your_agent_outputs.json
@@ -255,6 +262,38 @@ arc-eval improve --baseline v1_results.json --current v2_results.json
 ```bash
 # Automated continuous improvement
 arc-eval analyze --input outputs.json --domain finance --no-interactive
+```
+
+## The Analyze Command - One Command, Complete Loop
+
+The `analyze` command is the **recommended entry point** that executes the entire Arc Loop automatically:
+
+```bash
+arc-eval analyze --input outputs.json --domain finance
+```
+
+**What It Does Automatically**:
+1. **🔍 Debug Analysis**: Reliability prediction and failure pattern detection
+2. **✅ Compliance Check**: Tests against 378 enterprise scenarios
+3. **📈 Improvement Plan**: Generates actionable fixes and recommendations
+4. **🎯 Unified Menu**: Provides guided next steps for continuous improvement
+
+**Key Benefits**:
+- **Single Command**: Complete workflow in one execution
+- **Guided Experience**: Interactive menus guide you through next steps
+- **Automation Ready**: Use `--no-interactive` for CI/CD pipelines
+- **Domain Focused**: Tailored analysis for finance, security, or ML domains
+
+**Usage Patterns**:
+```bash
+# First-time evaluation (interactive)
+arc-eval analyze --input outputs.json --domain finance
+
+# CI/CD automation (non-interactive)
+arc-eval analyze --input outputs.json --domain security --no-interactive
+
+# Quick analysis (skip agent-judge for speed)
+arc-eval analyze --input outputs.json --domain ml --quick
 ```
 
 ## Complete Arc Loop Example

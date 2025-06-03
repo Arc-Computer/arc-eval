@@ -14,6 +14,49 @@ arc-eval <command> --help  # Show command-specific help
 
 ## Core Commands
 
+### `analyze` - Complete Workflow (Recommended Entry Point)
+
+**The unified analysis workflow that chains debug → compliance → improve.**
+
+This is the **recommended entry point** for comprehensive agent evaluation, providing a complete end-to-end analysis in a single command.
+
+```bash
+arc-eval analyze --input <file> --domain <domain> [options]
+```
+
+**Required Arguments:**
+- `--input <file>`: Agent output file (JSON format)
+- `--domain <domain>`: Evaluation domain (`finance`, `security`, `ml`)
+
+**Optional Arguments:**
+- `--quick`: Quick analysis without agent-judge (faster, offline)
+- `--no-interactive`: Skip interactive menu for automation
+- `--verbose`: Enable verbose output
+
+**What It Does:**
+1. **🔍 Debug Analysis**: Identifies reliability issues and failure patterns
+2. **✅ Compliance Check**: Tests against 378 enterprise scenarios
+3. **📈 Improvement Plan**: Generates actionable fixes and recommendations
+4. **🎯 Unified Menu**: Provides guided next steps and workflow options
+
+**Examples:**
+```bash
+# Complete analysis workflow (recommended)
+arc-eval analyze --input outputs.json --domain finance
+
+# Quick analysis for CI/CD pipelines
+arc-eval analyze --input outputs.json --domain security --quick --no-interactive
+
+# Verbose analysis for troubleshooting
+arc-eval analyze --input outputs.json --domain ml --verbose
+```
+
+**When to Use:**
+- **First-time evaluation**: Best starting point for new users
+- **Complete assessment**: When you need comprehensive analysis
+- **Workflow automation**: Single command for CI/CD integration
+- **Regular monitoring**: Periodic agent health checks
+
 ### `debug` - Find What's Broken
 
 Analyze agent outputs to identify reliability issues and predict failure patterns.
@@ -141,34 +184,7 @@ arc-eval improve --from-evaluation results.json --framework-specific --code-exam
 arc-eval improve --from-evaluation results.json --cross-framework-solutions
 ```
 
-### `analyze` - Complete Workflow
 
-Run the complete debug → compliance → improve workflow in sequence.
-
-```bash
-arc-eval analyze --input <file> --domain <domain> [options]
-```
-
-**Required Arguments:**
-- `--input <file>`: Agent output file
-- `--domain <domain>`: Evaluation domain (`finance`, `security`, `ml`)
-
-**Optional Arguments:**
-- `--quick`: Quick analysis without agent-judge
-- `--no-interactive`: Skip interactive menu for automation
-- `--verbose`: Enable verbose output
-
-**Examples:**
-```bash
-# Complete analysis workflow
-arc-eval analyze --input outputs.json --domain finance
-
-# Automated analysis for CI/CD
-arc-eval analyze --input outputs.json --domain security --no-interactive
-
-# Quick analysis without agent-judge
-arc-eval analyze --input outputs.json --domain ml --quick
-```
 
 ## Utility Commands
 
