@@ -172,7 +172,40 @@ class CognitiveAnalyzer:
         }
     
     def analyze_planning_effectiveness(self, agent_outputs: List[Any]) -> Dict[str, Any]:
-        """Comprehensive planning analysis."""
+        """Analyze planning effectiveness in agent outputs.
+        
+        For enhanced analysis, use DebugJudge.analyze_cognitive_patterns().
+        Provides basic analysis for backward compatibility.
+        """
+        
+        try:
+            # Use DebugJudge for cognitive analysis
+            from agent_eval.evaluation.judges.workflow.debug import DebugJudge
+            from agent_eval.evaluation.judges.api_manager import APIManager
+            
+            api_manager = APIManager(provider="cerebras")
+            debug_judge = DebugJudge(api_manager)
+            
+            # Analyze cognitive patterns with judge
+            judge_analysis = debug_judge.analyze_cognitive_patterns(agent_outputs, "planning")
+            
+            # Convert to expected format - align with DebugJudge output keys
+            return {
+                "planning_coherence_score": judge_analysis.get("reasoning_coherence", 0.7),
+                "goal_alignment_score": judge_analysis.get("cognitive_quality_score", 0.7),
+                "strategic_thinking_score": judge_analysis.get("reflection_depth", 0.7),
+                "adaptation_capability_score": judge_analysis.get("self_correction_capability", 0.7),
+                "planning_issues": judge_analysis.get("insights", [])[:3] if judge_analysis.get("overconfidence_indicators") else [],
+                "planning_strengths": judge_analysis.get("insights", [])[:3] if not judge_analysis.get("circular_reasoning_detected") else [],
+                "total_outputs_analyzed": len(agent_outputs),
+                "judge_enhanced": True,
+                "confidence": judge_analysis.get("cognitive_quality_score", 0.8)
+            }
+            
+        except Exception:
+            # Fallback to legacy analysis
+            pass
+        
         planning_analysis = {
             "planning_coherence_score": 0.0,
             "goal_alignment_score": 0.0,

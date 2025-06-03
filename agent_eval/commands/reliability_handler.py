@@ -617,15 +617,42 @@ class ReliabilityHandler(BaseCommandHandler):
         return None
 
     def _execute_comprehensive_analysis(self, agent_outputs, framework, analysis_context, dev):
-        """Execute comprehensive reliability analysis with enhanced error handling."""
+        """Execute comprehensive reliability analysis with optional AI judge enhancement."""
         try:
             from agent_eval.evaluation.reliability_validator import ReliabilityAnalyzer
 
             analyzer = ReliabilityAnalyzer()
-            analysis = analyzer.generate_comprehensive_analysis(
-                agent_outputs=agent_outputs,
-                framework=framework
-            )
+            
+            # Determine if AI judge enhancement should be used
+            enable_judge_analysis = analysis_context.get('enable_judge', True)
+            debug_agent = analysis_context.get('debug_agent', False)
+            unified_debug = analysis_context.get('unified_debug', False)
+            
+            # Use judge-enhanced analysis for debug workflows
+            if (debug_agent or unified_debug) and enable_judge_analysis:
+                try:
+                    analysis = analyzer.generate_comprehensive_analysis_with_judge(
+                        agent_outputs=agent_outputs,
+                        framework=framework,
+                        enable_judge_analysis=True
+                    )
+                    
+                    # Add judge analysis indicator
+                    console.print("🧠 [bold cyan]AI-Powered Analysis Enhanced[/bold cyan] (Debug Judge Active)")
+                    
+                except Exception as e:
+                    # Graceful fallback to standard analysis
+                    self.logger.warning(f"Judge enhancement failed, using standard analysis: {e}")
+                    analysis = analyzer.generate_comprehensive_analysis(
+                        agent_outputs=agent_outputs,
+                        framework=framework
+                    )
+            else:
+                # Use standard analysis
+                analysis = analyzer.generate_comprehensive_analysis(
+                    agent_outputs=agent_outputs,
+                    framework=framework
+                )
 
             # Display comprehensive analysis
             console.print(analysis.reliability_dashboard)
