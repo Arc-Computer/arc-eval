@@ -52,7 +52,7 @@ class ComplianceCommand:
             quick_start: Run with sample data
             high: High accuracy mode (slower, premium models)
             provider: AI provider (openai, anthropic, google, cerebras)
-            hybrid_qa: Enable hybrid QA mode (Cerebras + Gemini)
+            hybrid_qa: Enable hybrid QA mode (Cerebras primary + Gemini QA for speed + quality)
             verbose: Enable verbose output
 
         Returns:

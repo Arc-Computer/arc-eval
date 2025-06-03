@@ -9,6 +9,7 @@ from abc import ABC, abstractmethod
 from typing import Dict, List, Optional, Any, Tuple
 from dataclasses import dataclass
 from datetime import datetime
+from contextlib import contextmanager
 
 from agent_eval.core.types import EvaluationResult, EvaluationScenario, AgentOutput, VerificationSummary, BiasMetrics
 
@@ -262,6 +263,29 @@ class BaseJudge(ABC):
             evaluation_time=0.0,
             model_used="unknown"
         )
+
+    @contextmanager
+    def _api_manager_context(self, provider: str, primary_model: str, preferred_model: str, api_key: str):
+        """Thread-safe context manager for temporarily switching API manager configuration."""
+        # Save original state
+        original_provider = self.api_manager.provider
+        original_model = self.api_manager.primary_model
+        original_preferred_model = self.api_manager.preferred_model
+        original_api_key = self.api_manager.api_key
+
+        try:
+            # Apply temporary state
+            self.api_manager.provider = provider
+            self.api_manager.primary_model = primary_model
+            self.api_manager.preferred_model = preferred_model
+            self.api_manager.api_key = api_key
+            yield
+        finally:
+            # Restore original state
+            self.api_manager.provider = original_provider
+            self.api_manager.primary_model = original_model
+            self.api_manager.preferred_model = original_preferred_model
+            self.api_manager.api_key = original_api_key
     
     @abstractmethod
     def _build_prompt(self, agent_output: AgentOutput, scenario: EvaluationScenario) -> str:
@@ -328,33 +352,20 @@ class BaseJudge(ABC):
             # Create QA prompt for Gemini
             qa_prompt = self._build_qa_prompt(prompt, response_text, judgment_data)
 
-            # Switch to Gemini for QA
-            original_provider = self.api_manager.provider
-            original_model = self.api_manager.primary_model
-            original_preferred_model = self.api_manager.preferred_model
-            original_api_key = self.api_manager.api_key
-
-            try:
-                # Temporarily switch to Gemini
-                import os
-                self.api_manager.provider = "google"
-                self.api_manager.primary_model = "gemini-2.5-flash-preview-05-20"
-                self.api_manager.preferred_model = "gemini-2.5-flash-preview-05-20"
-                self.api_manager.api_key = os.getenv("GEMINI_API_KEY")
-
+            # Use context manager for thread-safe provider switching
+            import os
+            with self._api_manager_context(
+                provider="google",
+                primary_model="gemini-2.5-flash-preview-05-20",
+                preferred_model="gemini-2.5-flash-preview-05-20",
+                api_key=os.getenv("GEMINI_API_KEY")
+            ):
                 qa_response, _ = self.api_manager.call_with_logprobs(qa_prompt, enable_logprobs=False)
                 qa_judgment_data = self._parse_response(qa_response)
 
                 # Combine results: use QA judgment but preserve Cerebras speed metadata
                 final_judgment_data = self._combine_hybrid_results(judgment_data, qa_judgment_data)
                 model_used = f"{model} + gemini-2.5-flash (QA)"
-
-            finally:
-                # Restore original provider
-                self.api_manager.provider = original_provider
-                self.api_manager.primary_model = original_model
-                self.api_manager.preferred_model = original_preferred_model
-                self.api_manager.api_key = original_api_key
         else:
             logger.info(f"Cerebras confidence sufficient: {initial_confidence:.2f}")
             final_judgment_data = judgment_data

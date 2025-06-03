@@ -38,7 +38,22 @@ class ComplianceHandler(BaseCommandHandler):
             return 1
     
     def _handle_domain_evaluation(self, **kwargs) -> int:
-        """Handle standard domain evaluation with compliance scenarios."""
+        """
+        Handle standard domain evaluation with compliance scenarios.
+
+        Args:
+            **kwargs: Evaluation parameters including:
+                - domain: Evaluation domain (finance, security, ml)
+                - input_file: Agent outputs to evaluate
+                - high_accuracy: Enable high accuracy mode with premium models
+                - provider: AI provider (openai, anthropic, google, cerebras)
+                - hybrid_qa: Enable hybrid QA mode (Cerebras + Gemini for speed + quality)
+                - verbose: Enable verbose output
+                - Other workflow parameters
+
+        Returns:
+            Exit code (0 for success, 1 for failure)
+        """
         domain = kwargs.get('domain')
         input_file = kwargs.get('input_file')
         stdin = kwargs.get('stdin', False)
