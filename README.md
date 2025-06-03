@@ -338,6 +338,8 @@ graph LR
 > - [Prediction System](./docs/prediction/) - Hybrid reliability prediction framework
 > - [Framework Integration](./docs/frameworks/) - Support for 10+ agent frameworks
 > - [API Reference](./docs/api/) - Complete Python SDK documentation
+> - [Testing Guide](./docs/testing/) - Comprehensive testing methodology and validation
+> - [Troubleshooting Guide](./docs/troubleshooting.md) - Common issues, solutions, and optimization
 > - [Enterprise Integration](./docs/enterprise/integration.md) - CI/CD pipeline integration
 >
 > **🔧 Practical Examples**: Explore [`examples/`](./examples/) for:
