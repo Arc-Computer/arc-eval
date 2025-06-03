@@ -734,7 +734,7 @@ async def serve_home():
             
             // WebSocket connection for real-time updates
             function connectWebSocket(analysisId) {
-                const wsUrl = `ws://localhost:${window.location.port}/ws/analysis/${analysisId}`;
+                const wsUrl = `ws://${window.location.hostname}:${window.location.port}/ws/analysis/${analysisId}`;
                 websocket = new WebSocket(wsUrl);
                 
                 websocket.onopen = () => {
