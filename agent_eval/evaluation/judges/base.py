@@ -354,17 +354,34 @@ class BaseJudge(ABC):
         initial_confidence = judgment_data.get("confidence", 0.5)
         is_critical_domain = getattr(scenario, 'severity', 'medium') == 'critical'
 
-        # Step 2: Determine if QA routing is needed
-        confidence_threshold = 0.9
+        # Step 2: Determine if QA routing is needed with adaptive thresholds
+        # Load configuration-based thresholds
+        from agent_eval.core.config import get_confidence_thresholds, get_cost_protection, get_performance_protection
 
-        # Add cost circuit breaker - skip QA if cost threshold exceeded
-        cost_threshold_exceeded = self.api_manager.total_cost > (self.api_manager.cost_threshold * 0.8)  # 80% of limit
+        confidence_config = get_confidence_thresholds()
+        cost_config = get_cost_protection()
+        performance_config = get_performance_protection()
+
+        # Adaptive threshold based on domain criticality and failure patterns
+        if is_critical_domain:
+            confidence_threshold = confidence_config.critical_domain_threshold
+        elif judgment_data.get("judgment") == "fail":
+            confidence_threshold = confidence_config.failure_threshold
+        else:
+            confidence_threshold = confidence_config.base_threshold
+
+        # Add cost circuit breaker using configuration
+        cost_threshold_exceeded = self.api_manager.total_cost > (self.api_manager.cost_threshold * cost_config.qa_skip_threshold)
 
         needs_qa = (
             initial_confidence < confidence_threshold or
             is_critical_domain or
             judgment_data.get("judgment") == "fail"
         ) and not cost_threshold_exceeded  # Skip QA if cost limit approaching
+
+        # Log confidence routing decision for post-launch analysis
+        logger.info(f"Confidence routing: {initial_confidence:.2f} vs {confidence_threshold:.2f} threshold, "
+                   f"critical={is_critical_domain}, judgment={judgment_data.get('judgment')}, qa_needed={needs_qa}")
 
         # Create performance metrics dictionary
         performance_metrics = {
@@ -381,8 +398,8 @@ class BaseJudge(ABC):
             # Create QA prompt for Gemini
             qa_prompt = self._build_qa_prompt(prompt, response_text, judgment_data)
 
-            # Add performance circuit breaker - skip QA if Cerebras was too slow
-            if cerebras_evaluation_time > 10.0:  # If Cerebras took >10s, skip QA to prevent timeout
+            # Add performance circuit breaker using configuration
+            if cerebras_evaluation_time > performance_config.max_cerebras_time:
                 logger.warning(f"Cerebras evaluation took {cerebras_evaluation_time:.1f}s - skipping QA to prevent timeout")
                 final_judgment_data = judgment_data
                 final_judgment_data["reasoning"] += "\n[QA skipped due to performance constraints]"
@@ -415,6 +432,23 @@ class BaseJudge(ABC):
             model_used = model
 
         evaluation_time = (datetime.now() - start_time).total_seconds()
+
+        # Collect confidence calibration data for post-launch analysis
+        calibration_data = {
+            "cerebras_confidence": initial_confidence,
+            "cerebras_judgment": judgment_data.get("judgment"),
+            "final_confidence": final_judgment_data["confidence"],
+            "final_judgment": final_judgment_data["judgment"],
+            "qa_applied": needs_qa and not cost_threshold_exceeded,
+            "confidence_threshold_used": confidence_threshold,
+            "scenario_severity": getattr(scenario, 'severity', 'medium'),
+            "timestamp": datetime.now().isoformat()
+        }
+
+        # Add calibration data to reward signals for analysis
+        if "reward_signals" not in final_judgment_data:
+            final_judgment_data["reward_signals"] = {}
+        final_judgment_data["reward_signals"]["confidence_calibration"] = calibration_data
 
         return JudgmentResult(
             scenario_id=scenario.id,
