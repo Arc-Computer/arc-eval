@@ -661,10 +661,15 @@ class ResultRenderer:
         # Scaling projections
         if scenarios_per_sec > 0 and result_count > 0:
             console.print(f"\n[bold blue]📊 Scaling Projections[/bold blue]")
-            console.print(f"• 100 scenarios: ~{100 / scenarios_per_sec:.1f}s")
-            console.print(f"• 1,000 scenarios: ~{1000 / scenarios_per_sec:.1f}s")
+            # Calculate scaling projections safely
+            time_100 = (100 / scenarios_per_sec) if scenarios_per_sec > 0 else 0
+            time_1000 = (1000 / scenarios_per_sec) if scenarios_per_sec > 0 else 0
+            time_10000_min = (10000 / scenarios_per_sec / 60) if scenarios_per_sec > 0 else 0
+
+            console.print(f"• 100 scenarios: ~{time_100:.1f}s")
+            console.print(f"• 1,000 scenarios: ~{time_1000:.1f}s")
             if scenarios_per_sec >= 1:
-                console.print(f"• 10,000 scenarios: ~{10000 / scenarios_per_sec / 60:.1f} minutes")
+                console.print(f"• 10,000 scenarios: ~{time_10000_min:.1f} minutes")
     
     def display_test_harness_results(self, results: Any) -> None:
         """Display test harness results with enterprise-quality UI."""
