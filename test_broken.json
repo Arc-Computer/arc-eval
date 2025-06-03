@@ -1,7 +1,0 @@
-{
-  "output": "This JSON has syntax errors"
-  "missing_comma": true,
-  "extra_comma": "value",,,
-  "unclosed_string: "this string is not closed
-  }
-}

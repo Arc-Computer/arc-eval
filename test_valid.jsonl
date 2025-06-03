@@ -1,3 +1,0 @@
-{"output": "First agent response about customer verification", "metadata": {"framework": "openai", "success": true}}
-{"output": "Second agent response with tool call", "metadata": {"framework": "openai", "tool_calls": [{"name": "verify_identity", "result": "passed"}]}}
-{"output": "Third agent response with error", "metadata": {"framework": "openai", "success": false, "error": "timeout"}}

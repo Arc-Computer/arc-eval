@@ -1,6 +1,0 @@
-This is a plain text file that should be rejected by the web interface.
-It contains some agent output data but is not in JSON format:
-
-Agent Output 1: "Hello, I can help you with financial analysis."
-Agent Output 2: "I've processed the transaction successfully."
-Agent Output 3: "Error: API timeout occurred."
