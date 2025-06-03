@@ -294,6 +294,5 @@ pytest tests/ -v --tb=short
 ## Next Steps
 
 - [Troubleshooting Guide](../troubleshooting.md) - Common issues and solutions
-- [Performance Optimization](../performance/) - Advanced optimization techniques
 - [CI/CD Integration](../enterprise/integration.md) - Production deployment patterns
 - [API Reference](../api/) - Programmatic testing approaches
