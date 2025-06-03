@@ -7,6 +7,7 @@ ARC-Eval is a CLI-native platform that helps developers debug, validate, and imp
 ## Quick Navigation
 
 ### 🚀 Getting Started
+- [🔄 **Core Product Loops**](core-loops.md) - **The Arc Loop & Data Flywheel** (Essential!)
 - [Installation & Quick Start](quickstart.md) - Get running in 5 minutes
 - [Core Concepts](concepts.md) - Understanding reliability prediction
 - [CLI Reference](cli-reference.md) - Complete command documentation

@@ -13,6 +13,8 @@ Failures     Requirements  Performance
 
 This continuous loop enables **predictive failure prevention** rather than reactive debugging, reducing debugging time from 4+ hours to 5 minutes and preventing $250K+ compliance violations.
 
+> **📖 Complete Guide**: See [Core Product Loops](../core-loops.md) for detailed step-by-step instructions on implementing **The Arc Loop** and **Data Flywheel** in your development workflow.
+
 ## Core Value Proposition
 
 **Traditional Approach**: React to failures after they occur
