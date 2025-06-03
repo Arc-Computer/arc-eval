@@ -308,6 +308,8 @@ graph LR
 4.  **Improve:** Based on the findings, ARC-Eval generates prioritized fixes and an improvement plan, then prompts re-evaluation.
 5.  **Re-evaluate:** Test the suggested improvements. The new performance data feeds back into the loop, enabling continuous refinement.
 
+> **📖 Complete Implementation Guide**: See [Core Product Loops Documentation](./docs/core-loops.md) for detailed step-by-step instructions on implementing The Arc Loop and Data Flywheel in your development workflow.
+
 ---
 
 🔄 ARC-Eval Data Flywheel: Complete End-to-End Flow
@@ -328,7 +330,20 @@ graph LR
 <details>
 <summary><strong>Show Examples & Integrations</strong></summary>
 
-> Explore more in [`examples/`](./examples/) and [`docs/`](./docs/).
+> **📚 Complete Documentation**: See [`docs/`](./docs/) for comprehensive guides including:
+> - [🔄 Core Product Loops](./docs/core-loops.md) - **The Arc Loop & Data Flywheel** (Essential!)
+> - [Quick Start Guide](./docs/quickstart.md) - Get running in 5 minutes
+> - [Workflows Guide](./docs/workflows/) - Debug, compliance, and improvement workflows
+> - [Prediction System](./docs/prediction/) - Hybrid reliability prediction framework
+> - [Framework Integration](./docs/frameworks/) - Support for 10+ agent frameworks
+> - [API Reference](./docs/api/) - Complete Python SDK documentation
+> - [Enterprise Integration](./docs/enterprise/integration.md) - CI/CD pipeline integration
+>
+> **🔧 Practical Examples**: Explore [`examples/`](./examples/) for:
+> - Framework-specific integration examples
+> - CI/CD pipeline templates
+> - Sample agent outputs and configurations
+> - Prediction testing and validation
 
 </details>
 

@@ -73,7 +73,6 @@ retraining_data/
 experiments/research/outputs/
 
 # Internal documentation (not for public release)
-docs/
 .claude/
 CLAUDE.md
 PROJECT_OVERVIEW.md
