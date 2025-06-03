@@ -440,6 +440,5 @@ For enterprise deployments:
 ## Next Steps
 
 - [Testing Guide](testing/) - Comprehensive testing methodology
-- [Performance Guide](performance/) - Advanced optimization techniques
 - [API Reference](api/) - Programmatic usage patterns
 - [Enterprise Integration](enterprise/) - Production deployment guides
