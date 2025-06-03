@@ -627,9 +627,12 @@ class ResultRenderer:
         else:
             throughput_str = f"{data_per_sec / (1024 * 1024):.1f} MB/s"
         
+        # Calculate average time per scenario safely
+        avg_time_ms = (evaluation_time / result_count * 1000) if result_count > 0 else 0
+
         perf_table.add_row(
             "📈 Data Throughput:", f"[bold]{throughput_str}[/bold]",
-            "🎯 Avg Time/Scenario:", f"[bold]{evaluation_time / result_count * 1000:.1f}ms[/bold]"
+            "🎯 Avg Time/Scenario:", f"[bold]{avg_time_ms:.1f}ms[/bold]"
         )
         
         console.print(perf_table)
@@ -656,7 +659,7 @@ class ResultRenderer:
             console.print(f"  • {rec}")
         
         # Scaling projections
-        if scenarios_per_sec > 0:
+        if scenarios_per_sec > 0 and result_count > 0:
             console.print(f"\n[bold blue]📊 Scaling Projections[/bold blue]")
             console.print(f"• 100 scenarios: ~{100 / scenarios_per_sec:.1f}s")
             console.print(f"• 1,000 scenarios: ~{1000 / scenarios_per_sec:.1f}s")

@@ -190,7 +190,8 @@ class ComplianceHandler(BaseCommandHandler):
         # Show immediate results summary
         console.print(f"\n[green]✅ Evaluation completed successfully![/green]")
         evaluation_time = time.time() - start_time
-        console.print(f"[dim]Processed {len(results)} scenarios in {evaluation_time:.2f} seconds[/dim]")
+        result_count = len(results) if results else 0
+        console.print(f"[dim]Processed {result_count} scenarios in {evaluation_time:.2f} seconds[/dim]")
         
         if verbose:
             # Use judgment field for Agent Judge results, passed field for standard results
