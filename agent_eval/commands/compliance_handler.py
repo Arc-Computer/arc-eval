@@ -62,7 +62,16 @@ class ComplianceHandler(BaseCommandHandler):
         high_accuracy = kwargs.get('high_accuracy', False)
         provider = kwargs.get('provider', None)
         hybrid_qa = kwargs.get('hybrid_qa', False)
-        judge_model = kwargs.get('judge_model', 'claude-3-5-haiku-latest')
+        # Auto-select appropriate model based on provider
+        default_judge_model = 'claude-3-5-haiku-latest'
+        if provider == 'cerebras':
+            default_judge_model = 'llama-4-scout-17b-16e-instruct'
+        elif provider == 'openai':
+            default_judge_model = 'gpt-4.1-mini-2025-04-14'
+        elif provider == 'google':
+            default_judge_model = 'gemini-2.5-flash-preview-05-20'
+
+        judge_model = kwargs.get('judge_model', default_judge_model)
         verify = kwargs.get('verify', False)
         confidence_calibration = kwargs.get('confidence_calibration', False)
         performance = kwargs.get('performance', False)
