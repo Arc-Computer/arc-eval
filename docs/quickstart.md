@@ -305,12 +305,44 @@ echo '[{"output": "test"}]' > test.json
 python -m json.tool your_file.json
 ```
 
-### No API Key (for Agent-as-Judge evaluation)
+### API Configuration
+
+ARC-Eval supports multiple AI providers for Agent-as-a-Judge evaluation:
+
+**Anthropic Claude (Recommended)**
 ```bash
-# Set your API key for enhanced evaluation
-export ANTHROPIC_API_KEY="your-key-here"
-# or
-export OPENAI_API_KEY="your-key-here"
+export ANTHROPIC_API_KEY="your-anthropic-key"
+export LLM_PROVIDER="anthropic"  # Optional: defaults to anthropic
+```
+
+**OpenAI GPT**
+```bash
+export OPENAI_API_KEY="your-openai-key"
+export LLM_PROVIDER="openai"
+```
+
+**Google Gemini**
+```bash
+export GEMINI_API_KEY="your-gemini-key"
+export LLM_PROVIDER="google"
+```
+
+**Optional Configuration**
+```bash
+# Cost optimization
+export AGENT_EVAL_COST_THRESHOLD="10.0"  # Switch to cheaper model after $10
+export AGENT_EVAL_BATCH_MODE="true"      # Enable batch processing
+
+# Model selection (overrides defaults)
+export ANTHROPIC_MODEL="claude-3-5-haiku-20241022"  # Fast default
+export OPENAI_MODEL="gpt-4.1-mini-2025-04-14"      # Fast default
+```
+
+**Using .env File**
+```bash
+# Copy example configuration
+cp .env.example .env
+# Edit .env with your API keys
 ```
 
 You're now ready to start evaluating your agents with ARC-Eval! 🚀

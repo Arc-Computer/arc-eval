@@ -591,6 +591,82 @@ if __name__ == "__main__":
     main()
 ```
 
+## Advanced Features
+
+### Cognitive Analysis
+
+Advanced cognitive pattern analysis for agent reasoning:
+
+```python
+from agent_eval.analysis.cognitive_analyzer import CognitiveAnalyzer
+
+analyzer = CognitiveAnalyzer()
+
+# Comprehensive cognitive analysis
+analysis = analyzer.analyze_comprehensive_cognitive_patterns(
+    agent_outputs=outputs,
+    reasoning_chains=reasoning_data
+)
+
+print(f"Cognitive Health Score: {analysis.cognitive_health_score}")
+print(f"Planning Effectiveness: {analysis.planning_analysis}")
+print(f"Metacognitive Awareness: {analysis.metacognitive_awareness_score}")
+```
+
+### Framework Intelligence
+
+Cross-framework learning and optimization insights:
+
+```python
+from agent_eval.core.framework_intelligence import FrameworkIntelligence
+
+intelligence = FrameworkIntelligence()
+
+# Get framework-specific insights
+insights = intelligence.analyze_framework_specific_context(trace_data)
+
+# Get cross-framework learning opportunities
+cross_insights = intelligence.get_cross_framework_insights(
+    source_framework="langchain",
+    patterns=failure_patterns
+)
+```
+
+### Bias Detection
+
+Comprehensive bias detection and analysis:
+
+```python
+from agent_eval.evaluation.bias_detection import BasicBiasDetection
+
+bias_detector = BasicBiasDetection()
+
+# Detect various types of bias
+length_bias = bias_detector.detect_length_bias(judgments, outputs)
+style_bias = bias_detector.detect_style_bias(judgments, outputs)
+
+print(f"Length Bias Score: {length_bias.score}")
+print(f"Style Bias Severity: {style_bias.severity}")
+```
+
+### Confidence Calibration
+
+Confidence scoring and calibration:
+
+```python
+from agent_eval.evaluation.confidence_calibrator import ConfidenceCalibrator
+
+calibrator = ConfidenceCalibrator()
+
+# Calibrate confidence scores
+calibrated_score = calibrator.calibrate_confidence(
+    raw_confidence=0.85,
+    context=evaluation_context
+)
+
+print(f"Calibrated Confidence: {calibrated_score}")
+```
+
 ## Next Steps
 
 - [Framework Integration](../frameworks/) - Framework-specific SDK usage

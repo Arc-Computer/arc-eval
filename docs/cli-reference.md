@@ -186,6 +186,62 @@ arc-eval improve --from-evaluation results.json --cross-framework-solutions
 
 
 
+### `benchmark` - Benchmark Evaluation
+
+Run benchmark evaluations and quick start demos.
+
+```bash
+arc-eval benchmark [options]
+```
+
+**Optional Arguments:**
+- `--benchmark <name>`: Benchmark to run (mmlu, humeval, gsm8k)
+- `--quick-start`: Run quick start demo with sample data
+- `--validate`: Validate benchmark configuration
+- `--export <format>`: Export format (pdf, csv, json)
+
+**Examples:**
+```bash
+# Quick start demo
+arc-eval benchmark --quick-start
+
+# Run specific benchmark
+arc-eval benchmark --benchmark mmlu
+
+# Validate configuration
+arc-eval benchmark --validate
+```
+
+### `reliability` - Reliability Analysis
+
+Analyze agent reliability and workflow patterns.
+
+```bash
+arc-eval reliability [options]
+```
+
+**Optional Arguments:**
+- `--input <file>`: Agent outputs to analyze
+- `--framework <name>`: Agent framework (auto-detected if not specified)
+- `--schema-validation`: Enable schema validation analysis
+- `--workflow-reliability`: Enable workflow reliability analysis
+- `--debug-agent`: Enable agent debugging mode
+- `--unified-debug`: Enable unified debugging workflow
+- `--verbose`: Enable verbose output
+- `--dev`: Enable development mode
+
+**Examples:**
+```bash
+# Basic reliability analysis
+arc-eval reliability --input outputs.json
+
+# Workflow reliability analysis
+arc-eval reliability --input outputs.json --workflow-reliability
+
+# Schema validation
+arc-eval reliability --input outputs.json --schema-validation
+```
+
 ## Utility Commands
 
 ### `export-guide` - Learn Output Formats
