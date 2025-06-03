@@ -93,7 +93,7 @@ class ComplianceCommand:
                 input_file=input_file,
                 stdin=stdin_detected,  # Pass stdin detection flag
                 quick_start=quick_start,
-                agent_judge=not quick_start,  # Disable agent-judge for quick-start to speed up demo
+                agent_judge=True,  # Enable agent-judge for all modes (quick-start uses sample data)
                 export=export,
                 format_template='compliance',  # Use compliance template
                 workflow=True,  # Enable workflow mode
