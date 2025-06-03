@@ -60,7 +60,7 @@ class APIManager:
                 raise ValueError("OPENAI_API_KEY environment variable not set")
         elif self.provider == "google":
             if high_accuracy:
-                self.primary_model = "gemini-2.0-flash-exp"  # High accuracy
+                self.primary_model = "gemini-2.5-pro-preview-05-06"  # High accuracy
                 self.fallback_model = "gemini-2.5-flash-preview-05-20"  # Fast fallback
             else:
                 self.primary_model = "gemini-2.5-flash-preview-05-20"  # Fast default
@@ -90,7 +90,7 @@ class APIManager:
                 self.preferred_model = preferred_model
             elif self.provider == "openai" and preferred_model in ["gpt-4.1-2025-04-14", "gpt-4.1-mini-2025-04-14"]:
                 self.preferred_model = preferred_model
-            elif self.provider == "google" and preferred_model in ["gemini-2.5-flash-preview-05-20", "gemini-2.0-flash-lite", "gemini-2.0-flash-exp"]:
+            elif self.provider == "google" and preferred_model in ["gemini-2.5-flash-preview-05-20", "gemini-2.0-flash-lite", "gemini-2.5-pro-preview-05-06"]:
                 self.preferred_model = preferred_model
             elif self.provider == "cerebras" and preferred_model in ["llama-4-scout-17b-16e-instruct", "llama-3.3-70b"]:
                 self.preferred_model = preferred_model
@@ -199,9 +199,9 @@ class APIManager:
             if "gemini-2.5-flash-preview" in model:
                 # Gemini 2.5 Flash pricing: $0.075 input / $0.30 output per MTok
                 cost = (input_tokens * 0.075 + output_tokens * 0.30) / 1_000_000
-            elif "gemini-2.0-flash-exp" in model:
-                # Gemini 2.0 Flash Experimental pricing: $0.075 input / $0.30 output per MTok
-                cost = (input_tokens * 0.075 + output_tokens * 0.30) / 1_000_000
+            elif "gemini-2.5-pro-preview" in model:
+                # Gemini 2.5 Pro Preview pricing: $1.25 input / $5.00 output per MTok (estimated high accuracy pricing)
+                cost = (input_tokens * 1.25 + output_tokens * 5.00) / 1_000_000
             elif "gemini-2.0-flash-lite" in model:
                 # Gemini 2.0 Flash Lite pricing: $0.075 input / $0.30 output per MTok (same as flash)
                 cost = (input_tokens * 0.075 + output_tokens * 0.30) / 1_000_000
