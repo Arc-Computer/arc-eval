@@ -32,6 +32,10 @@ dependencies = [
     "anthropic>=0.18.0",
     "openai>=1.0.0",
     "google-genai>=1.18.0",
+    "fastapi>=0.100.0",
+    'uvicorn[standard]>=0.23.2', # Corrected quoting for TOML array
+    "python-socketio>=5.8.0",
+    "websockets>=11.0.3",
 ]
 
 [project.optional-dependencies]

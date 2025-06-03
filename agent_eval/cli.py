@@ -38,7 +38,8 @@ from agent_eval.commands import (
     ImproveCommand,
     AnalyzeCommand,
     BenchmarkCommand,
-    ReliabilityCommand
+    ReliabilityCommand,
+    ServeCommand
 )
 from agent_eval.core.constants import DOMAIN_SCENARIO_COUNTS
 from agent_eval.core.workflow_state import WorkflowStateManager
@@ -345,6 +346,21 @@ def improve(evaluation_file: Optional[Path], baseline: Optional[Path], current: 
             # For interactive contexts, raise exception for better UX
             raise click.ClickException("Improvement workflow failed")
     return exit_code
+
+
+@cli.command("serve")
+@click.option('--host', default="127.0.0.1", help="Host to bind the server to.", show_default=True)
+@click.option('--port', default=3000, type=int, help="Port to run the server on.", show_default=True)
+@click.option('--no-browser', 'open_browser', is_flag=True, default=True, help="Don't open the browser automatically.")
+@click.pass_context
+def serve_command_entrypoint(ctx, host: str, port: int, open_browser: bool):
+    """🌐 Start local Arc Workbench web UI."""
+    command = ServeCommand()
+    # Assuming BaseCommandHandler and its descendants don't need context for execute,
+    # or handle it internally if ctx.obj is passed.
+    # For now, directly calling execute with specific args.
+    exit_code = command.execute(host=host, port=port, open_browser=open_browser)
+    ctx.exit(exit_code)
 
 
 # ==================== Legacy CLI Support ====================
