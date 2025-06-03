@@ -48,6 +48,10 @@ Thumbs.db
 agent_eval_*.pdf
 agent_eval_*.csv
 agent_eval_*.json
+arc-eval_*.pdf
+arc-eval_*.json
+*_evaluation_*.json
+improvement_plan_*.md
 reports/
 
 # Testing
@@ -65,6 +69,8 @@ temp/
 # User data
 user_configs/
 custom_scenarios/
+.arc-eval/
+.arc-eval-workflow-state.json
 
 # Generated training data
 retraining_data/

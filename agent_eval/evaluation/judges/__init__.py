@@ -20,10 +20,17 @@ logger = logging.getLogger(__name__)
 class AgentJudge:
     """Main Agent-as-a-Judge evaluation framework."""
     
-    def __init__(self, domain: str, enable_confidence_calibration: bool = False, preferred_model: str = "auto", high_accuracy: bool = False, provider: Optional[str] = None):
+    def __init__(self, domain: str, enable_confidence_calibration: bool = False, preferred_model: str = "auto", high_accuracy: bool = False, provider: Optional[str] = None, enable_hybrid_qa: bool = False):
         """Initialize Agent Judge for specific domain."""
         self.domain = domain
-        self.api_manager = APIManager(preferred_model=preferred_model, high_accuracy=high_accuracy, provider=provider)
+
+        # Auto-select appropriate model for hybrid QA mode
+        if enable_hybrid_qa and preferred_model in ["claude-3-5-haiku-latest", "auto"]:
+            # Use Cerebras-compatible model for hybrid architecture
+            preferred_model = "llama-4-scout-17b-16e-instruct"
+            provider = "cerebras"
+
+        self.api_manager = APIManager(preferred_model=preferred_model, high_accuracy=high_accuracy, provider=provider, enable_hybrid_qa=enable_hybrid_qa)
         self.enable_confidence_calibration = enable_confidence_calibration
         
         # Initialize domain-specific judge

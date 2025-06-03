@@ -1,0 +1,38 @@
+# ARC-Eval Default Configuration
+# Copy this file to ~/.arc-eval/config.yaml and customize as needed
+
+# General settings
+default_domain: finance
+interactive_mode: true
+
+# Confidence calibration settings
+confidence:
+  base_threshold: 0.85              # Conservative pre-launch default
+  critical_domain_threshold: 0.95   # Higher bar for critical scenarios
+  failure_threshold: 0.75           # Lower bar for failed judgments
+  cerebras_adjustment: 0.0          # Provider-specific adjustments
+  gemini_adjustment: 0.0
+
+# Cost protection settings
+cost_protection:
+  qa_skip_threshold: 0.8            # Skip QA at 80% of cost limit
+  emergency_fallback_threshold: 0.95 # Emergency fallback at 95%
+
+# Performance protection settings
+performance_protection:
+  max_cerebras_time: 10.0           # Skip QA if Cerebras takes >10s
+  max_total_time: 30.0              # Hard timeout for hybrid evaluation
+
+# Data collection settings
+data_collection:
+  enabled: true                     # Collect calibration data
+  sample_rate: 1.0                  # Collect 100% of evaluations pre-launch
+  export_interval: 100              # Export data every 100 evaluations
+
+# API configuration
+api:
+  anthropic_model: claude-3-5-haiku-20241022
+  openai_model: gpt-4.1-mini-2025-04-14
+  gemini_model: gemini-2.5-flash-preview-05-20
+  cerebras_model: llama-4-scout-17b-16e-instruct
+  cost_threshold: 10.0              # Switch to cheaper model after $10

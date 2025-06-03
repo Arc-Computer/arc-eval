@@ -38,7 +38,22 @@ class ComplianceHandler(BaseCommandHandler):
             return 1
     
     def _handle_domain_evaluation(self, **kwargs) -> int:
-        """Handle standard domain evaluation with compliance scenarios."""
+        """
+        Handle standard domain evaluation with compliance scenarios.
+
+        Args:
+            **kwargs: Evaluation parameters including:
+                - domain: Evaluation domain (finance, security, ml)
+                - input_file: Agent outputs to evaluate
+                - high_accuracy: Enable high accuracy mode with premium models
+                - provider: AI provider (openai, anthropic, google, cerebras)
+                - hybrid_qa: Enable hybrid QA mode (Cerebras + Gemini for speed + quality)
+                - verbose: Enable verbose output
+                - Other workflow parameters
+
+        Returns:
+            Exit code (0 for success, 1 for failure)
+        """
         domain = kwargs.get('domain')
         input_file = kwargs.get('input_file')
         stdin = kwargs.get('stdin', False)
@@ -46,7 +61,17 @@ class ComplianceHandler(BaseCommandHandler):
         agent_judge = kwargs.get('agent_judge', False)
         high_accuracy = kwargs.get('high_accuracy', False)
         provider = kwargs.get('provider', None)
-        judge_model = kwargs.get('judge_model', 'claude-3-5-haiku-latest')
+        hybrid_qa = kwargs.get('hybrid_qa', False)
+        # Auto-select appropriate model based on provider
+        default_judge_model = 'claude-3-5-haiku-latest'
+        if provider == 'cerebras':
+            default_judge_model = 'llama-4-scout-17b-16e-instruct'
+        elif provider == 'openai':
+            default_judge_model = 'gpt-4.1-mini-2025-04-14'
+        elif provider == 'google':
+            default_judge_model = 'gemini-2.5-flash-preview-05-20'
+
+        judge_model = kwargs.get('judge_model', default_judge_model)
         verify = kwargs.get('verify', False)
         confidence_calibration = kwargs.get('confidence_calibration', False)
         performance = kwargs.get('performance', False)
@@ -160,7 +185,7 @@ class ComplianceHandler(BaseCommandHandler):
         if agent_judge:
             results, improvement_report, performance_metrics, reliability_metrics, learning_metrics = self._run_agent_judge_evaluation(
                 domain, judge_model, verify, performance, reliability, scenario_count,
-                engine, agent_outputs, verbose, dev, agent_judge, batch_mode, high_accuracy, provider
+                engine, agent_outputs, verbose, dev, agent_judge, batch_mode, high_accuracy, provider, hybrid_qa
             )
         else:
             results = self._run_standard_evaluation(
@@ -174,7 +199,8 @@ class ComplianceHandler(BaseCommandHandler):
         # Show immediate results summary
         console.print(f"\n[green]✅ Evaluation completed successfully![/green]")
         evaluation_time = time.time() - start_time
-        console.print(f"[dim]Processed {len(results)} scenarios in {evaluation_time:.2f} seconds[/dim]")
+        result_count = len(results) if results else 0
+        console.print(f"[dim]Processed {result_count} scenarios in {evaluation_time:.2f} seconds[/dim]")
         
         if verbose:
             # Use judgment field for Agent Judge results, passed field for standard results
@@ -235,22 +261,26 @@ class ComplianceHandler(BaseCommandHandler):
             ],
             'security': [
                 {
+                    "scenario_id": "sec_001",
                     "output": "SQL injection detected and blocked, request rejected",
-                    "metadata": {"scenario_id": "sec_sqli_001", "timestamp": "2024-05-27T10:32:00Z"}
+                    "metadata": {"timestamp": "2024-05-27T10:32:00Z"}
                 },
                 {
+                    "scenario_id": "sec_002",
                     "output": "Authentication successful, MFA token verified",
-                    "metadata": {"scenario_id": "sec_auth_002", "timestamp": "2024-05-27T10:33:00Z"}
+                    "metadata": {"timestamp": "2024-05-27T10:33:00Z"}
                 }
             ],
             'ml': [
                 {
+                    "scenario_id": "ml_001",
                     "output": "Model trained with balanced dataset, bias metrics within acceptable range",
-                    "metadata": {"scenario_id": "ml_bias_001", "timestamp": "2024-05-27T10:34:00Z"}
+                    "metadata": {"timestamp": "2024-05-27T10:34:00Z"}
                 },
                 {
+                    "scenario_id": "ml_002",
                     "output": "Feature importance calculated, top 3 features identified",
-                    "metadata": {"scenario_id": "ml_explain_002", "timestamp": "2024-05-27T10:35:00Z"}
+                    "metadata": {"timestamp": "2024-05-27T10:35:00Z"}
                 }
             ]
         }
@@ -358,10 +388,10 @@ class ComplianceHandler(BaseCommandHandler):
     def _run_agent_judge_evaluation(self, domain: str, judge_model: str, verify: bool,
                                    performance: bool, reliability: bool, scenario_count: int,
                                    engine: EvaluationEngine, agent_outputs: List[Dict[str, Any]],
-                                   verbose: bool, dev: bool, agent_judge: bool, batch_mode: bool = False, high_accuracy: bool = False, provider: Optional[str] = None) -> tuple:
+                                   verbose: bool, dev: bool, agent_judge: bool, batch_mode: bool = False, high_accuracy: bool = False, provider: Optional[str] = None, hybrid_qa: bool = False) -> tuple:
         """Run Agent-as-a-Judge evaluation with all enhancements."""
         # Use Agent-as-a-Judge evaluation with model preference and accuracy mode
-        agent_judge_instance = AgentJudge(domain=domain, preferred_model=judge_model, high_accuracy=high_accuracy, provider=provider)
+        agent_judge_instance = AgentJudge(domain=domain, preferred_model=judge_model, high_accuracy=high_accuracy, provider=provider, enable_hybrid_qa=hybrid_qa)
         
         # Initialize performance tracking if requested OR for Agent Judge mode (always track performance for judges)
         if performance or agent_judge:
