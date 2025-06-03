@@ -1,0 +1,15 @@
+{
+  "current_cycle": {
+    "started_at": "2025-06-03T12:16:42.419203",
+    "debug": null,
+    "compliance": {
+      "completed_at": "2025-06-03T12:16:42.419205",
+      "domain": "finance",
+      "input_file": "quick-start",
+      "evaluation_file": "/workspace/finance_evaluation_20250603_121642.json",
+      "timestamp": "2025-06-03T12:16:42.419168"
+    },
+    "improve": null
+  },
+  "history": []
+}

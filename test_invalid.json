@@ -1,0 +1,6 @@
+{
+  "output": "This is malformed JSON with missing bracket",
+  "metadata": {
+    "framework": "test"
+  }
+}
