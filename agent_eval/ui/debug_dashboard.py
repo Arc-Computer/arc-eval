@@ -447,15 +447,24 @@ class DebugDashboard:
     def _display_actionable_insights(self, insights: List[str], next_steps: List[str]) -> None:
         """Display actionable insights and next steps."""
         
-        # Split into two columns
+        # Process insights to handle literal \\n
+        processed_insights = "\\n".join([
+            f"• {(insight.replace('\\\\n', '\\n') if isinstance(insight, str) else str(insight))}" 
+            for insight in insights[:5]
+        ])
         insights_panel = Panel(
-            "\n".join([f"• {insight}" for insight in insights[:5]]),
+            processed_insights,
             title="[bold yellow]🔍 Key Insights[/bold yellow]",
             border_style="yellow"
         )
         
+        # Process next_steps to handle literal \\n
+        processed_next_steps = "\\n".join([
+            f"{i+1}. {(step.replace('\\\\n', '\\n') if isinstance(step, str) else str(step))}" 
+            for i, step in enumerate(next_steps[:5])
+        ])
         next_steps_panel = Panel(
-            "\n".join([f"{i+1}. {step}" for i, step in enumerate(next_steps[:5])]),
+            processed_next_steps,
             title="[bold green]🎯 Next Steps[/bold green]",
             border_style="green"
         )
@@ -607,8 +616,13 @@ class DebugDashboard:
         """Display optimization recommendations."""
         
         for category, recommendations in optimizations.items():
+            # Process recommendations to handle literal \\n
+            processed_recommendations = "\\n".join([
+                f"• {(rec.replace('\\\\n', '\\n') if isinstance(rec, str) else str(rec))}" 
+                for rec in recommendations
+            ])
             category_panel = Panel(
-                "\n".join([f"• {rec}" for rec in recommendations]),
+                processed_recommendations,
                 title=f"[bold]{category.replace('_', ' ').title()}[/bold]",
                 border_style="cyan"
             )
@@ -715,10 +729,17 @@ class DebugDashboard:
         
         for opp in opportunities[:5]:  # Show top 5
             priority_icon = "🔴" if opp.get("priority") == "high" else "🟡" if opp.get("priority") == "medium" else "🟢"
+            
+            description_text = opp.get("description", "Unknown optimization")
+            processed_description = description_text.replace('\\\\n', '\\n') if isinstance(description_text, str) else str(description_text)
+            
+            impact_text = opp.get("expected_improvement", "Performance boost")
+            processed_impact = impact_text.replace('\\\\n', '\\n') if isinstance(impact_text, str) else str(impact_text)
+            
             opp_table.add_row(
                 priority_icon,
-                opp.get("description", "Unknown optimization"),
-                opp.get("expected_improvement", "Performance boost")
+                processed_description,
+                processed_impact
             )
         
         self.console.print(opp_table)
@@ -872,14 +893,18 @@ class DebugDashboard:
             return
             
         issues_text = Text()
-        issues_text.append("Critical Cognitive Issues:\n", style="bold red")
+        issues_text.append("Critical Cognitive Issues:\\n", style="bold red")
         for issue in issues:
-            issues_text.append(f"• {issue}\n", style="red")
+            # Process issue string to handle literal \\n
+            processed_issue = issue.replace('\\\\n', '\\n') if isinstance(issue, str) else str(issue)
+            issues_text.append(f"• {processed_issue}\\n", style="red")
         
         if recommendations:
-            issues_text.append("\nRecommended Actions:\n", style="bold green")
+            issues_text.append("\\nRecommended Actions:\\n", style="bold green")
             for rec in recommendations[:3]:  # Show top 3
-                issues_text.append(f"• {rec}\n", style="green")
+                # Process recommendation string to handle literal \\n
+                processed_rec = rec.replace('\\\\n', '\\n') if isinstance(rec, str) else str(rec)
+                issues_text.append(f"• {processed_rec}\\n", style="green")
         
         issues_panel = Panel(issues_text, title="Cognitive Analysis", border_style="red")
         self.console.print(issues_panel)
