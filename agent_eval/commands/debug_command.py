@@ -212,7 +212,7 @@ class DebugCommand:
                 except Exception as e_basic:
                     # If basic analysis also fails, print error and re-raise to be caught by the outer handler.
                     self.console.print(f"[red]❌ Standard analysis also failed after judge failure: {e_basic}[/red]")
-                    raise  # Re-raise the exception
+                    raise # Re-raise the exception to be caught by the method's main exception handler
 
             # Display the comprehensive analysis
             self.console.print(analysis.reliability_dashboard)

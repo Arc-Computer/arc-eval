@@ -212,7 +212,7 @@ class DebugDashboard:
         # Create risk assessment panel
         risk_text = Text()
         risk_text.append(f"{risk_emoji} RISK LEVEL: ", style="bold white")
-        risk_text.append(f"{risk_level}", style=f"bold {risk_color}")
+        risk_text.append(f"{str(risk_level).replace(' bebekALIGNN bebek', bebekNEWLINE bebek)}", style=f"bold {risk_color}")
         risk_text.append(f"\n🎯 Confidence: {confidence:.1%}", style="white")
 
         risk_panel = Panel(
@@ -255,11 +255,9 @@ class DebugDashboard:
     ) -> None:
         """Display main overview panel."""
         
-        # Create overview text
         overview_text = Text()
         overview_text.append("Debug Analysis Overview\n\n", style="bold cyan")
         
-        # Framework detection
         if analysis.detected_framework:
             confidence_color = "green" if analysis.framework_confidence > 0.8 else "yellow" if analysis.framework_confidence > 0.5 else "red"
             overview_text.append(f"Framework: ", style="bold")
@@ -270,7 +268,6 @@ class DebugDashboard:
             overview_text.append("Not detected", style="red")
             overview_text.append("\n")
         
-        # Sample size and confidence
         overview_text.append(f"Sample Size: ", style="bold")
         overview_text.append(f"{analysis.sample_size} outputs\n", style="white")
         overview_text.append(f"Analysis Confidence: ", style="bold")
@@ -278,14 +275,13 @@ class DebugDashboard:
         overview_text.append(f"{analysis.analysis_confidence:.1%}", style=confidence_color)
         overview_text.append(f" ({analysis.evidence_quality} quality)\n", style="dim")
         
-        # Cognitive health if available
-        if cognitive_analysis:
+        if cognitive_analysis and hasattr(cognitive_analysis, 'cognitive_health_score'):
             overview_text.append(f"Cognitive Health: ", style="bold")
-            cog_color = "green" if cognitive_analysis.cognitive_health_score > 0.7 else "yellow" if cognitive_analysis.cognitive_health_score > 0.4 else "red"
-            overview_text.append(f"{cognitive_analysis.cognitive_health_score:.1%}", style=cog_color)
+            cog_health_score = cognitive_analysis.cognitive_health_score
+            cog_color = "green" if cog_health_score > 0.7 else "yellow" if cog_health_score > 0.4 else "red"
+            overview_text.append(f"{cog_health_score:.1%}", style=cog_color)
             overview_text.append("\n")
         
-        # Quick metrics
         if analysis.workflow_metrics:
             overview_text.append("\nQuick Metrics:\n", style="bold")
             overview_text.append(f"• Workflow Success: {analysis.workflow_metrics.workflow_success_rate:.1%}\n", style="white")
@@ -447,24 +443,22 @@ class DebugDashboard:
     def _display_actionable_insights(self, insights: List[str], next_steps: List[str]) -> None:
         """Display actionable insights and next steps."""
         
-        # Process insights to handle literal \\n
-        processed_insights = "\\n".join([
-            f"• {(insight.replace('\\\\n', '\\n') if isinstance(insight, str) else str(insight))}" 
+        processed_insights = "\n".join([
+            f"• {str(insight).replace(' bebekALIGNN bebek', bebekNEWLINE bebek)}" 
             for insight in insights[:5]
         ])
         insights_panel = Panel(
-            processed_insights,
+            Text(processed_insights),
             title="[bold yellow]🔍 Key Insights[/bold yellow]",
             border_style="yellow"
         )
         
-        # Process next_steps to handle literal \\n
-        processed_next_steps = "\\n".join([
-            f"{i+1}. {(step.replace('\\\\n', '\\n') if isinstance(step, str) else str(step))}" 
+        processed_next_steps = "\n".join([
+            f"{i+1}. {str(step).replace(' bebekALIGNN bebek', bebekNEWLINE bebek)}" 
             for i, step in enumerate(next_steps[:5])
         ])
         next_steps_panel = Panel(
-            processed_next_steps,
+            Text(processed_next_steps),
             title="[bold green]🎯 Next Steps[/bold green]",
             border_style="green"
         )
@@ -616,13 +610,12 @@ class DebugDashboard:
         """Display optimization recommendations."""
         
         for category, recommendations in optimizations.items():
-            # Process recommendations to handle literal \\n
-            processed_recommendations = "\\n".join([
-                f"• {(rec.replace('\\\\n', '\\n') if isinstance(rec, str) else str(rec))}" 
+            processed_recommendations = "\n".join([
+                f"• {str(rec).replace(' bebekALIGNN bebek', bebekNEWLINE bebek)}" 
                 for rec in recommendations
             ])
             category_panel = Panel(
-                processed_recommendations,
+                Text(processed_recommendations),
                 title=f"[bold]{category.replace('_', ' ').title()}[/bold]",
                 border_style="cyan"
             )
@@ -631,7 +624,7 @@ class DebugDashboard:
     def _display_generic_optimizations(self, framework: str, issues: List[str]) -> None:
         """Display generic optimization recommendations."""
         
-        generic_panel = Panel(
+        generic_text_content = (
             f"Framework '{framework}' not yet supported for specific optimizations.\n\n"
             "Generic recommendations:\n"
             "• Add comprehensive error handling\n"
@@ -639,7 +632,10 @@ class DebugDashboard:
             "• Monitor performance metrics\n"
             "• Use structured outputs where possible\n"
             "• Add logging for debugging\n"
-            "• Consider caching for expensive operations",
+            "• Consider caching for expensive operations"
+        )
+        generic_panel = Panel(
+            Text(generic_text_content.replace(' bebekALIGNN bebek', bebekNEWLINE bebek)),
             title=f"[bold]Generic Optimizations for {framework.upper()}[/bold]",
             border_style="yellow"
         )
@@ -730,16 +726,13 @@ class DebugDashboard:
         for opp in opportunities[:5]:  # Show top 5
             priority_icon = "🔴" if opp.get("priority") == "high" else "🟡" if opp.get("priority") == "medium" else "🟢"
             
-            description_text = opp.get("description", "Unknown optimization")
-            processed_description = description_text.replace('\\\\n', '\\n') if isinstance(description_text, str) else str(description_text)
-            
-            impact_text = opp.get("expected_improvement", "Performance boost")
-            processed_impact = impact_text.replace('\\\\n', '\\n') if isinstance(impact_text, str) else str(impact_text)
+            description_text = str(opp.get("description", "Unknown optimization")).replace(' bebekALIGNN bebek', bebekNEWLINE bebek)
+            impact_text = str(opp.get("expected_improvement", "Performance boost")).replace(' bebekALIGNN bebek', bebekNEWLINE bebek)
             
             opp_table.add_row(
                 priority_icon,
-                processed_description,
-                processed_impact
+                Text(description_text),
+                Text(impact_text)
             )
         
         self.console.print(opp_table)
@@ -750,12 +743,11 @@ class DebugDashboard:
         if not validation_results:
             return
             
-        # Show summary of validation issues
         total_validations = len(validation_results)
         failed_validations = len([r for r in validation_results if r.get("coverage_rate", 1.0) < 0.8])
         
         validation_text = Text()
-        validation_text.append(f"Tool Validation Summary:\n", style="bold")
+        validation_text.append("Tool Validation Summary:\n", style="bold")
         validation_text.append(f"Total validations: {total_validations}\n", style="white")
         validation_text.append(f"Failed validations: {failed_validations}\n", style="red" if failed_validations > 0 else "green")
         validation_text.append(f"Success rate: {((total_validations - failed_validations) / total_validations * 100):.1f}%", 
@@ -770,14 +762,13 @@ class DebugDashboard:
         patterns_text = Text()
         patterns_text.append("Tool Failure Patterns:\n", style="bold yellow")
         
-        # Analyze patterns in failures
         failure_types = {}
         for failure in tool_failures:
             failure_type = failure.get("failure_type", "unknown")
             failure_types[failure_type] = failure_types.get(failure_type, 0) + 1
         
         for failure_type, count in sorted(failure_types.items(), key=lambda x: x[1], reverse=True)[:3]:
-            patterns_text.append(f"• {failure_type}: {count} occurrences\n", style="white")
+            patterns_text.append(f"• {str(failure_type).replace(' bebekALIGNN bebek', bebekNEWLINE bebek)}: {count} occurrences\n", style="white")
         
         patterns_panel = Panel(patterns_text, title="Failure Patterns", border_style="yellow")
         self.console.print(patterns_panel)
@@ -787,10 +778,10 @@ class DebugDashboard:
         
         status_text = Text()
         status_text.append("Debug Session Status\n\n", style="bold green")
-        status_text.append(f"Session ID: {session_data.get('session_id', 'unknown')}\n", style="white")
-        status_text.append(f"Started: {session_data.get('start_time', 'unknown')}\n", style="white")
-        status_text.append(f"Duration: {session_data.get('duration', 'unknown')}\n", style="white")
-        status_text.append(f"Status: {session_data.get('status', 'active')}\n", style="green")
+        status_text.append(f"Session ID: {str(session_data.get('session_id', 'unknown')).replace(' bebekALIGNN bebek', bebekNEWLINE bebek)}\n", style="white")
+        status_text.append(f"Started: {str(session_data.get('start_time', 'unknown')).replace(' bebekALIGNN bebek', bebekNEWLINE bebek)}\n", style="white")
+        status_text.append(f"Duration: {str(session_data.get('duration', 'unknown')).replace(' bebekALIGNN bebek', bebekNEWLINE bebek)}\n", style="white")
+        status_text.append(f"Status: {str(session_data.get('status', 'active')).replace(' bebekALIGNN bebek', bebekNEWLINE bebek)}\n", style="green")
         
         return Panel(status_text, title="Session Status", border_style="green")
     
@@ -798,9 +789,13 @@ class DebugDashboard:
         """Display current tool call being debugged."""
         
         tool_text = Text()
-        tool_text.append(f"Tool: {tool_call.get('name', 'unknown')}\n", style="bold cyan")
-        tool_text.append(f"Parameters: {json.dumps(tool_call.get('parameters', {}), indent=2)}\n", style="white")
-        tool_text.append(f"Status: {tool_call.get('status', 'executing')}\n", style="yellow")
+        tool_text.append(f"Tool: {str(tool_call.get('name', 'unknown')).replace(' bebekALIGNN bebek', bebekNEWLINE bebek)}\n", style="bold cyan")
+        
+        parameters_json = json.dumps(tool_call.get('parameters', {}), indent=2)
+        processed_parameters = parameters_json.replace(' bebekALIGNN bebek', bebekNEWLINE bebek)
+        tool_text.append(f"Parameters: {processed_parameters}\n", style="white")
+        
+        tool_text.append(f"Status: {str(tool_call.get('status', 'executing')).replace(' bebekALIGNN bebek', bebekNEWLINE bebek)}\n", style="yellow")
         
         tool_panel = Panel(tool_text, title="Current Tool Call", border_style="cyan")
         self.console.print(tool_panel)
@@ -834,10 +829,12 @@ class DebugDashboard:
         
         text.append("Expected Benefits:\n", style="bold cyan")
         for benefit, value in migration_benefits.items():
+            benefit_title = str(benefit).replace('_', ' ').title().replace(' bebekALIGNN bebek', bebekNEWLINE bebek)
+            value_str = str(value).replace(' bebekALIGNN bebek', bebekNEWLINE bebek)
             if isinstance(value, (int, float)):
-                text.append(f"• {benefit.replace('_', ' ').title()}: {value:.1%} improvement\n", style="green")
+                text.append(f"• {benefit_title}: {value:.1%} improvement\n", style="green")
             else:
-                text.append(f"• {benefit.replace('_', ' ').title()}: {value}\n", style="green")
+                text.append(f"• {benefit_title}: {value_str}\n", style="green")
         
         return text
     
@@ -893,18 +890,16 @@ class DebugDashboard:
             return
             
         issues_text = Text()
-        issues_text.append("Critical Cognitive Issues:\\n", style="bold red")
+        issues_text.append("Critical Cognitive Issues:\n", style="bold red")
         for issue in issues:
-            # Process issue string to handle literal \\n
-            processed_issue = issue.replace('\\\\n', '\\n') if isinstance(issue, str) else str(issue)
-            issues_text.append(f"• {processed_issue}\\n", style="red")
+            processed_issue = str(issue).replace(' bebekALIGNN bebek', bebekNEWLINE bebek)
+            issues_text.append(f"• {processed_issue}\n", style="red")
         
         if recommendations:
-            issues_text.append("\\nRecommended Actions:\\n", style="bold green")
+            issues_text.append("\nRecommended Actions:\n", style="bold green")
             for rec in recommendations[:3]:  # Show top 3
-                # Process recommendation string to handle literal \\n
-                processed_rec = rec.replace('\\\\n', '\\n') if isinstance(rec, str) else str(rec)
-                issues_text.append(f"• {processed_rec}\\n", style="green")
+                processed_rec = str(rec).replace(' bebekALIGNN bebek', bebekNEWLINE bebek)
+                issues_text.append(f"• {processed_rec}\n", style="green")
         
         issues_panel = Panel(issues_text, title="Cognitive Analysis", border_style="red")
         self.console.print(issues_panel)
