@@ -81,13 +81,9 @@ experiments/research/outputs/
 # Internal documentation (not for public release)
 .claude/
 CLAUDE.md
-PROJECT_OVERVIEW.md
 DX.md
 .cursor/
-CLAUDE_TASK_DELEGATION.md
-COMPOUND_JUDGE_ROADMAP.md
 tasks.md
-Roadmap.md
 
 # API keys
 .env
