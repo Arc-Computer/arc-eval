@@ -219,11 +219,19 @@ class SmartInputDetector:
                 "framework": input_data.get("framework", "unknown")
             }
         
-        elif input_type == "trace":
-            # Extract failure patterns for similar testing
+       elif input_type == "trace":
+           # Extract failure patterns for similar testing
+            error_info = input_data.get("error", {})
+            if isinstance(error_info, dict):
+                error_type = error_info.get("type", "unknown")
+                error_message = error_info.get("message", "")
+            else:
+                error_type = "unknown"
+                error_message = str(error_info)
+
             prepared["failure_info"] = {
-                "error_type": input_data.get("error", {}).get("type", "unknown"),
-                "error_message": input_data.get("error", {}).get("message", ""),
+                "error_type": error_type,
+                "error_message": error_message,
                 "failed_step": input_data.get("failed_step", ""),
                 "framework": self._detect_framework(input_data)
             }
