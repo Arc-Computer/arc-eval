@@ -219,8 +219,8 @@ class EvaluationEngine:
 
                 results.append(result)
 
-                # Collect scenarios that need judge analysis
-                if self._should_trigger_judge_analysis(result, scenario):
+                # Collect scenarios that need judge analysis (only if we have valid outputs)
+                if self._should_trigger_judge_analysis(result, scenario) and parsed_outputs:
                     failed_scenarios.append((scenario, result, parsed_outputs))
 
             # If we have many scenarios needing judge analysis, use batch processing
@@ -696,6 +696,9 @@ Focus on actionable insights for debugging and remediation."""
         - Trigger for low confidence results (< 0.7)
         - Always trigger for critical/high severity scenarios
         - Skip for simple passes with high confidence (cost optimization)
+
+        Note: Caller should also verify that parsed_outputs is not empty
+        before proceeding with judge analysis.
 
         Args:
             result: Initial evaluation result from rule-based analysis
