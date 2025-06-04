@@ -1562,36 +1562,112 @@ Required parameters:
     ) -> ComprehensiveReliabilityAnalysis:
         """Generate comprehensive reliability analysis with intelligent judge enhancement.
 
-        This is now the primary analysis method that combines:
-        1. Rule-based reliability analysis (fast, deterministic)
-        2. AI judge enhancement (intelligent, contextual insights)
-        3. Graceful fallback when judges unavailable
+        This is the unified analysis method that combines:
+        1. AI-powered DebugJudge as primary analysis engine (from main branch)
+        2. Rule-based reliability analysis as fallback (from refactor)
+        3. Graceful degradation when judges unavailable
 
-        Replaces the old dual-method approach for simplified architecture.
+        Integrates both approaches for optimal reliability and intelligence.
         """
-        
-        # First, run the standard comprehensive analysis (using legacy implementation)
-        standard_analysis = self.generate_comprehensive_analysis_legacy(
-            agent_outputs, framework, expected_tools, pipeline_data
-        )
-        
-        # If judge analysis is disabled, return standard analysis
+
+        # If judge analysis is disabled, use legacy rule-based analysis
         if not enable_judge_analysis:
-            return standard_analysis
-        
-        # Enhance with DebugJudge analysis if available
-        try:
-            enhanced_analysis = self._enhance_with_debug_judge(
-                standard_analysis, agent_outputs, framework
+            return self.generate_comprehensive_analysis_legacy(
+                agent_outputs, framework, expected_tools, pipeline_data
             )
-            return enhanced_analysis
+
+        # Try DebugJudge analysis first (primary path)
+        try:
+            judge_analysis = self._run_primary_judge_analysis(
+                agent_outputs, framework, expected_tools, pipeline_data
+            )
+            return judge_analysis
         except Exception as e:
-            # Fallback to standard analysis if judge enhancement fails
+            # Fallback to legacy rule-based analysis if judge fails
             import logging
             logger = logging.getLogger(__name__)
-            logger.warning(f"Judge enhancement failed, using standard analysis: {e}")
-            return standard_analysis
-    
+            logger.warning(f"DebugJudge analysis failed, falling back to rule-based analysis: {e}")
+            return self.generate_comprehensive_analysis_legacy(
+                agent_outputs, framework, expected_tools, pipeline_data
+            )
+
+    def _run_primary_judge_analysis(
+        self,
+        agent_outputs: List[Any],
+        framework: Optional[str] = None,
+        expected_tools: Optional[List[str]] = None,
+        pipeline_data: Optional[Dict[str, Any]] = None
+    ) -> ComprehensiveReliabilityAnalysis:
+        """Run DebugJudge as the primary analysis engine.
+
+        Creates a comprehensive analysis primarily based on AI judge insights.
+        """
+        from agent_eval.evaluation.judges.workflow.debug import DebugJudge
+        from agent_eval.evaluation.judges.workflow.judge_output_adapter import JudgeOutputAdapter
+        from agent_eval.evaluation.judges.api_manager import APIManager
+
+        # Initialize judge with Cerebras for fast inference
+        api_manager = getattr(self, 'api_manager', None) or APIManager(provider="cerebras")
+        debug_judge = DebugJudge(api_manager)
+
+        # Run judge analysis
+        judge_output = debug_judge.evaluate_failure_patterns(agent_outputs, framework or "unknown")
+
+        # Convert judge output to comprehensive analysis format
+        judge_analysis = JudgeOutputAdapter.debug_judge_to_reliability_analysis(
+            judge_output, framework, len(agent_outputs)
+        )
+
+        # Enhance with minimal rule-based data where needed
+        self._supplement_judge_analysis_with_basic_metrics(judge_analysis, agent_outputs, framework)
+
+        return judge_analysis
+
+    def _supplement_judge_analysis_with_basic_metrics(
+        self,
+        judge_analysis: ComprehensiveReliabilityAnalysis,
+        agent_outputs: List[Any],
+        framework: Optional[str]
+    ) -> None:
+        """Supplement judge analysis with basic metrics that judges might not provide."""
+
+        # Add basic tool call summary if missing
+        if not judge_analysis.tool_call_summary or not judge_analysis.tool_call_summary.get('total_outputs_analyzed'):
+            basic_tool_summary = self._analyze_tool_calls_basic(agent_outputs)
+            judge_analysis.tool_call_summary.update(basic_tool_summary)
+
+        # Ensure sample size is correct
+        judge_analysis.sample_size = len(agent_outputs)
+
+        # Add framework detection if not provided by judge
+        if not judge_analysis.detected_framework and framework:
+            judge_analysis.detected_framework = framework
+            judge_analysis.framework_confidence = 1.0
+            judge_analysis.auto_detection_successful = True
+
+    def _analyze_tool_calls_basic(self, agent_outputs: List[Any]) -> Dict[str, Any]:
+        """Basic tool call analysis for supplementing judge analysis."""
+        tool_names = []
+        for output in agent_outputs:
+            if hasattr(output, 'raw_output') and isinstance(output.raw_output, dict):
+                tools = output.raw_output.get('tools', [])
+                if isinstance(tools, list):
+                    tool_names.extend([str(tool) for tool in tools])
+            elif isinstance(output, dict):
+                tools = output.get('tools', [])
+                if isinstance(tools, list):
+                    tool_names.extend([str(tool) for tool in tools])
+
+        from collections import Counter
+        tool_counter = Counter(tool_names)
+
+        return {
+            'total_outputs_analyzed': len(agent_outputs),
+            'unique_tools_detected': len(set(tool_names)),
+            'most_common_tools': tool_counter.most_common(5),
+            'total_tool_calls': len(tool_names)
+        }
+
     def _enhance_with_debug_judge(
         self,
         standard_analysis: ComprehensiveReliabilityAnalysis,

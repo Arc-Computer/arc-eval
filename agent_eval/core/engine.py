@@ -388,7 +388,12 @@ Focus on actionable insights for debugging and remediation."""
             scenario, parsed_outputs
         )
 
-        # Create initial evaluation result
+        # Generate improvement insights for failed scenarios (from main branch)
+        improvement_recommendations = []
+        if not passed:
+            improvement_recommendations = self._generate_improvement_insights(scenario, parsed_outputs[0] if parsed_outputs else None)
+
+        # Create initial evaluation result with judge integration support
         result = EvaluationResult(
             scenario_id=scenario.id,
             scenario_name=scenario.name,
@@ -582,7 +587,70 @@ Focus on actionable insights for debugging and remediation."""
             f"Expected behavior '{scenario.expected_behavior}' not found in agent outputs",
             parsed_outputs[0].normalized_output[:200] if parsed_outputs else None
         )
-    
+
+    def _generate_improvement_insights(self, scenario: EvaluationScenario, agent_output: Optional[AgentOutput]) -> List["ImprovementRecommendation"]:
+        """Generate improvement recommendations for failed scenarios using ImproveJudge.
+
+        Args:
+            scenario: The failed evaluation scenario
+            agent_output: The agent output that failed the scenario
+
+        Returns:
+            List of improvement recommendations from ImproveJudge
+        """
+        if not agent_output:
+            return []
+
+        try:
+            from agent_eval.evaluation.judges.workflow.improve import ImproveJudge
+            from agent_eval.evaluation.judges.api_manager import APIManager
+            from agent_eval.core.types import ImprovementRecommendation
+
+            # Initialize ImproveJudge with fast inference provider
+            api_manager = APIManager(provider="cerebras")
+            improve_judge = ImproveJudge(api_manager)
+
+            # Generate improvement plan for the failed scenario
+            improvement_plan = improve_judge.generate_improvement_plan(agent_output, scenario)
+
+            # Convert judge output to ImprovementRecommendation objects
+            recommendations = []
+            improvement_actions = improvement_plan.get("improvement_actions", [])
+
+            for action in improvement_actions[:3]:  # Limit to top 3 recommendations
+                if isinstance(action, dict):
+                    recommendation = ImprovementRecommendation(
+                        description=action.get("description", str(action)),
+                        priority=action.get("priority", "medium"),
+                        confidence=improvement_plan.get("confidence", 0.8),
+                        expected_impact=action.get("expected_impact", "Moderate improvement expected"),
+                        implementation_steps=action.get("steps", []),
+                        category="compliance",
+                        estimated_effort=action.get("effort", "2-4 hours")
+                    )
+                    recommendations.append(recommendation)
+                else:
+                    # Handle string-based actions
+                    recommendation = ImprovementRecommendation(
+                        description=str(action),
+                        priority="medium",
+                        confidence=improvement_plan.get("confidence", 0.8),
+                        expected_impact="Moderate improvement expected",
+                        implementation_steps=[],
+                        category="compliance",
+                        estimated_effort="2-4 hours"
+                    )
+                    recommendations.append(recommendation)
+
+            return recommendations
+
+        except Exception as e:
+            # Graceful fallback if ImproveJudge fails
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(f"ImproveJudge failed to generate insights: {e}")
+            return []
+
     def get_summary(self, results: List[EvaluationResult]) -> EvaluationSummary:
         """Generate summary statistics from evaluation results.
         
