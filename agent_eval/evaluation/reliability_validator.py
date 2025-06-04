@@ -3,7 +3,7 @@
 import re
 import logging
 from dataclasses import dataclass
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Tuple
 from collections import Counter
 
 from agent_eval.core.types import ReliabilityMetrics
@@ -1530,89 +1530,72 @@ Required parameters:
         self,
         agent_outputs: List[Any],
         framework: Optional[str] = None,
-        expected_tools: Optional[List[str]] = None,
-        pipeline_data: Optional[Dict[str, Any]] = None,
+        expected_tools: Optional[List[str]] = None, 
+        pipeline_data: Optional[Dict[str, Any]] = None, 
         enable_judge_analysis: bool = True
-    ) -> ComprehensiveReliabilityAnalysis:
-        """Generate comprehensive reliability analysis with optional judge enhancement.
+    ) -> 'ComprehensiveReliabilityAnalysis': # Forward reference if ComprehensiveReliabilityAnalysis is defined later
+        """Generate comprehensive reliability analysis, prioritizing DebugJudge.
         
-        Integrates DebugJudge while maintaining backward compatibility.
+        The DebugJudge is now the primary analysis path. If judge analysis is disabled
+        or fails, it falls back to the standard rule-based analysis.
         """
-        
-        # First, run the standard comprehensive analysis
-        standard_analysis = self.generate_comprehensive_analysis(
-            agent_outputs, framework, expected_tools, pipeline_data
-        )
-        
-        # If judge analysis is disabled, return standard analysis
+        if not agent_outputs:
+            logger.warning("No agent outputs provided for analysis. Returning empty analysis.")
+            # Assuming _create_empty_analysis is a method in this class that returns a ComprehensiveReliabilityAnalysis instance
+            return self._create_empty_analysis() 
+
         if not enable_judge_analysis:
-            return standard_analysis
-        
-        # Enhance with DebugJudge analysis if available
-        try:
-            enhanced_analysis = self._enhance_with_debug_judge(
-                standard_analysis, agent_outputs, framework
+            logger.info("Judge analysis disabled. Performing standard rule-based analysis.")
+            return self.generate_comprehensive_analysis(
+                agent_outputs, framework, expected_tools, pipeline_data
             )
-            return enhanced_analysis
-        except Exception as e:
-            # Fallback to standard analysis if judge enhancement fails
-            import logging
-            logger = logging.getLogger(__name__)
-            logger.warning(f"Judge enhancement failed, using standard analysis: {e}")
-            return standard_analysis
-    
-    def _enhance_with_debug_judge(
-        self,
-        standard_analysis: ComprehensiveReliabilityAnalysis,
-        agent_outputs: List[Any],
-        framework: Optional[str]
-    ) -> ComprehensiveReliabilityAnalysis:
-        """Enhance analysis with DebugJudge insights.
-        
-        Preserves existing data structures for backward compatibility.
-        """
+
+        logger.info("Attempting analysis with DebugJudge as primary...")
         try:
-            # Import DebugJudge and adapter
             from agent_eval.evaluation.judges.workflow.debug import DebugJudge
             from agent_eval.evaluation.judges.workflow.judge_output_adapter import JudgeOutputAdapter
             from agent_eval.evaluation.judges.api_manager import APIManager
-            
-            # Initialize APIManager:
-            # Try to get an existing api_manager from self.
-            # If not available, try to create a new one.
-            # Add specific error handling for APIManager instantiation.
-            
+
             api_manager_instance = getattr(self, 'api_manager', None)
             if not api_manager_instance:
-                # Assuming logger is available from the class or module level,
-                # as it's used in the except blocks of this method.
-                logger.info("No existing api_manager found on self. Attempting to create default APIManager(provider='cerebras') for DebugJudge.")
+                logger.info("No existing api_manager found. Creating default APIManager for DebugJudge.")
                 try:
-                    api_manager_instance = APIManager(provider="cerebras")
+                    api_manager_instance = APIManager(provider="cerebras") # Default provider
                 except Exception as apim_init_error:
-                    logger.warning(f"Failed to initialize APIManager(provider='cerebras'): {apim_init_error}. DebugJudge enhancement will be skipped.")
-                    return standard_analysis # Fallback if APIManager creation fails
+                    logger.warning(f"Failed to initialize APIManager: {apim_init_error}. Judge analysis cannot proceed. Falling back to standard rule-based analysis.")
+                    return self.generate_comprehensive_analysis(
+                        agent_outputs, framework, expected_tools, pipeline_data
+                    )
             
             debug_judge = DebugJudge(api_manager_instance)
             
-            # Analyze failure patterns with judge
-            judge_analysis = debug_judge.evaluate_failure_patterns(agent_outputs, framework or "unknown")
+            logger.info("Performing primary analysis with DebugJudge...")
+            judge_raw_output = debug_judge.evaluate_failure_patterns(agent_outputs, framework or "unknown")
             
-            # Enhance the existing analysis with judge insights
-            enhanced_analysis = JudgeOutputAdapter.enhance_dashboard_with_judge_reasoning(
-                standard_analysis, judge_analysis
+            # Generate the base standard analysis (rule-based) to be enhanced by the judge.
+            standard_base_analysis = self.generate_comprehensive_analysis(
+                agent_outputs, framework, expected_tools, pipeline_data
             )
             
-            return enhanced_analysis
+            logger.info("Enhancing analysis with JudgeOutputAdapter...")
+            final_analysis = JudgeOutputAdapter.enhance_dashboard_with_judge_reasoning(
+                standard_base_analysis, judge_raw_output
+            )
             
-        except ImportError as e:
-            # Graceful fallback if judge components not available
-            logger.warning(f"Judge components not available: {e}")
-            return standard_analysis
+            logger.info("DebugJudge primary analysis successful.")
+            return final_analysis
+
+        except ImportError as ie:
+            logger.warning(f"Judge components (DebugJudge, APIManager, or JudgeOutputAdapter) not available due to ImportError: {ie}. Falling back to standard rule-based analysis.")
+            return self.generate_comprehensive_analysis(
+                agent_outputs, framework, expected_tools, pipeline_data
+            )
         except Exception as e:
-            # Graceful fallback for any other errors
-            logger.warning(f"Judge analysis failed: {e}")
-            return standard_analysis
+            logger.warning(f"Primary judge-led analysis failed: {e}. Falling back to standard rule-based analysis.")
+            logger.exception("Full trace of judge failure:") # Added for better debugging
+            return self.generate_comprehensive_analysis(
+                agent_outputs, framework, expected_tools, pipeline_data
+            )
     
     def analyze_with_debug_judge(
         self, 
