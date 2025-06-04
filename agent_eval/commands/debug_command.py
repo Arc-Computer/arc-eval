@@ -176,11 +176,10 @@ class DebugCommand:
             from agent_eval.evaluation.reliability_validator import ReliabilityAnalyzer
 
             analyzer = ReliabilityAnalyzer()
-            # Always use judge-enhanced analysis (no more dual pathways)
-            analysis = analyzer.generate_comprehensive_analysis_with_judge(
+            # Use the unified analysis method (judge-first with fallback)
+            analysis = analyzer.generate_comprehensive_analysis(
                 agent_outputs=agent_outputs,
-                framework=framework,
-                enable_judge_analysis=True  # Always enabled for unified experience
+                framework=framework
             )
 
             # Display the comprehensive analysis using DebugDashboard

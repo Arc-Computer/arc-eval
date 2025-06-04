@@ -631,10 +631,9 @@ class ReliabilityHandler(BaseCommandHandler):
             # Use judge-enhanced analysis for debug workflows
             if (debug_agent or unified_debug) and enable_judge_analysis:
                 try:
-                    analysis = analyzer.generate_comprehensive_analysis_with_judge(
+                    analysis = analyzer.generate_comprehensive_analysis(
                         agent_outputs=agent_outputs,
-                        framework=framework,
-                        enable_judge_analysis=True
+                        framework=framework
                     )
                     
                     # Add judge analysis indicator
