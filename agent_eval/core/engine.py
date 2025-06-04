@@ -125,32 +125,219 @@ class EvaluationEngine:
     
     def evaluate(self, agent_outputs: Union[str, Dict[str, Any], List[Any]], scenarios: Optional[List[EvaluationScenario]] = None) -> List[EvaluationResult]:
         """
-        Evaluate agent outputs against scenarios.
-        
+        Evaluate agent outputs against scenarios with intelligent optimization.
+
+        Uses smart evaluation strategy:
+        1. Rule-based evaluation for initial assessment
+        2. Batch judge analysis for large scenario sets (cost optimization)
+        3. Individual judge analysis for smaller sets or failures
+
         Args:
             agent_outputs: Raw agent outputs to evaluate
             scenarios: Optional list of specific scenarios to evaluate. If None, evaluates all scenarios in the pack.
-            
+
         Returns:
             List of evaluation results
         """
         # Normalize input to list of outputs
         if not isinstance(agent_outputs, list):
             agent_outputs = [agent_outputs]
-        
+
         # Use provided scenarios or all scenarios from the pack
         scenarios_to_evaluate = scenarios if scenarios is not None else self.eval_pack.scenarios
-        
+
+        # Check if we should use batch optimization for large scenario sets
+        if len(scenarios_to_evaluate) >= 50:
+            return self._evaluate_with_batch_optimization(scenarios_to_evaluate, agent_outputs)
+        else:
+            return self._evaluate_individually(scenarios_to_evaluate, agent_outputs)
+
+    def _evaluate_individually(self, scenarios: List[EvaluationScenario], agent_outputs: List[Any]) -> List[EvaluationResult]:
+        """Evaluate scenarios individually (original approach)."""
         results = []
-        
-        for scenario in scenarios_to_evaluate:
+
+        for scenario in scenarios:
             # For MVP, evaluate each scenario against all outputs
             # In practice, you might want to match scenarios to specific outputs
             scenario_result = self._evaluate_scenario(scenario, agent_outputs)
             results.append(scenario_result)
-        
+
         return results
-    
+
+    def _evaluate_with_batch_optimization(self, scenarios: List[EvaluationScenario], agent_outputs: List[Any]) -> List[EvaluationResult]:
+        """Evaluate scenarios with batch optimization for cost efficiency."""
+        try:
+            # First run rule-based evaluation for all scenarios
+            results = []
+            failed_scenarios = []
+
+            for scenario in scenarios:
+                # Parse agent outputs
+                parsed_outputs = []
+                for output in agent_outputs:
+                    try:
+                        parsed = AgentOutput.from_raw(output)
+                        parsed_outputs.append(parsed)
+                    except Exception:
+                        continue
+
+                if not parsed_outputs:
+                    # Create error result for scenarios with no valid outputs
+                    result = EvaluationResult(
+                        scenario_id=scenario.id,
+                        scenario_name=scenario.name,
+                        description=scenario.description,
+                        severity=scenario.severity,
+                        compliance=scenario.compliance,
+                        test_type=scenario.test_type,
+                        passed=False,
+                        status="error",
+                        confidence=0.0,
+                        failure_reason="No valid agent outputs to evaluate",
+                        remediation=scenario.remediation
+                    )
+                else:
+                    # Run rule-based evaluation first
+                    passed, confidence, failure_reason, agent_output = self._run_scenario_evaluation(
+                        scenario, parsed_outputs
+                    )
+
+                    result = EvaluationResult(
+                        scenario_id=scenario.id,
+                        scenario_name=scenario.name,
+                        description=scenario.description,
+                        severity=scenario.severity,
+                        compliance=scenario.compliance,
+                        test_type=scenario.test_type,
+                        passed=passed,
+                        status="passed" if passed else "failed",
+                        confidence=confidence,
+                        failure_reason=failure_reason,
+                        agent_output=agent_output,
+                        remediation=scenario.remediation if not passed else None
+                    )
+
+                results.append(result)
+
+                # Collect scenarios that need judge analysis
+                if self._should_trigger_judge_analysis(result, scenario):
+                    failed_scenarios.append((scenario, result, parsed_outputs))
+
+            # If we have many scenarios needing judge analysis, use batch processing
+            if len(failed_scenarios) >= 10:
+                self._enhance_results_with_batch_judges(failed_scenarios)
+            else:
+                # Use individual judge analysis for smaller sets
+                for scenario, result, parsed_outputs in failed_scenarios:
+                    try:
+                        self._enhance_with_judge_analysis(result, parsed_outputs, scenario)
+                    except Exception as e:
+                        import logging
+                        logger = logging.getLogger(__name__)
+                        logger.warning(f"Individual judge analysis failed for scenario {scenario.id}: {e}")
+
+            return results
+
+        except Exception as e:
+            # Fallback to individual evaluation if batch optimization fails
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(f"Batch optimization failed, falling back to individual evaluation: {e}")
+            return self._evaluate_individually(scenarios, agent_outputs)
+
+    def _enhance_results_with_batch_judges(self, failed_scenarios: List[tuple]) -> None:
+        """Enhance multiple results using batch judge analysis for cost efficiency."""
+        try:
+            # Import DualTrackEvaluator for batch processing
+            from agent_eval.evaluation.judges.dual_track_evaluator import DualTrackEvaluator
+            from agent_eval.evaluation.judges.api_manager import APIManager
+
+            # Initialize API manager and dual track evaluator
+            api_manager = getattr(self, 'api_manager', None)
+            if not api_manager:
+                api_manager = APIManager(provider="cerebras")  # Fast inference for batch processing
+
+            dual_track = DualTrackEvaluator(api_manager)
+
+            # Prepare prompts for batch evaluation
+            prompts = []
+            scenario_map = {}
+
+            for i, (scenario, result, parsed_outputs) in enumerate(failed_scenarios):
+                # Create debug prompt for the scenario
+                primary_output = parsed_outputs[0] if parsed_outputs else None
+                if primary_output:
+                    prompt = self._create_debug_prompt(scenario, primary_output)
+                    prompt_data = {
+                        "prompt": prompt,
+                        "scenario_id": scenario.id
+                    }
+                    prompts.append(prompt_data)
+                    scenario_map[scenario.id] = (scenario, result)
+
+            if prompts:
+                # Use batch evaluation for cost efficiency
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.info(f"🚀 Using batch judge analysis for {len(prompts)} failed scenarios")
+
+                evaluation_summary = dual_track.evaluate_scenarios(prompts)
+
+                # Apply judge results to evaluation results
+                for judge_result in evaluation_summary.results:
+                    if judge_result.scenario_id in scenario_map:
+                        scenario, eval_result = scenario_map[judge_result.scenario_id]
+
+                        # Create a mock JudgmentResult for compatibility
+                        from agent_eval.evaluation.judges.workflow.types import JudgmentResult
+                        judgment_result = JudgmentResult(
+                            judgment="fail" if not eval_result.passed else "pass",
+                            confidence=judge_result.confidence,
+                            reasoning=judge_result.response,
+                            improvement_recommendations=[],
+                            model_used=judge_result.model_used,
+                            evaluation_time=judge_result.evaluation_time
+                        )
+
+                        # Enhance the evaluation result
+                        eval_result.enhance_with_judge_result(judgment_result)
+                        eval_result.debug_insights = judge_result.response
+
+                logger.info(f"✅ Batch judge analysis completed: ${evaluation_summary.total_cost:.2f}, "
+                           f"{evaluation_summary.total_time:.1f}s")
+
+        except Exception as e:
+            # Fallback to individual judge analysis
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(f"Batch judge analysis failed, falling back to individual analysis: {e}")
+
+            for scenario, result, parsed_outputs in failed_scenarios:
+                try:
+                    self._enhance_with_judge_analysis(result, parsed_outputs, scenario)
+                except Exception as individual_error:
+                    logger.warning(f"Individual judge analysis also failed for {scenario.id}: {individual_error}")
+
+    def _create_debug_prompt(self, scenario: EvaluationScenario, agent_output: AgentOutput) -> str:
+        """Create a debug prompt for judge analysis."""
+        return f"""Analyze this agent output for compliance violations and provide debugging insights.
+
+Scenario: {scenario.name}
+Description: {scenario.description}
+Severity: {scenario.severity}
+Expected Behavior: {scenario.expected_behavior}
+
+Agent Output:
+{agent_output.content}
+
+Please provide:
+1. Detailed analysis of any compliance violations
+2. Root cause analysis of failures
+3. Specific recommendations for improvement
+4. Confidence score (0.0-1.0)
+
+Focus on actionable insights for debugging and remediation."""
+
     def _evaluate_scenario(
         self,
         scenario: EvaluationScenario,
