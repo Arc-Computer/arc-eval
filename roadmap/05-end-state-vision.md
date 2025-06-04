@@ -59,6 +59,16 @@ $ arc-eval fleet-report
 - **Predictive optimization**: Prevent failures before they happen (92% accuracy)
 - **Continuous improvement**: Self-improving algorithm that gets better with scale
 
+## Market Position
+
+| **Category** | **Today** | **End State** |
+|---|---|---|
+| **Market** | AI Testing Tools | AI Reliability Platform |
+| **Competitors** | LangSmith, Braintrust | Industry Standard |
+| **Users** | 1,000 developers | 100,000+ teams |
+| **Coverage** | 3 domains | Every industry |
+| **Value** | Find problems | Prevent problems |
+
 ## The BYOA Network Effect: Cross-Framework Learning
 
 ```

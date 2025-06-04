@@ -42,7 +42,7 @@ arc-eval improve --framework langchain --code-examples
 ## Our Assets
 
 ### Technical Foundation
-```
+```bash
 agent_eval/
 ├── evaluation/          # Judges and validators
 ├── analysis/           # Pattern learning, failure classification
