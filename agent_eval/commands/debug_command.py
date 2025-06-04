@@ -197,23 +197,10 @@ class DebugCommand:
                 enable_judge_analysis=True  # Enable the DebugJudge
             )
 
-            # Display the comprehensive analysis
-            self.console.print(analysis.reliability_dashboard)
-
-            # Show insights
-            if analysis.insights_summary:
-                self.console.print(f"\n💡 [bold cyan]Key Insights:[/bold cyan]")
-                for insight in analysis.insights_summary:
-                    self.console.print(f"  {insight}")
-
-            # Show next steps
-            if analysis.next_steps:
-                self.console.print(f"\n📋 [bold]Next Steps:[/bold]")
-                for i, step in enumerate(analysis.next_steps, 1):
-                    if step.startswith(f"{i}."):
-                        self.console.print(step)
-                    else:
-                        self.console.print(f"{i}. {step}")
+            # Display the comprehensive analysis using DebugDashboard
+            from agent_eval.ui.debug_dashboard import DebugDashboard
+            dashboard = DebugDashboard()
+            dashboard.display_debug_summary(analysis, None)  # No cognitive analysis for now
 
             # Show enhanced analysis options if requested
             if pattern_analysis or root_cause or framework_agnostic or cross_framework_learning:

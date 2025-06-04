@@ -155,19 +155,51 @@ class ImproveCommand:
         )
     
     def _execute_improvement_plan(self, evaluation_file: Optional[Path], no_interactive: bool, verbose: bool) -> int:
-        """Execute improvement plan generation from evaluation file."""
+        """Execute improvement plan generation from evaluation file using ImproveJudge."""
         if not evaluation_file:
             raise ValueError("No evaluation file specified or found!")
 
-        return self.handler.execute(
-            improvement_plan=True,
-            from_evaluation=evaluation_file,
-            no_interactive=no_interactive,
-            verbose=verbose,
-            output='table',
-            # Auto-generate training data
-            dev=True  # Enable self-improvement features
-        )
+        try:
+            # Load evaluation results
+            import json
+            with open(evaluation_file, 'r') as f:
+                evaluation_data = json.load(f)
+
+            # Use ImproveJudge for AI-powered improvement recommendations
+            self.console.print("\n[bold blue]🤖 AI-Powered Improvement Analysis[/bold blue]")
+            self.console.print("=" * 60)
+
+            # Generate improvement plan using ImproveJudge
+            improvement_plan = self._generate_ai_improvement_plan(evaluation_data)
+
+            # Display AI-powered recommendations
+            self._display_improvement_recommendations(improvement_plan)
+
+            # Fallback to handler if needed for additional features
+            return self.handler.execute(
+                improvement_plan=True,
+                from_evaluation=evaluation_file,
+                no_interactive=no_interactive,
+                verbose=verbose,
+                output='table',
+                # Auto-generate training data
+                dev=True  # Enable self-improvement features
+            )
+
+        except Exception as e:
+            self.console.print(f"[red]❌ AI improvement analysis failed:[/red] {e}")
+            if verbose:
+                self.console.print_exception()
+
+            # Fallback to standard improvement plan
+            return self.handler.execute(
+                improvement_plan=True,
+                from_evaluation=evaluation_file,
+                no_interactive=no_interactive,
+                verbose=verbose,
+                output='table',
+                dev=True
+            )
     
     def _update_workflow_progress(
         self, 
@@ -186,6 +218,104 @@ class ImproveCommand:
     def _show_next_step_suggestion(self) -> None:
         """Show suggested next workflow step."""
         self.console.print("\n🔄 Next Step: Run 'arc-eval debug --input improved_outputs.json' to continue the improvement cycle")
+
+    def _generate_ai_improvement_plan(self, evaluation_data: dict) -> dict:
+        """Generate AI-powered improvement plan using ImproveJudge."""
+        try:
+            from agent_eval.evaluation.judges.workflow.improve import ImproveJudge
+            from agent_eval.evaluation.judges.api_manager import APIManager
+            from agent_eval.core.types import AgentOutput, EvaluationScenario
+
+            # Initialize ImproveJudge
+            api_manager = APIManager(provider="cerebras")
+            improve_judge = ImproveJudge(api_manager)
+
+            # Extract failed scenarios for improvement analysis
+            failed_results = []
+            if 'results' in evaluation_data and isinstance(evaluation_data['results'], list):
+                failed_results = [r for r in evaluation_data['results'] if not r.get('passed', True)]
+
+            if not failed_results:
+                return {
+                    "improvement_actions": [],
+                    "message": "No failed scenarios found - agent performing well!",
+                    "confidence": 1.0
+                }
+
+            # Use the first failed result as representative for improvement analysis
+            failed_result = failed_results[0]
+
+            # Create AgentOutput from failed result
+            agent_output = AgentOutput.from_raw(failed_result.get('agent_output', ''))
+
+            # Create mock scenario for improvement analysis
+            scenario = EvaluationScenario(
+                id=failed_result.get('scenario_id', 'unknown'),
+                name=failed_result.get('scenario_name', 'Failed Scenario'),
+                description=failed_result.get('description', ''),
+                severity=failed_result.get('severity', 'medium'),
+                test_type=failed_result.get('test_type', 'negative'),
+                category='improvement',
+                input_template='',
+                expected_behavior='',
+                remediation=failed_result.get('remediation', ''),
+                failure_indicators=[failed_result.get('failure_reason', '')]
+            )
+
+            # Generate improvement plan
+            improvement_plan = improve_judge.generate_improvement_plan(agent_output, scenario)
+
+            return improvement_plan
+
+        except Exception as e:
+            self.console.print(f"[yellow]⚠️ ImproveJudge unavailable: {e}[/yellow]")
+            return {
+                "improvement_actions": [
+                    "Enable ImproveJudge for AI-powered improvement recommendations",
+                    "Review failed scenarios manually",
+                    "Implement basic error handling improvements"
+                ],
+                "confidence": 0.6,
+                "reasoning": "Fallback recommendations - ImproveJudge not available"
+            }
+
+    def _display_improvement_recommendations(self, improvement_plan: dict) -> None:
+        """Display AI-powered improvement recommendations."""
+
+        if improvement_plan.get('message'):
+            self.console.print(f"[green]✅ {improvement_plan['message']}[/green]")
+            return
+
+        # Display confidence and reasoning
+        confidence = improvement_plan.get('confidence', 0.0)
+        confidence_color = "green" if confidence > 0.8 else "yellow" if confidence > 0.6 else "red"
+        self.console.print(f"[bold]AI Confidence:[/bold] [{confidence_color}]{confidence:.1%}[/{confidence_color}]")
+
+        reasoning = improvement_plan.get('reasoning', '')
+        if reasoning:
+            self.console.print(f"[dim]Reasoning: {reasoning}[/dim]")
+
+        # Display improvement actions
+        improvement_actions = improvement_plan.get('improvement_actions', [])
+        if improvement_actions:
+            self.console.print(f"\n[bold cyan]🎯 AI-Recommended Improvements:[/bold cyan]")
+            for i, action in enumerate(improvement_actions[:5], 1):  # Show top 5
+                if isinstance(action, dict):
+                    description = action.get('description', str(action))
+                    priority = action.get('priority', 'medium')
+                    priority_color = "red" if priority.lower() == 'high' else "yellow" if priority.lower() == 'medium' else "green"
+                    self.console.print(f"  {i}. [{priority_color}][{priority.upper()}][/{priority_color}] {description}")
+                else:
+                    self.console.print(f"  {i}. {action}")
+
+        # Display additional metrics
+        expected_improvement = improvement_plan.get('expected_improvement', 0)
+        if expected_improvement:
+            self.console.print(f"\n[bold green]📈 Expected Improvement:[/bold green] {expected_improvement}%")
+
+        timeline = improvement_plan.get('implementation_timeline', '')
+        if timeline:
+            self.console.print(f"[bold blue]⏱️ Timeline:[/bold blue] {timeline}")
 
     def _execute_enhanced_improvement(
         self,

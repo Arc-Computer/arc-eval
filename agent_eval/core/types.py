@@ -121,6 +121,10 @@ class EvaluationResult:
     failure_reason: Optional[str] = None
     agent_output: Optional[str] = None
     remediation: Optional[str] = None
+
+    # Judge integration fields
+    debug_insights: Optional["DebugInsights"] = None
+    improvement_recommendations: Optional[List["ImprovementRecommendation"]] = field(default_factory=list)
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert result to dictionary for serialization.
@@ -583,3 +587,36 @@ class LearningMetrics:
     evaluation_history: List[Tuple[datetime, float, int]] = field(default_factory=list)  # (timestamp, pass_rate, scenario_count)
     top_failure_patterns: List[Dict[str, Any]] = field(default_factory=list)  # [{pattern, count, severity, has_fix}]
     pattern_detection_rate: float = 0.0  # Percentage of failures with patterns captured
+
+
+# Judge Integration Types
+
+@dataclass
+class DebugInsights:
+    """AI-powered debug insights from DebugJudge analysis.
+
+    Contains structured insights from the DebugJudge for debugging workflows,
+    providing AI-powered analysis of agent failures and performance issues.
+    """
+    failure_patterns: List[str] = field(default_factory=list)
+    root_causes: List[str] = field(default_factory=list)
+    tool_failures: List[Dict[str, Any]] = field(default_factory=list)
+    confidence: float = 0.0
+    recommendations: List[str] = field(default_factory=list)
+    reasoning: Optional[str] = None
+
+
+@dataclass
+class ImprovementRecommendation:
+    """AI-powered improvement recommendation from ImproveJudge analysis.
+
+    Contains structured improvement recommendations with priority and impact
+    assessment for agent optimization workflows.
+    """
+    description: str
+    priority: str  # "high", "medium", "low"
+    confidence: float
+    expected_impact: str
+    implementation_steps: List[str] = field(default_factory=list)
+    category: Optional[str] = None  # "performance", "reliability", "cost", etc.
+    estimated_effort: Optional[str] = None  # "1-2 hours", "1-2 days", etc.
