@@ -1312,12 +1312,34 @@ Required parameters:
         expected_tools: Optional[List[str]] = None,
         pipeline_data: Optional[Dict[str, Any]] = None
     ) -> ComprehensiveReliabilityAnalysis:
-        """Generate comprehensive reliability analysis combining all functionality."""
-        
+        """Generate comprehensive reliability analysis - now redirects to judge-enhanced method.
+
+        This method now uses the unified judge-enhanced approach by default.
+        For the old rule-based-only behavior, use generate_comprehensive_analysis_legacy().
+        """
+        # Redirect to the judge-enhanced method with judges enabled by default
+        return self.generate_comprehensive_analysis_with_judge(
+            agent_outputs, framework, expected_tools, pipeline_data,
+            enable_judge_analysis=True
+        )
+
+    # Rule-based analysis implementation (moved from original method)
+    def generate_comprehensive_analysis_legacy(
+        self,
+        agent_outputs: List[Any],
+        framework: Optional[str] = None,
+        expected_tools: Optional[List[str]] = None,
+        pipeline_data: Optional[Dict[str, Any]] = None
+    ) -> ComprehensiveReliabilityAnalysis:
+        """Rule-based comprehensive reliability analysis (legacy implementation).
+
+        This contains the original rule-based analysis logic without judge enhancement.
+        Used as the foundation for the judge-enhanced method.
+        """
         sample_size = len(agent_outputs)
         if sample_size == 0:
             return self._create_empty_analysis()
-        
+
         # 1. Framework Detection (consolidating duplicate logic)
         if framework:
             framework_detection = {
@@ -1328,16 +1350,16 @@ Required parameters:
             }
         else:
             framework_detection = self.detect_framework_comprehensive(agent_outputs)
-        
+
         detected_framework = framework_detection['detected_framework']
-        
+
         # 2. Tool Call Analysis
         if expected_tools:
             tool_validations = []
             for output in agent_outputs:
                 validation = self.validate_tool_usage(output, expected_tools)
                 tool_validations.append(validation)
-            
+
             tool_call_summary = {
                 'total_validations': len(tool_validations),
                 'avg_tool_accuracy': sum(v['coverage_rate'] for v in tool_validations) / len(tool_validations),
@@ -1350,14 +1372,14 @@ Required parameters:
             for output in agent_outputs:
                 tools = self.extract_tool_calls(output, detected_framework)
                 all_detected_tools.extend(tools)
-            
+
             tool_call_summary = {
                 'total_outputs_analyzed': sample_size,
                 'unique_tools_detected': len(set(all_detected_tools)),
                 'most_common_tools': Counter(all_detected_tools).most_common(5),
                 'framework_specific_analysis': detected_framework is not None
             }
-        
+
         # 3. Framework Performance Analysis (if framework detected)
         framework_performance = None
         if detected_framework:
@@ -1365,14 +1387,14 @@ Required parameters:
                 framework_performance = self.analyze_framework_performance(agent_outputs, detected_framework)
             except Exception as e:
                 logger.warning(f"Framework performance analysis failed: {e}")
-        
+
         # 4. Workflow Reliability Metrics
         workflow_metrics = self._calculate_workflow_metrics(
-            agent_outputs, 
+            agent_outputs,
             detected_framework,
             framework_performance
         )
-        
+
         # 5. Generate Rich Dashboard
         reliability_dashboard = self._generate_reliability_dashboard(
             framework_detection,
@@ -1381,7 +1403,7 @@ Required parameters:
             workflow_metrics,
             sample_size
         )
-        
+
         # 6. Generate Insights and Next Steps
         insights_summary = self._generate_insights(
             framework_detection,
@@ -1389,14 +1411,14 @@ Required parameters:
             framework_performance,
             workflow_metrics
         )
-        
+
         # 6.1. Analyze Migration Opportunities (NEW - Task 7)
         migration_analysis = self._analyze_migration_opportunities(
             detected_framework,
             framework_performance,
             workflow_metrics
         )
-        
+
         # 6.2. Cognitive Analysis Integration (NEW - Task 8)
         cognitive_analysis = self._perform_cognitive_analysis(agent_outputs)
 
@@ -1464,16 +1486,16 @@ Required parameters:
             workflow_metrics,
             migration_analysis
         )
-        
+
         # 7. Calculate Overall Analysis Confidence
         analysis_confidence = self._calculate_overall_confidence(
             framework_detection['confidence'],
             sample_size,
             framework_performance
         )
-        
+
         evidence_quality = self._determine_evidence_quality(analysis_confidence, sample_size)
-        
+
         return ComprehensiveReliabilityAnalysis(
             detected_framework=detected_framework,
             framework_confidence=framework_detection['confidence'],
@@ -1538,13 +1560,18 @@ Required parameters:
         pipeline_data: Optional[Dict[str, Any]] = None,
         enable_judge_analysis: bool = True
     ) -> ComprehensiveReliabilityAnalysis:
-        """Generate comprehensive reliability analysis with optional judge enhancement.
-        
-        Integrates DebugJudge while maintaining backward compatibility.
+        """Generate comprehensive reliability analysis with intelligent judge enhancement.
+
+        This is now the primary analysis method that combines:
+        1. Rule-based reliability analysis (fast, deterministic)
+        2. AI judge enhancement (intelligent, contextual insights)
+        3. Graceful fallback when judges unavailable
+
+        Replaces the old dual-method approach for simplified architecture.
         """
         
-        # First, run the standard comprehensive analysis
-        standard_analysis = self.generate_comprehensive_analysis(
+        # First, run the standard comprehensive analysis (using legacy implementation)
+        standard_analysis = self.generate_comprehensive_analysis_legacy(
             agent_outputs, framework, expected_tools, pipeline_data
         )
         
