@@ -124,47 +124,44 @@ class EvaluationEngine:
         return EvaluationPack.from_dict(data)
     
     def evaluate(self, agent_outputs: Union[str, Dict[str, Any], List[Any]], scenarios: Optional[List[EvaluationScenario]] = None) -> List[EvaluationResult]:
-        """
-        Evaluate agent outputs against scenarios.
-        
-        Args:
-            agent_outputs: Raw agent outputs to evaluate
-            scenarios: Optional list of specific scenarios to evaluate. If None, evaluates all scenarios in the pack.
-            
-        Returns:
-            List of evaluation results
-        """
+        """Simple evaluation with judge enhancement for failed scenarios."""
+
         # Normalize input to list of outputs
         if not isinstance(agent_outputs, list):
             agent_outputs = [agent_outputs]
-        
+
         # Use provided scenarios or all scenarios from the pack
         scenarios_to_evaluate = scenarios if scenarios is not None else self.eval_pack.scenarios
-        
+
+        # Simple evaluation - no complex optimization
         results = []
-        
         for scenario in scenarios_to_evaluate:
-            # For MVP, evaluate each scenario against all outputs
-            # In practice, you might want to match scenarios to specific outputs
-            scenario_result = self._evaluate_scenario(scenario, agent_outputs)
-            results.append(scenario_result)
-        
+            result = self._evaluate_scenario(scenario, agent_outputs)
+            results.append(result)
+
         return results
-    
+
+
+
     def _evaluate_scenario(
-        self, 
-        scenario: EvaluationScenario, 
+        self,
+        scenario: EvaluationScenario,
         agent_outputs: List[Any]
     ) -> EvaluationResult:
         """
-        Evaluate a single scenario against agent outputs.
-        
+        Evaluate a single scenario against agent outputs with intelligent judge integration.
+
+        Uses hybrid evaluation approach:
+        1. Rule-based evaluation for initial assessment
+        2. Judge analysis for failed scenarios or low confidence results
+        3. Smart triggering based on severity and confidence thresholds
+
         Args:
             scenario: The scenario to evaluate
             agent_outputs: List of agent outputs to check
-            
+
         Returns:
-            Evaluation result for this scenario
+            Evaluation result for this scenario (potentially enhanced with judge analysis)
         """
         # Parse and normalize agent outputs
         parsed_outputs = []
@@ -175,7 +172,7 @@ class EvaluationEngine:
             except Exception:
                 # Skip invalid outputs
                 continue
-        
+
         if not parsed_outputs:
             return EvaluationResult(
                 scenario_id=scenario.id,
@@ -190,18 +187,19 @@ class EvaluationEngine:
                 failure_reason="No valid agent outputs to evaluate",
                 remediation=scenario.remediation
             )
-        
-        # Run the evaluation logic
+
+        # Run the rule-based evaluation logic first
         passed, confidence, failure_reason, agent_output = self._run_scenario_evaluation(
             scenario, parsed_outputs
         )
 
-        # Generate improvement insights for failed scenarios
+        # Generate improvement insights for failed scenarios (from main branch)
         improvement_recommendations = []
         if not passed:
             improvement_recommendations = self._generate_improvement_insights(scenario, parsed_outputs[0] if parsed_outputs else None)
 
-        return EvaluationResult(
+        # Create initial evaluation result with judge integration support
+        result = EvaluationResult(
             scenario_id=scenario.id,
             scenario_name=scenario.name,
             description=scenario.description,
@@ -213,9 +211,27 @@ class EvaluationEngine:
             confidence=confidence,
             failure_reason=failure_reason,
             agent_output=agent_output,
-            remediation=scenario.remediation if not passed else None,
-            improvement_recommendations=improvement_recommendations
+            remediation=scenario.remediation if not passed else None
         )
+
+        # Simple judge triggering - only for failures or low confidence
+        if not passed or confidence < 0.7:
+            try:
+                from agent_eval.evaluation.judges.workflow.debug import DebugJudge
+                from agent_eval.evaluation.judges.api_manager import APIManager
+
+                api_manager = APIManager(provider="cerebras")
+                debug_judge = DebugJudge(api_manager)
+
+                # Simple judge analysis
+                judge_result = debug_judge.evaluate(parsed_outputs[0], scenario)
+                result.enhance_with_judge_result(judge_result)
+
+            except Exception:
+                # Graceful fallback - continue with rule-based result
+                pass
+
+        return result
     
     def _run_scenario_evaluation(
         self,
@@ -482,3 +498,5 @@ class EvaluationEngine:
             compliance_frameworks=sorted(compliance_frameworks),
             domain=self.domain
         )
+
+

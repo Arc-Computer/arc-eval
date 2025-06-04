@@ -99,16 +99,19 @@ class EvaluationScenario:
 @dataclass
 class EvaluationResult:
     """Result of evaluating a scenario against agent output.
-    
+
     Contains the complete evaluation result for a single scenario including:
     - Pass/fail status and confidence score
     - Detailed failure analysis and remediation guidance
     - Associated compliance frameworks and regulatory references
     - Agent output excerpts for audit trails
-    
+    - AI judge analysis and insights (when available)
+
     Used for generating compliance reports and tracking improvement over time.
+    Enhanced with judge integration for intelligent failure analysis.
     """
-    
+
+    # Core evaluation fields (existing)
     scenario_id: str
     scenario_name: str
     description: str
@@ -122,18 +125,97 @@ class EvaluationResult:
     agent_output: Optional[str] = None
     remediation: Optional[str] = None
 
-    # Judge integration fields
-    debug_insights: Optional["DebugInsights"] = None
-    improvement_recommendations: Optional[List["ImprovementRecommendation"]] = field(default_factory=list)
+    # Judge integration fields (enhanced for AI-first architecture)
+    judge_reasoning: Optional[str] = None
+    judge_confidence: Optional[float] = None
+    improvement_recommendations: List[str] = field(default_factory=list)
+    judge_used: Optional[str] = None  # Which judge was used (e.g., "DebugJudge", "ImproveJudge")
+    judge_evaluation_time: Optional[float] = None  # Time spent on judge analysis
+
+    # Enhanced insights from judge analysis
+    debug_insights: Optional[str] = None  # Debug-specific insights from DebugJudge
+    failure_patterns: List[str] = field(default_factory=list)  # Identified failure patterns
+    success_patterns: List[str] = field(default_factory=list)  # Identified success patterns
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert result to dictionary for serialization.
-        
+
         Returns:
             Dictionary representation suitable for JSON serialization,
             export to CSV/PDF reports, and API responses.
         """
         return asdict(self)
+
+    def has_judge_analysis(self) -> bool:
+        """Check if this result includes judge analysis.
+
+        Returns:
+            True if judge analysis was performed, False otherwise
+        """
+        return self.judge_used is not None and self.judge_reasoning is not None
+
+    def get_primary_insights(self) -> str:
+        """Get the primary insights for this evaluation result.
+
+        Prioritizes judge reasoning over rule-based failure reason.
+
+        Returns:
+            Primary insights string for display
+        """
+        if self.judge_reasoning:
+            return self.judge_reasoning
+        elif self.debug_insights:
+            return self.debug_insights
+        elif self.failure_reason:
+            return self.failure_reason
+        else:
+            return "No detailed analysis available"
+
+    def get_confidence_score(self) -> float:
+        """Get the most reliable confidence score.
+
+        Prioritizes judge confidence over rule-based confidence.
+
+        Returns:
+            Confidence score (0.0-1.0)
+        """
+        if self.judge_confidence is not None:
+            return self.judge_confidence
+        return self.confidence
+
+    def enhance_with_judge_result(self, judge_result: 'JudgmentResult') -> None:
+        """Enhance this evaluation result with judge analysis.
+
+        Integrates judge analysis while preserving existing data.
+
+        Args:
+            judge_result: JudgmentResult from judge evaluation
+        """
+        # Import here to avoid circular imports
+        from datetime import datetime
+
+        self.judge_reasoning = judge_result.reasoning
+        self.judge_confidence = judge_result.confidence
+        self.improvement_recommendations = judge_result.improvement_recommendations
+        self.judge_used = judge_result.model_used
+        self.judge_evaluation_time = judge_result.evaluation_time
+
+        # Extract patterns from reward signals
+        if hasattr(judge_result, 'reward_signals') and judge_result.reward_signals:
+            self.failure_patterns = judge_result.reward_signals.get('failure_patterns', [])
+            self.success_patterns = judge_result.reward_signals.get('success_patterns', [])
+
+        # Update confidence if judge confidence is higher
+        if judge_result.confidence > self.confidence:
+            self.confidence = judge_result.confidence
+
+        # Update status based on judge judgment
+        if judge_result.judgment == "fail" and self.passed:
+            self.passed = False
+            self.status = "failed_by_judge"
+        elif judge_result.judgment == "pass" and not self.passed:
+            self.passed = True
+            self.status = "passed_by_judge"
 
 
 @dataclass
