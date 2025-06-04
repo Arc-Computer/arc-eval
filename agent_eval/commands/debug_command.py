@@ -16,12 +16,12 @@ from agent_eval.core.workflow_state import update_workflow_progress
 
 class DebugCommand:
     """Handles debug command execution with proper error handling and logging."""
-    
+
     def __init__(self) -> None:
         """Initialize debug command with console and handler."""
         self.console = Console()
         self.handler = ReliabilityHandler()
-    
+
     def execute(
         self,
         input_file: Path,
@@ -57,15 +57,15 @@ class DebugCommand:
         """
         self.console.print("\n[bold blue]🔍 Agent Debug Analysis[/bold blue]")
         self.console.print("=" * 60)
-        
+
         try:
             # Validate inputs
             if not input_file.exists():
                 raise FileNotFoundError(f"Input file not found: {input_file}")
-            
+
             if output_format not in ['console', 'json', 'html']:
                 raise ValueError(f"Invalid output format: {output_format}")
-            
+
             # Enhanced debug analysis with universal intelligence
             if pattern_analysis or root_cause or framework_agnostic or cross_framework_learning:
                 exit_code = self._execute_enhanced_debug(
@@ -88,20 +88,20 @@ class DebugCommand:
                     agent_judge=False,
                     export=None
                 )
-            
+
             if exit_code == 0:
                 # Update workflow progress
-                update_workflow_progress('debug', 
+                update_workflow_progress('debug',
                     input_file=str(input_file),
                     framework=framework or 'auto-detected',
                     timestamp=datetime.now().isoformat()
                 )
-                
+
                 # Show next step suggestion
                 self._show_next_step_suggestion()
-            
+
             return exit_code
-            
+
         except FileNotFoundError as e:
             self.console.print(f"[red]❌ File not found:[/red] {input_file}")
             self.console.print("\n[yellow]💡 Quick fixes:[/yellow]")
@@ -126,7 +126,7 @@ class DebugCommand:
             if verbose:
                 self.console.print_exception()
             return 1
-    
+
     def _show_next_step_suggestion(self) -> None:
         """Show suggested next workflow step."""
         from agent_eval.core.workflow_state import WorkflowStateManager
