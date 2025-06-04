@@ -152,19 +152,24 @@ class EvaluationEngine:
         return results
     
     def _evaluate_scenario(
-        self, 
-        scenario: EvaluationScenario, 
+        self,
+        scenario: EvaluationScenario,
         agent_outputs: List[Any]
     ) -> EvaluationResult:
         """
-        Evaluate a single scenario against agent outputs.
-        
+        Evaluate a single scenario against agent outputs with intelligent judge integration.
+
+        Uses hybrid evaluation approach:
+        1. Rule-based evaluation for initial assessment
+        2. Judge analysis for failed scenarios or low confidence results
+        3. Smart triggering based on severity and confidence thresholds
+
         Args:
             scenario: The scenario to evaluate
             agent_outputs: List of agent outputs to check
-            
+
         Returns:
-            Evaluation result for this scenario
+            Evaluation result for this scenario (potentially enhanced with judge analysis)
         """
         # Parse and normalize agent outputs
         parsed_outputs = []
@@ -175,7 +180,7 @@ class EvaluationEngine:
             except Exception:
                 # Skip invalid outputs
                 continue
-        
+
         if not parsed_outputs:
             return EvaluationResult(
                 scenario_id=scenario.id,
@@ -190,13 +195,14 @@ class EvaluationEngine:
                 failure_reason="No valid agent outputs to evaluate",
                 remediation=scenario.remediation
             )
-        
-        # Run the evaluation logic
+
+        # Run the rule-based evaluation logic first
         passed, confidence, failure_reason, agent_output = self._run_scenario_evaluation(
             scenario, parsed_outputs
         )
-        
-        return EvaluationResult(
+
+        # Create initial evaluation result
+        result = EvaluationResult(
             scenario_id=scenario.id,
             scenario_name=scenario.name,
             description=scenario.description,
@@ -210,6 +216,18 @@ class EvaluationEngine:
             agent_output=agent_output,
             remediation=scenario.remediation if not passed else None
         )
+
+        # Smart judge triggering for failed scenarios or low confidence
+        if self._should_trigger_judge_analysis(result, scenario):
+            try:
+                self._enhance_with_judge_analysis(result, parsed_outputs, scenario)
+            except Exception as e:
+                # Graceful fallback - log warning but continue with rule-based result
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.warning(f"Judge analysis failed for scenario {scenario.id}: {e}")
+
+        return result
     
     def _run_scenario_evaluation(
         self,
@@ -413,3 +431,94 @@ class EvaluationEngine:
             compliance_frameworks=sorted(compliance_frameworks),
             domain=self.domain
         )
+
+    def _should_trigger_judge_analysis(self, result: EvaluationResult, scenario: EvaluationScenario) -> bool:
+        """
+        Determine if judge analysis should be triggered for this evaluation result.
+
+        Uses intelligent triggering based on research best practices:
+        - Always trigger for failed scenarios (most valuable for debugging)
+        - Trigger for low confidence results (< 0.7)
+        - Always trigger for critical/high severity scenarios
+        - Skip for simple passes with high confidence (cost optimization)
+
+        Args:
+            result: Initial evaluation result from rule-based analysis
+            scenario: The evaluation scenario being analyzed
+
+        Returns:
+            True if judge analysis should be performed, False otherwise
+        """
+        # Always trigger for failed scenarios - this is where judges add most value
+        if not result.passed:
+            return True
+
+        # Trigger for low confidence results regardless of pass/fail
+        if result.confidence < 0.7:
+            return True
+
+        # Always trigger for critical and high severity scenarios
+        if scenario.severity in ["critical", "high"]:
+            return True
+
+        # Skip judge analysis for simple passes with high confidence (cost optimization)
+        return False
+
+    def _enhance_with_judge_analysis(
+        self,
+        result: EvaluationResult,
+        parsed_outputs: List[AgentOutput],
+        scenario: EvaluationScenario
+    ) -> None:
+        """
+        Enhance evaluation result with judge analysis.
+
+        Selects appropriate judge based on scenario type and integrates analysis
+        into the evaluation result. Preserves rule-based analysis as fallback.
+
+        Args:
+            result: Evaluation result to enhance (modified in-place)
+            parsed_outputs: Parsed agent outputs for analysis
+            scenario: The evaluation scenario being analyzed
+        """
+        try:
+            # Import judges here to avoid circular imports and handle missing dependencies
+            from agent_eval.evaluation.judges.workflow.debug import DebugJudge
+            from agent_eval.evaluation.judges.api_manager import APIManager
+
+            # Initialize API manager with fallback to environment configuration
+            api_manager = getattr(self, 'api_manager', None)
+            if not api_manager:
+                api_manager = APIManager(provider="cerebras")  # Fast inference for real-time evaluation
+
+            # Use DebugJudge for failure analysis (most common case)
+            debug_judge = DebugJudge(api_manager)
+
+            # Create a representative agent output for judge analysis
+            if parsed_outputs:
+                primary_output = parsed_outputs[0]  # Use first output as representative
+
+                # Perform judge evaluation
+                judge_result = debug_judge.evaluate(primary_output, scenario)
+
+                # Enhance the evaluation result with judge analysis
+                result.enhance_with_judge_result(judge_result)
+
+                # Add debug-specific insights
+                if hasattr(judge_result, 'reward_signals') and judge_result.reward_signals:
+                    debug_insights = judge_result.reward_signals.get('debug_insights', '')
+                    if debug_insights:
+                        result.debug_insights = debug_insights
+
+        except ImportError as e:
+            # Judge dependencies not available - graceful fallback
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.debug(f"Judge analysis unavailable (missing dependencies): {e}")
+
+        except Exception as e:
+            # Any other error - log and continue with rule-based result
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(f"Judge analysis failed: {e}")
+            # Result remains unchanged - rule-based analysis is preserved
