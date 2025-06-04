@@ -52,7 +52,7 @@ class DebugCommand:
             Exit code (0 for success, 1 for failure)
 
         Raises:
-            FileNotFoundError: If input file doesn't exist
+            FileNotFoundError: If input_file doesn't exist
             ValueError: If invalid parameters provided
         """
         self.console.print("\n[bold blue]🔍 Agent Debug Analysis[/bold blue]")
