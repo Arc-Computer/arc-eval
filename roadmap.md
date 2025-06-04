@@ -2,33 +2,35 @@
 
 > **Goal**: Add runtime tracing to capture agent execution data and enable real-time reliability scoring and cost analysis using our existing evaluation infrastructure.
 
-## **Customer Problem Analysis**
+## **Customer Problems We're Solving**
 
-### **Rank-Ordered Problem Statements from Customer Interviews**
+### **Problems Identified from Customer Interviews**
 
-| **#** | **Problem Statement** | **Evidence from Calls/Advisors** | **Our Solution** |
+| **#** | **Problem** | **Customer Evidence** | **Our Solution** |
 |---|---|---|---|
-| **1** | **"Will this agent finish the task correctly every time?"**<br>*(objective success-rate / accuracy)* | • Prospect: *"If you can tell us an agent's success-rate we'll use it."*<br>• Advisor: "Map how your solution addresses reliability." | **reliability score + grade + trend**<br>Enhanced tracing → ComprehensiveReliabilityAnalysis |
-| **2** | **"How much cost and latency is this agent burning?"**<br>*(token spend, tool-call overhead, model choice)* | • Multiple builders complain about high inference bills<br>• Advisor: "Inference cost will be reduced by profiling bottlenecks… lower TCO." |  **$0.013/run + 22% optimization + model rec**<br>Cost tracking → APIManager optimization engine |
-| **3** | **"What will break when real traffic hits?"**<br>*(runtime edge-cases, silent failures)* | • Prospect worries about leaks/loops only visible under load<br>• Synthetic-scenario pitch resonated because QA misses these | **Pattern learning + auto-generated scenarios**<br>ScenarioBank → adaptive edge case detection |
-| **4** | **"I need a zero-SDK way to validate any agent, any framework."** | • Host platform doesn't want another dependency<br>• Drag-&-drop trace workflow seen as big win |  **Enhanced trace_agent() decorator**<br>Framework detection → universal compatibility |
-| **5** | **"Give me actionable fixes, not just red lights."** | • Prospect liked patch-diff idea<br>• Pain: dashboards show errors but no guided optimization |  **Ready-to-apply patches + code examples**<br>RemediationEngine → framework-specific fixes |
-| **6** | **"My customers need proof the agent is good."**<br>*(shareable metric for B2B platforms)* | • Hosting platform wants to surface reliability score to end-users |  **Web workbench + shareable reports**<br>Executive dashboard → customer-facing metrics |
-| **7** | **"Prevent data leakage or compliance breaches at runtime."** | • Prospect's first push-back: output-only checks miss hidden SSN leak<br>• Advisors flag this as high future value |  **Runtime pattern detection (Phase 2)**<br>Live tracing → privacy violation detection |
-| **8** | **"Eventually auditors will ask for GDPR / HIPAA attestations."**<br>*(formal compliance)* | • Buyers acknowledge "not urgent today" but will become mandatory |  **Compliance packs (roadmap)**<br>Domain evaluations → audit-ready reports |
+| **1** | "Will this agent complete tasks correctly?" | Customer: "If you can tell us an agent's success-rate we'll use it." | Reliability score with letter grade (A-F) and historical trends |
+| **2** | "How much are agents costing us?" | Multiple developers report unexpectedly high API bills | Cost per run tracking with optimization recommendations |
+| **3** | "What edge cases will break in production?" | Teams worry about failures only visible under real load | Automatically generate test scenarios from observed failures |
+| **4** | "Need to evaluate any agent framework" | Platform providers don't want framework-specific dependencies | One-line integration or HTTP API for any framework |
+| **5** | "Show me how to fix problems" | Current tools only identify issues without solutions | Specific code patches for each framework |
+| **6** | "Prove agent quality to customers" | B2B platforms need metrics to show end users | Shareable reliability reports and dashboards |
+| **7** | "Detect data leaks at runtime" | Static analysis misses runtime privacy violations | Runtime pattern detection for sensitive data (Phase 2) |
+| **8** | "Meet compliance requirements" | Future audit requirements for GDPR/HIPAA | Compliance report generation (Future roadmap) |
 
-### **Priority Groups**
+### **Development Priorities**
 
-**P0 (Problems 1-3)**: Core requirements for initial release
-- **Week 1**: Reliability scoring, cost tracking, edge case detection
-- **Target metrics**: 87% success rate, 22% cost reduction
+**Phase 0 (Week 1)**: Core Features
+- Reliability scoring and grading
+- Cost tracking and optimization
+- Automatic test generation from failures
 
-**P1 (Problems 4-6)**: Adoption features 
-- Zero-SDK integration, code fixes, exportable reports
-- Differentiates from basic monitoring tools
+**Phase 1 (Week 2)**: Developer Experience
+- Simple integration (one line of code)
+- Framework-specific code fixes
+- Shareable reports
 
-**P2 (Problems 7-8)**: Future roadmap
-- Runtime compliance detection  
+**Phase 2 (Future)**: Advanced Features
+- Runtime compliance detection
 - Formal audit reports
 
 ---
@@ -56,7 +58,7 @@ Each workflow requires specific runtime data to function:
 | **Pattern Learning** | Recurring failure fingerprints, domain classifications | No pattern recognition |
 | **Adaptive Curriculum** | Learning progress, difficulty progression data | No improvement paths |
 
-**Technical Risk**: Incomplete data capture limits system to basic metrics instead of full analysis capabilities.
+**Important**: Missing data will limit analysis capabilities. Ensure comprehensive data capture for best results.
 
 ---
 
@@ -155,7 +157,7 @@ class TracerPerformanceValidator:
             f"Overhead: {overhead_ms:.2f}ms ({overhead_pct:.1f}%)\n"
             f"P95 Overhead: {report['p95_overhead_ms']:.2f}ms\n\n"
             f"Target: <50ms overhead\n"
-            f"Status: {report['verdict']} {'✅' if report['verdict'] == 'PASS' else '❌'}",
+            f"Status: {report['verdict']}",
             title="Tracer Performance Validation"
         ))
         
@@ -172,7 +174,7 @@ if __name__ == "__main__":
     result = validator.validate_overhead(test_agent)
     
     if result["verdict"] == "FAIL":
-        console.print("[red]❌ Performance validation failed! Optimize tracer before proceeding.[/red]")
+        console.print("Performance validation failed! Optimize tracer before proceeding.")
         exit(1)
 ```
 
@@ -184,7 +186,7 @@ from agent_eval.core.parser_registry import FrameworkDetector, ToolCallExtractor
 from agent_eval.profiler.decorators import performance_profile
 
 class ArcTracer:
-    """Rich runtime trace capture leveraging existing framework detection"""
+    """Captures runtime execution data from AI agents"""
     
     def __init__(self, domain: str = "auto"):
         self.domain = domain
@@ -193,13 +195,13 @@ class ArcTracer:
         
     @performance_profile  # Use existing profiler
     def trace_agent(self, agent_func):
-        """Capture comprehensive runtime data for our evaluation engine"""
+        """Wrap agent function to capture execution data"""
         @wraps(agent_func)
         def wrapper(*args, **kwargs):
             trace_id = str(uuid.uuid4())
             start_time = time.time()
             
-            # Rich trace data structure for judges
+            # Trace data structure
             trace_data = {
                 "trace_id": trace_id,
                 "timestamp": datetime.now().isoformat(),
@@ -211,13 +213,29 @@ class ArcTracer:
                 "llm_calls": [],
                 "cost_data": {"total": 0, "breakdown": []},
                 "memory_snapshots": [],
-                "framework_metadata": {}
+                "framework_metadata": {},
+                # Trajectory capture for full analysis capabilities
+                "trace": {
+                    "steps": [],  # Detailed execution steps
+                    "tool_calls_count": 0,
+                    "reasoning_steps_count": 0,
+                    "total_duration_ms": 0,
+                    "success": True,
+                    "failure_point": None,
+                    "trace_id": trace_id,
+                    "session_id": None
+                }
             }
             
-            # Deep instrumentation hooks
+            # Capture detailed execution data:
+            # 1. Reasoning steps
+            # 2. Tool calls with inputs/outputs
+            # 3. Intermediate computations
+            # 4. Decision points
             with self._instrument_llm_calls(trace_data), \
                  self._instrument_tool_calls(trace_data), \
-                 self._capture_memory_usage(trace_data):
+                 self._capture_memory_usage(trace_data), \
+                 self._capture_trajectory(trace_data):
                 
                 try:
                     # Execute and capture
@@ -240,7 +258,7 @@ class ArcTracer:
                     })
                     
                 except Exception as e:
-                    # Failure trace with rich context
+                    # Capture failure details
                     trace_data.update({
                         "output": None,
                         "success": False,
@@ -260,6 +278,40 @@ class ArcTracer:
                     
             return result
         return wrapper
+    
+    def _capture_trajectory(self, trace_data):
+        """Capture step-by-step agent execution.
+        
+        Records execution details needed for:
+        - Failure analysis
+        - Pattern detection
+        - Performance optimization
+        - Test scenario generation
+        """
+        # Implementation to intercept and record:
+        # 1. LLM reasoning steps
+        # 2. Tool call sequences with full I/O
+        # 3. Decision branches
+        # 4. Intermediate computations
+        pass
+    
+    def _add_trajectory_step(self, trace_data, step_type, content, **kwargs):
+        """Add a step to the execution trajectory"""
+        step = {
+            "step": len(trace_data["trace"]["steps"]) + 1,
+            "action": step_type,  # "reasoning", "tool_call", "decision"
+            "content": content,
+            "timestamp": datetime.now().isoformat(),
+            "duration_ms": 0,  # Updated when step completes
+            **kwargs
+        }
+        trace_data["trace"]["steps"].append(step)
+        
+        # Update counters
+        if step_type == "reasoning":
+            trace_data["trace"]["reasoning_steps_count"] += 1
+        elif step_type == "tool_call":
+            trace_data["trace"]["tool_calls_count"] += 1
 
 # NEW FILE: agent_eval/trace/api.py (~150 LOC)
 from fastapi import FastAPI, HTTPException
@@ -268,10 +320,10 @@ from agent_eval.evaluation.judges.domain import FinanceJudge, SecurityJudge, MLJ
 
 app = FastAPI(title="Arc Eval API", version="0.1.0")
 
-# Single endpoint to receive traces - activates entire engine
+# Receive trace data from agents
 @app.post("/api/trace")
 async def receive_trace(trace_data: dict):
-    """Ingest rich trace data from any agent framework"""
+    """Accept trace data from any agent framework"""
     
     # Validate trace has required fields
     required = ["agent_id", "output", "execution_time"]
@@ -294,10 +346,10 @@ async def receive_trace(trace_data: dict):
         "next": f"/api/analysis/{trace_id}"
     }
 
-# The Arc Loop endpoints - all powered by existing engine
+# Analysis endpoints
 @app.get("/api/analysis/{trace_id}")
 async def get_analysis(trace_id: str):
-    """Get comprehensive analysis using unified judges"""
+    """Get reliability analysis for a trace"""
     trace = load_trace(trace_id)
     
     # Use existing unified judges
@@ -315,7 +367,7 @@ async def get_analysis(trace_id: str):
 
 @app.get("/api/scenarios/{trace_id}")
 async def generate_scenarios(trace_id: str):
-    """The magic button - auto-generate test scenarios from failures"""
+    """Generate test scenarios from agent failures"""
     trace = load_trace(trace_id)
     
     # Use existing ScenarioBank
@@ -329,14 +381,14 @@ async def generate_scenarios(trace_id: str):
         return {
             "generated": len(scenarios),
             "scenarios": scenarios,
-            "message": f"✨ Generated {len(scenarios)} test scenarios from your failure"
+            "message": f"Generated {len(scenarios)} test scenarios from your failure"
         }
     
     return {"generated": 0, "message": "No failures to learn from"}
 
 @app.post("/api/improve/{trace_id}")
 async def get_improvements(trace_id: str):
-    """Get actionable fixes using improve judge"""
+    """Get code fixes for identified issues"""
     trace = load_trace(trace_id)
     
     # Use existing improve judge
@@ -381,16 +433,16 @@ async def compare_runs(baseline_id: str, current_id: str):
 @click.option('--domain', type=click.Choice(['finance', 'security', 'ml', 'auto']), default='auto')
 def trace(agent_file: str, function: str, domain: str):
     """
-    🔄 Start tracing your agent with one command
+    Start tracing your agent
     
     Example:
         arc-eval trace --agent-file my_agent.py --function chat_agent --domain finance
     
     This will:
     1. Import your agent function
-    2. Wrap it with Arc tracing
-    3. Show you the integration code
-    4. Start collecting traces automatically
+    2. Add tracing instrumentation
+    3. Display integration code
+    4. Start collecting execution data
     """
     # Generate integration code
     integration_code = f'''
@@ -404,10 +456,10 @@ tracer = ArcTracer(domain="{domain}")
 # Run your agent normally and visit: http://localhost:8000
 '''
     
-    console.print(Panel(integration_code, title="🎯 Integration Code"))
+    console.print(Panel(integration_code, title="Integration Code"))
     
     # Start local API server
-    console.print("\n[green]Starting Arc API server...[/green]")
+    console.print("\nStarting Arc API server...")
     start_api_server()
 
 # Add --live flag to existing commands
@@ -616,11 +668,433 @@ Progress:
 - They: Monitoring focus
 - Arc: Improvement engine
 
-### **Technical Advantages**:
-1. **ScenarioBank** - Learns from failures to generate test cases
-2. **Unified Judges** - Consistent analysis across workflows
-3. **Domain Expertise** - Built-in compliance for finance/security/ML
-4. **Learning System** - Improves with usage
+### **Core Technical Advantages**:
+1. **Automatic Test Generation** - Creates test cases from observed failures
+2. **Unified Analysis** - Consistent evaluation across all workflows
+3. **Domain Knowledge** - Built-in understanding of finance, security, and ML requirements
+4. **Continuous Improvement** - System learns from usage patterns
+
+---
+
+## **MVP Implementation Details**
+
+### **Authentication Strategy**
+```python
+# agent_eval/trace/api.py - Simple API key auth for MVP
+from fastapi import Header, HTTPException, Depends
+from typing import Optional
+
+def verify_api_key(x_api_key: Optional[str] = Header(None)):
+    """Simple API key verification for MVP"""
+    api_key = os.getenv("ARC_EVAL_API_KEY")
+    
+    # Allow no auth in development mode
+    if os.getenv("ARC_EVAL_ENV", "development") == "development":
+        return True
+    
+    if not api_key:
+        raise HTTPException(500, "API key not configured")
+    
+    if x_api_key != api_key:
+        raise HTTPException(401, "Invalid API key")
+    
+    return True
+
+# Apply to endpoints
+@app.post("/api/trace", dependencies=[Depends(verify_api_key)])
+async def receive_trace(trace_data: dict):
+    # existing implementation
+```
+
+### **Storage Layer (SQLite → Postgres ready)**
+```python
+# agent_eval/trace/storage.py - SQLAlchemy for easy migration
+from sqlalchemy import create_engine, Column, String, JSON, DateTime, Float, Boolean
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
+
+Base = declarative_base()
+
+class TraceRecord(Base):
+    __tablename__ = 'traces'
+    
+    trace_id = Column(String, primary_key=True)
+    agent_id = Column(String, index=True)
+    domain = Column(String, index=True)
+    framework = Column(String)
+    timestamp = Column(DateTime, index=True)
+    success = Column(Boolean)
+    execution_time = Column(Float)
+    
+    # Store full trace as JSON for flexibility
+    trace_data = Column(JSON)  # SQLite: TEXT, Postgres: native JSON
+    
+    # Denormalized fields for quick queries
+    reliability_score = Column(Float, index=True)
+    cost = Column(Float)
+    tool_accuracy = Column(Float)
+
+# Zero-config database switching
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./arc_eval_traces.db")
+engine = create_engine(DATABASE_URL)
+SessionLocal = sessionmaker(bind=engine)
+
+# Initialize tables
+Base.metadata.create_all(bind=engine)
+```
+
+### **Async Processing (FastAPI BackgroundTasks)**
+```python
+# agent_eval/trace/api.py - Background processing without Celery
+from fastapi import BackgroundTasks
+
+def analyze_trace_background(trace_id: str):
+    """Run analysis in background thread"""
+    try:
+        # Load trace
+        db = SessionLocal()
+        trace = db.query(TraceRecord).filter_by(trace_id=trace_id).first()
+        
+        # Run analysis (existing code)
+        analyzer = ReliabilityAnalyzer()
+        analysis = analyzer.generate_comprehensive_analysis([trace.trace_data])
+        
+        # Update record with results
+        trace.reliability_score = analysis.workflow_metrics.workflow_success_rate
+        trace.cost = trace.trace_data.get("cost_data", {}).get("total", 0)
+        db.commit()
+        
+    except Exception as e:
+        logger.error(f"Background analysis failed: {e}")
+    finally:
+        db.close()
+
+@app.post("/api/trace")
+async def receive_trace(trace_data: dict, background_tasks: BackgroundTasks):
+    # Validate and store
+    trace_id = str(uuid.uuid4())
+    
+    db = SessionLocal()
+    trace_record = TraceRecord(
+        trace_id=trace_id,
+        agent_id=trace_data.get("agent_id"),
+        trace_data=trace_data,
+        timestamp=datetime.now()
+    )
+    db.add(trace_record)
+    db.commit()
+    db.close()
+    
+    # Analyze in background
+    background_tasks.add_task(analyze_trace_background, trace_id)
+    
+    return {"trace_id": trace_id, "status": "processing"}
+```
+
+### **Error Handling Standard**
+```python
+# agent_eval/trace/errors.py - Consistent error handling
+class ArcEvalError(Exception):
+    """Base exception for Arc-Eval"""
+    pass
+
+class TraceValidationError(ArcEvalError):
+    """Invalid trace data"""
+    pass
+
+class AnalysisError(ArcEvalError):
+    """Analysis failed"""
+    pass
+
+# Global exception handler
+@app.exception_handler(ArcEvalError)
+async def arc_eval_exception_handler(request, exc):
+    return JSONResponse(
+        status_code=400,
+        content={
+            "error": exc.__class__.__name__,
+            "message": str(exc),
+            "trace_id": getattr(exc, "trace_id", None)
+        }
+    )
+
+# Handle incomplete traces
+@app.post("/api/trace")
+async def receive_trace(trace_data: dict):
+    # Store partial traces with metadata
+    trace_data["_incomplete"] = False
+    required = ["agent_id", "output", "execution_time"]
+    missing = [f for f in required if f not in trace_data]
+    if missing:
+        trace_data["_incomplete"] = True
+        trace_data["_missing_fields"] = missing
+        logger.warning(f"Incomplete trace received, missing: {missing}")
+```
+
+### **MVP Stack Summary**
+- **API**: FastAPI + SQLAlchemy + BackgroundTasks
+- **Storage**: SQLite (Postgres-ready via SQLAlchemy)
+- **Auth**: Simple API key via header
+- **Deploy**: Single Docker container
+- **Rate Limiting**: TODO for post-MVP
+
+---
+
+## **Deployment Architecture for CLI Product**
+
+### **Developer Experience Overview**
+
+Arc-Eval operates as a **hybrid CLI + local API** system:
+
+1. **Primary Interface**: CLI commands (`arc-eval debug`, `arc-eval improve`, etc.)
+2. **Runtime Tracing**: Optional local API server for live agent monitoring
+3. **No Cloud Dependency**: Everything runs on developer's machine for MVP
+
+### **Architecture Components**
+
+```bash
+┌─────────────────────────────────────────────────────────┐
+│                   Developer's Machine                   │
+├─────────────────────────────────────────────────────────┤
+│                                                         │
+│  ┌─────────────────┐         ┌──────────────────────┐   │
+│  │  Customer Agent │ ──────> │   Arc-Eval CLI       │   │
+│  │  (LangChain etc)│         │  $ arc-eval debug    │   │
+│  └─────────────────┘         └──────────────────────┘   │
+│           │                            │                │
+│           │ ArcTracer                  │                │
+│           ▼                            ▼                │
+│  ┌─────────────────┐         ┌──────────────────────┐   │
+│  │  Local API      │ <────── │  SQLite Database     │   │
+│  │  localhost:8000 │         │  arc_eval_traces.db  │   │
+│  └─────────────────┘         └──────────────────────┘   │
+│                                                         │
+└─────────────────────────────────────────────────────────┘
+```
+
+### **Two Usage Modes**
+
+#### **Mode 1: Traditional CLI (No Docker)**
+```bash
+# Install Arc-Eval
+pip install arc-eval
+
+# Use with static files
+arc-eval debug --input trace.json
+arc-eval compliance --domain finance --input outputs.json
+```
+
+#### **Mode 2: Live Tracing (Local API)**
+```bash
+# Start the trace server (runs FastAPI locally)
+arc-eval trace --start-server
+
+# In another terminal, trace your agent
+python my_agent.py  # Agent instrumented with ArcTracer
+
+# Analyze live traces
+arc-eval debug --live
+arc-eval improve --live
+```
+
+### **Docker Strategy (Optional Enhancement)**
+
+For users who prefer containerized deployment:
+
+```dockerfile
+# Dockerfile
+FROM python:3.9-slim
+
+WORKDIR /app
+COPY . /app
+
+RUN pip install -e .
+
+# Expose API port
+EXPOSE 8000
+
+# Default: Start API server
+CMD ["arc-eval", "trace", "--start-server", "--host", "0.0.0.0"]
+```
+
+```yaml
+# docker-compose.yml (for advanced users)
+version: '3.8'
+services:
+  arc-eval:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./arc_eval_data:/app/data  # Persist SQLite + traces
+    environment:
+      - ARC_EVAL_API_KEY=${ARC_EVAL_API_KEY}
+      - DATABASE_URL=sqlite:////app/data/traces.db
+```
+
+### **Installation Options**
+
+1. **Simplest (Python Package)**:
+   ```bash
+   pip install arc-eval
+   arc-eval --help
+   ```
+
+2. **Development Mode**:
+   ```bash
+   git clone https://github.com/arc-computer/arc-eval
+   pip install -e ".[dev]"
+   arc-eval --help
+   ```
+
+3. **Docker (Optional)**:
+   ```bash
+   docker run -p 8000:8000 arc-eval/arc-eval:latest
+   ```
+
+### **Data Persistence**
+
+- **CLI Mode**: Results displayed in terminal, optionally exported
+- **Trace Mode**: SQLite database at `~/.arc-eval/traces.db`
+- **Docker Mode**: Volume mount for persistence
+
+### **Security Considerations**
+
+1. **Local-First**: No data leaves developer's machine
+2. **API Key**: Optional, mainly for future cloud features
+3. **Network**: API binds to localhost only by default
+
+### **Future Cloud Architecture** (Post-MVP)
+
+```
+Developer Machine          Arc Cloud (Future)
+┌──────────────┐          ┌─────────────────┐
+│   CLI/Agent  │ ──────> │   Arc API       │
+│              │          │   (Managed)     │
+└──────────────┘          └─────────────────┘
+                                   │
+                          ┌────────┴────────┐
+                          │   PostgreSQL    │
+                          │   Time-series   │
+                          │   S3 Storage    │
+                          └─────────────────┘
+```
+
+### **Why This Architecture?**
+
+1. **Zero Friction**: Works immediately after `pip install`
+2. **Privacy**: All analysis happens locally
+3. **Flexibility**: Use CLI-only or with live tracing
+4. **Growth Path**: Easy transition to cloud when needed
+5. **Developer-First**: Fits into existing workflows
+
+---
+
+## **Cloud Transition Strategy**
+
+### **Why We Start Local**
+
+Starting with local deployment allows us to ship quickly and learn what features matter most to developers. This approach lets us focus on product development rather than infrastructure.
+
+### **Phase 1: MVP (Weeks 1-4)**
+- Local deployment enables shipping in 2 weeks
+- Validate which features developers actually use
+- Gather feedback on our unique capabilities
+- Focus on product iteration, not infrastructure
+
+### **Phase 2: Cloud-Native (Months 2-3)**
+```
+Developer Machine                 Arc Cloud Platform
+┌──────────────┐                 ┌─────────────────────────┐
+│   ArcTracer  │ ──── HTTPS ──> │   Arc API (Global)      │
+│   (SDK)      │                 │   • Multi-region        │
+└──────────────┘                 │   • Auto-scaling        │
+                                 │   • Real-time streaming │
+                                 └───────────┬─────────────┘
+                                             │
+                                 ┌───────────┴─────────────┐
+                                 │   Data Infrastructure   │
+                                 │   • PostgreSQL          │
+                                 │   • Redis (caching)     │
+                                 │   • S3 (traces)         │
+                                 │   • Kafka (streaming)   │
+                                 └─────────────────────────┘
+```
+
+### **What Makes Arc-Eval Different**
+
+| **Feature** | **Braintrust** | **LangSmith** | **Arc-Eval** |
+|-------------|----------------|---------------|--------------|
+| **Domain Focus** | Generic | Generic | Finance, Security, ML specific |
+| **Test Creation** | Manual | Manual | Auto-generates from failures |
+| **Problem Resolution** | Shows issues | Shows issues | Provides code fixes |
+| **Compliance** | Basic metrics | Basic metrics | SOX, GDPR, HIPAA reports |
+| **Cost Analysis** | Shows costs | Shows costs | Recommends optimizations |
+| **Improvement** | Static | Static | Learns from usage |
+
+### **Cloud Features Roadmap**
+
+**Month 2: Core Cloud Services**
+- Hosted API service with reliability guarantees
+- Real-time analysis streaming
+- Team collaboration features
+- Historical performance tracking
+
+**Month 3: Enterprise Features**
+- Single sign-on support
+- Team permissions and access control
+- Audit logging for compliance
+- Private deployment options
+
+**Month 4: Scale and Integration**
+- Global deployment for low latency
+- Fast trace processing
+- CI/CD pipeline integration
+- Webhook support for automation
+
+### **Migration Path**
+
+```python
+# MVP (Local)
+tracer = ArcTracer(domain="finance")
+agent = tracer.trace_agent(my_agent)
+
+# Cloud (Same API!)
+tracer = ArcTracer(
+    domain="finance",
+    api_key="arc_key_xxx",  # Only change
+    endpoint="https://api.arc-eval.com"
+)
+agent = tracer.trace_agent(my_agent)
+```
+
+### **Benefits of This Approach**
+
+1. Ship in weeks instead of months
+2. Focus engineering time on product features
+3. Validate demand before building infrastructure
+4. Same code works locally and in cloud
+
+### **Key Differences from Competitors**
+
+**Arc-Eval vs Braintrust**: 
+- Braintrust requires manual test creation
+- Arc-Eval automatically generates tests from failures
+
+**Arc-Eval vs LangSmith**:
+- LangSmith works only with LangChain
+- Arc-Eval supports 9+ frameworks
+
+**Arc-Eval vs Both**:
+- They identify problems
+- We provide specific code fixes
+
+### **Success Metrics**
+
+- **Week 4**: 100+ developers using local version
+- **Month 2**: 10 teams on cloud version
+- **Month 3**: First enterprise customer
+- **Month 6**: Majority of usage on cloud
 
 ---
 
