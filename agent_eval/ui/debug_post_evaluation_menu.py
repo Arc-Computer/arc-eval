@@ -197,10 +197,13 @@ class DebugPostEvaluationMenu:
             if metrics.schema_mismatch_rate > 0.15:
                 issues.append(f"Schema mismatches: {metrics.schema_mismatch_rate:.1%}")
         
-        # Cognitive issues
-        if self.cognitive_analysis:
+        # Cognitive issues - check if cognitive_analysis exists and has the score attribute
+        if self.cognitive_analysis and hasattr(self.cognitive_analysis, 'cognitive_health_score'):
             if self.cognitive_analysis.cognitive_health_score < 0.4:
                 issues.append(f"Poor cognitive health: {self.cognitive_analysis.cognitive_health_score:.1%}")
+        elif self.cognitive_analysis is not None: # It exists but maybe not the score
+            issues.append(f"Cognitive health score not available or applicable.")
+        # If self.cognitive_analysis is None, no cognitive issue is reported here, which is graceful.
         
         return issues
     
@@ -404,7 +407,14 @@ class DebugPostEvaluationMenu:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             framework_suffix = f"_{self.framework}" if self.framework else ""
             
-            # Create comprehensive debug data for export
+            # Safely access cognitive_analysis attributes for export
+            cognitive_analysis_data = None
+            if self.cognitive_analysis:
+                # Assuming __dict__ is appropriate; if not, specific attributes should be pulled
+                cognitive_analysis_data = self.cognitive_analysis.__dict__ 
+            else:
+                cognitive_analysis_data = {"status": "Cognitive analysis not performed or not available"}
+
             debug_data = {
                 "framework_analysis": {
                     "detected_framework": self.framework,
@@ -417,7 +427,7 @@ class DebugPostEvaluationMenu:
                     "insights": self.reliability_analysis.insights_summary,
                     "next_steps": self.reliability_analysis.next_steps
                 },
-                "cognitive_analysis": self.cognitive_analysis.__dict__ if self.cognitive_analysis else None,
+                "cognitive_analysis": cognitive_analysis_data, # Use safe data
                 "critical_issues": self.critical_issues,
                 "optimization_opportunities": self.optimization_opportunities,
                 "export_timestamp": datetime.now().isoformat()
