@@ -66,28 +66,11 @@ class DebugCommand:
             if output_format not in ['console', 'json', 'html']:
                 raise ValueError(f"Invalid output format: {output_format}")
             
-            # Enhanced debug analysis with universal intelligence
-            if pattern_analysis or root_cause or framework_agnostic or cross_framework_learning:
-                exit_code = self._execute_enhanced_debug(
-                    input_file, framework, output_format, no_interactive, verbose,
-                    pattern_analysis, root_cause, framework_agnostic, cross_framework_learning
-                )
-            else:
-                # Execute with unified debugging features (existing functionality)
-                exit_code = self.handler.execute(
-                    input_file=input_file,
-                    framework=framework,
-                    unified_debug=True,  # Enable unified debugging
-                    workflow_reliability=True,  # Enable workflow analysis
-                    schema_validation=True,  # Enable schema validation
-                    verbose=verbose,
-                    output=output_format,
-                    no_interaction=no_interactive,  # Pass no_interactive flag
-                    # Disable other features not needed for debug
-                    domain=None,
-                    agent_judge=False,
-                    export=None
-                )
+            # Execute unified debug analysis with judge enhancement (single pathway)
+            exit_code = self._execute_unified_debug(
+                input_file, framework, output_format, no_interactive, verbose,
+                pattern_analysis, root_cause, framework_agnostic, cross_framework_learning
+            )
             
             if exit_code == 0:
                 # Update workflow progress
@@ -150,7 +133,7 @@ class DebugCommand:
 
         self.console.print("\n[yellow]💡 TIP:[/yellow] The compliance check will identify regulatory violations and security risks")
 
-    def _execute_enhanced_debug(
+    def _execute_unified_debug(
         self,
         input_file: Path,
         framework: Optional[str],
@@ -163,10 +146,12 @@ class DebugCommand:
         cross_framework_learning: bool
     ) -> int:
         """
-        Execute enhanced debug analysis using existing ReliabilityAnalyzer.
+        Execute unified debug analysis with judge enhancement.
 
-        This method delegates to the comprehensive reliability analysis infrastructure
-        instead of duplicating pattern detection logic.
+        Single execution pathway that combines:
+        1. Core reliability analysis with judge enhancement
+        2. Enhanced features when requested (pattern analysis, root cause, etc.)
+        3. Intelligent fallback when judges unavailable
         """
         try:
             # Load and parse the input file
@@ -183,18 +168,19 @@ class DebugCommand:
             else:
                 raise ValueError("Input data must be a JSON object or array")
 
-            self.console.print(f"\n[bold blue]🔍 Enhanced Debug Analysis[/bold blue]")
+            self.console.print(f"\n[bold blue]🔍 Unified Debug Analysis[/bold blue]")
             self.console.print("=" * 60)
+            self.console.print("🧠 [bold cyan]AI-Enhanced Analysis Active[/bold cyan] (Judge-powered insights)")
 
-            # Delegate to existing ReliabilityAnalyzer for comprehensive analysis
+            # Use the new judge-enhanced reliability analysis (single pathway)
             from agent_eval.evaluation.reliability_validator import ReliabilityAnalyzer
 
             analyzer = ReliabilityAnalyzer()
-            # Use the judge-enhanced analysis method
+            # Always use judge-enhanced analysis (no more dual pathways)
             analysis = analyzer.generate_comprehensive_analysis_with_judge(
                 agent_outputs=agent_outputs,
                 framework=framework,
-                enable_judge_analysis=True  # Enable the DebugJudge
+                enable_judge_analysis=True  # Always enabled for unified experience
             )
 
             # Display the comprehensive analysis
@@ -222,7 +208,7 @@ class DebugCommand:
             return 0
 
         except Exception as e:
-            self.console.print(f"[red]❌ Enhanced debug failed:[/red] {e}")
+            self.console.print(f"[red]❌ Unified debug analysis failed:[/red] {e}")
             if verbose:
                 self.console.print_exception()
             return 1
