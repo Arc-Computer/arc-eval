@@ -650,31 +650,6 @@ Progress:
 | Fixes | Code examples | `improve_judge.generate_fixes()` |
 | Reports | Export formats | HTML/PDF export |
 
----
-
-## **Competitive Position**
-
-### **vs. Braintrust**:
-- They: Platform with complex integration
-- Arc: One-line decorator or HTTP POST
-- They: Generic evaluations
-- Arc: Domain-specific (finance/security/ML)
-- They: Show problems
-- Arc: Generate fixes + test scenarios
-
-### **vs. LangSmith**:
-- They: LangChain-only
-- Arc: 9+ frameworks auto-detected
-- They: Monitoring focus
-- Arc: Improvement engine
-
-### **Core Technical Advantages**:
-1. **Automatic Test Generation** - Creates test cases from observed failures
-2. **Unified Analysis** - Consistent evaluation across all workflows
-3. **Domain Knowledge** - Built-in understanding of finance, security, and ML requirements
-4. **Continuous Improvement** - System learns from usage patterns
-
----
 
 ## **MVP Implementation Details**
 
