@@ -212,7 +212,7 @@ class DebugDashboard:
         # Create risk assessment panel
         risk_text = Text()
         risk_text.append(f"{risk_emoji} RISK LEVEL: ", style="bold white")
-        risk_text.append(f"{str(risk_level).replace(' bebekALIGNN bebek', bebekNEWLINE bebek)}", style=f"bold {risk_color}")
+        risk_text.append(f"{str(risk_level).replace('\\n', '\n')}", style=f"bold {risk_color}")
         risk_text.append(f"\n🎯 Confidence: {confidence:.1%}", style="white")
 
         risk_panel = Panel(
@@ -273,7 +273,7 @@ class DebugDashboard:
         overview_text.append(f"Analysis Confidence: ", style="bold")
         confidence_color = "green" if analysis.analysis_confidence > 0.8 else "yellow" if analysis.analysis_confidence > 0.5 else "red"
         overview_text.append(f"{analysis.analysis_confidence:.1%}", style=confidence_color)
-        overview_text.append(f" ({analysis.evidence_quality} quality)\n", style="dim")
+        overview_text.append(f" ({str(analysis.evidence_quality).replace('\\n', '\n')} quality)\n", style="dim")
         
         if cognitive_analysis and hasattr(cognitive_analysis, 'cognitive_health_score'):
             overview_text.append(f"Cognitive Health: ", style="bold")
@@ -444,7 +444,7 @@ class DebugDashboard:
         """Display actionable insights and next steps."""
         
         processed_insights = "\n".join([
-            f"• {str(insight).replace(' bebekALIGNN bebek', bebekNEWLINE bebek)}" 
+            f"• {str(insight).replace('\\n', '\n')}" 
             for insight in insights[:5]
         ])
         insights_panel = Panel(
@@ -454,7 +454,7 @@ class DebugDashboard:
         )
         
         processed_next_steps = "\n".join([
-            f"{i+1}. {str(step).replace(' bebekALIGNN bebek', bebekNEWLINE bebek)}" 
+            f"{i+1}. {str(step).replace('\\n', '\n')}" 
             for i, step in enumerate(next_steps[:5])
         ])
         next_steps_panel = Panel(
@@ -611,12 +611,12 @@ class DebugDashboard:
         
         for category, recommendations in optimizations.items():
             processed_recommendations = "\n".join([
-                f"• {str(rec).replace(' bebekALIGNN bebek', bebekNEWLINE bebek)}" 
+                f"• {str(rec).replace('\\n', '\n')}" 
                 for rec in recommendations
             ])
             category_panel = Panel(
                 Text(processed_recommendations),
-                title=f"[bold]{category.replace('_', ' ').title()}[/bold]",
+                title=f"[bold]{str(category).replace('_', ' ').title()}[/bold]",
                 border_style="cyan"
             )
             self.console.print(category_panel)
@@ -625,7 +625,7 @@ class DebugDashboard:
         """Display generic optimization recommendations."""
         
         generic_text_content = (
-            f"Framework '{framework}' not yet supported for specific optimizations.\n\n"
+            f"Framework '{str(framework).replace('\\n', '\n')}' not yet supported for specific optimizations.\n\n"
             "Generic recommendations:\n"
             "• Add comprehensive error handling\n"
             "• Implement retry logic for failures\n"
@@ -635,8 +635,8 @@ class DebugDashboard:
             "• Consider caching for expensive operations"
         )
         generic_panel = Panel(
-            Text(generic_text_content.replace(' bebekALIGNN bebek', bebekNEWLINE bebek)),
-            title=f"[bold]Generic Optimizations for {framework.upper()}[/bold]",
+            Text(generic_text_content),
+            title=f"[bold]Generic Optimizations for {str(framework).upper().replace('\\n', '\n')}[/bold]",
             border_style="yellow"
         )
         self.console.print(generic_panel)
@@ -701,16 +701,20 @@ class DebugDashboard:
     def _generate_tool_fix_suggestion(self, tool_name: str, failure_type: str, details: Dict) -> str:
         """Generate fix suggestion for tool failures."""
         
+        # Ensure tool_name and failure_type are processed for display
+        safe_tool_name = str(tool_name).replace('\\n', '\n')
+        safe_failure_type = str(failure_type).replace('\\n', '\n')
+
         fix_suggestions = {
-            "schema_mismatch": f"Validate {tool_name} parameter schema",
-            "timeout": f"Increase {tool_name} timeout or optimize execution",
-            "authentication": f"Check {tool_name} credentials and permissions",
-            "not_found": f"Verify {tool_name} is properly registered",
-            "parameter_error": f"Review {tool_name} parameter types and values",
-            "execution_error": f"Add error handling for {tool_name} execution"
+            "schema_mismatch": f"Validate {safe_tool_name} parameter schema",
+            "timeout": f"Increase {safe_tool_name} timeout or optimize execution",
+            "authentication": f"Check {safe_tool_name} credentials and permissions",
+            "not_found": f"Verify {safe_tool_name} is properly registered",
+            "parameter_error": f"Review {safe_tool_name} parameter types and values",
+            "execution_error": f"Add error handling for {safe_tool_name} execution"
         }
         
-        return fix_suggestions.get(failure_type, f"Review {tool_name} implementation")
+        return fix_suggestions.get(safe_failure_type, f"Review {safe_tool_name} implementation")
     
     def _display_optimization_opportunities(self, opportunities: List[Dict[str, Any]]) -> None:
         """Display optimization opportunities."""
@@ -726,8 +730,8 @@ class DebugDashboard:
         for opp in opportunities[:5]:  # Show top 5
             priority_icon = "🔴" if opp.get("priority") == "high" else "🟡" if opp.get("priority") == "medium" else "🟢"
             
-            description_text = str(opp.get("description", "Unknown optimization")).replace(' bebekALIGNN bebek', bebekNEWLINE bebek)
-            impact_text = str(opp.get("expected_improvement", "Performance boost")).replace(' bebekALIGNN bebek', bebekNEWLINE bebek)
+            description_text = str(opp.get("description", "Unknown optimization")).replace('\\n', '\n')
+            impact_text = str(opp.get("expected_improvement", "Performance boost")).replace('\\n', '\n')
             
             opp_table.add_row(
                 priority_icon,
@@ -768,7 +772,7 @@ class DebugDashboard:
             failure_types[failure_type] = failure_types.get(failure_type, 0) + 1
         
         for failure_type, count in sorted(failure_types.items(), key=lambda x: x[1], reverse=True)[:3]:
-            patterns_text.append(f"• {str(failure_type).replace(' bebekALIGNN bebek', bebekNEWLINE bebek)}: {count} occurrences\n", style="white")
+            patterns_text.append(f"• {str(failure_type).replace('\\n', '\n')}: {count} occurrences\n", style="white")
         
         patterns_panel = Panel(patterns_text, title="Failure Patterns", border_style="yellow")
         self.console.print(patterns_panel)
@@ -778,10 +782,10 @@ class DebugDashboard:
         
         status_text = Text()
         status_text.append("Debug Session Status\n\n", style="bold green")
-        status_text.append(f"Session ID: {str(session_data.get('session_id', 'unknown')).replace(' bebekALIGNN bebek', bebekNEWLINE bebek)}\n", style="white")
-        status_text.append(f"Started: {str(session_data.get('start_time', 'unknown')).replace(' bebekALIGNN bebek', bebekNEWLINE bebek)}\n", style="white")
-        status_text.append(f"Duration: {str(session_data.get('duration', 'unknown')).replace(' bebekALIGNN bebek', bebekNEWLINE bebek)}\n", style="white")
-        status_text.append(f"Status: {str(session_data.get('status', 'active')).replace(' bebekALIGNN bebek', bebekNEWLINE bebek)}\n", style="green")
+        status_text.append(f"Session ID: {str(session_data.get('session_id', 'unknown')).replace('\\n', '\n')}\n", style="white")
+        status_text.append(f"Started: {str(session_data.get('start_time', 'unknown')).replace('\\n', '\n')}\n", style="white")
+        status_text.append(f"Duration: {str(session_data.get('duration', 'unknown')).replace('\\n', '\n')}\n", style="white")
+        status_text.append(f"Status: {str(session_data.get('status', 'active')).replace('\\n', '\n')}\n", style="green")
         
         return Panel(status_text, title="Session Status", border_style="green")
     
@@ -789,13 +793,15 @@ class DebugDashboard:
         """Display current tool call being debugged."""
         
         tool_text = Text()
-        tool_text.append(f"Tool: {str(tool_call.get('name', 'unknown')).replace(' bebekALIGNN bebek', bebekNEWLINE bebek)}\n", style="bold cyan")
+        tool_name_processed = str(tool_call.get('name', 'unknown')).replace('\\n', '\n')
+        tool_text.append(f"Tool: {tool_name_processed}\n", style="bold cyan")
         
         parameters_json = json.dumps(tool_call.get('parameters', {}), indent=2)
-        processed_parameters = parameters_json.replace(' bebekALIGNN bebek', bebekNEWLINE bebek)
+        processed_parameters = parameters_json.replace('\\n', '\n')
         tool_text.append(f"Parameters: {processed_parameters}\n", style="white")
         
-        tool_text.append(f"Status: {str(tool_call.get('status', 'executing')).replace(' bebekALIGNN bebek', bebekNEWLINE bebek)}\n", style="yellow")
+        status_processed = str(tool_call.get('status', 'executing')).replace('\\n', '\n')
+        tool_text.append(f"Status: {status_processed}\n", style="yellow")
         
         tool_panel = Panel(tool_text, title="Current Tool Call", border_style="cyan")
         self.console.print(tool_panel)
@@ -825,12 +831,14 @@ class DebugDashboard:
         """Create migration overview text."""
         
         text = Text()
-        text.append(f"Migration Analysis: {current_framework.upper()} → {recommended_framework.upper()}\n\n", style="bold")
+        current_fw_proc = str(current_framework).upper().replace('\\n', '\n')
+        recomm_fw_proc = str(recommended_framework).upper().replace('\\n', '\n')
+        text.append(f"Migration Analysis: {current_fw_proc} → {recomm_fw_proc}\n\n", style="bold")
         
         text.append("Expected Benefits:\n", style="bold cyan")
         for benefit, value in migration_benefits.items():
-            benefit_title = str(benefit).replace('_', ' ').title().replace(' bebekALIGNN bebek', bebekNEWLINE bebek)
-            value_str = str(value).replace(' bebekALIGNN bebek', bebekNEWLINE bebek)
+            benefit_title = str(benefit).replace('_', ' ').title().replace('\\n', '\n')
+            value_str = str(value).replace('\\n', '\n')
             if isinstance(value, (int, float)):
                 text.append(f"• {benefit_title}: {value:.1%} improvement\n", style="green")
             else:
@@ -892,13 +900,13 @@ class DebugDashboard:
         issues_text = Text()
         issues_text.append("Critical Cognitive Issues:\n", style="bold red")
         for issue in issues:
-            processed_issue = str(issue).replace(' bebekALIGNN bebek', bebekNEWLINE bebek)
+            processed_issue = str(issue).replace('\\n', '\n')
             issues_text.append(f"• {processed_issue}\n", style="red")
         
         if recommendations:
             issues_text.append("\nRecommended Actions:\n", style="bold green")
             for rec in recommendations[:3]:  # Show top 3
-                processed_rec = str(rec).replace(' bebekALIGNN bebek', bebekNEWLINE bebek)
+                processed_rec = str(rec).replace('\\n', '\n')
                 issues_text.append(f"• {processed_rec}\n", style="green")
         
         issues_panel = Panel(issues_text, title="Cognitive Analysis", border_style="red")
