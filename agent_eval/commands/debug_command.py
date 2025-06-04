@@ -190,10 +190,29 @@ class DebugCommand:
             from agent_eval.evaluation.reliability_validator import ReliabilityAnalyzer
 
             analyzer = ReliabilityAnalyzer()
-            analysis = analyzer.generate_comprehensive_analysis(
-                agent_outputs=agent_outputs,
-                framework=framework
-            )
+
+            try:
+                # Attempt to use the judge-enabled analysis
+                self.console.print("[blue]Attempting analysis with DebugJudge...[/blue]")
+                analysis = analyzer.generate_comprehensive_analysis_with_judge(
+                    agent_outputs=agent_outputs,
+                    framework=framework,
+                    enable_judge_analysis=True  # Enable judge analysis as per Task 1.1
+                )
+                self.console.print("[green]DebugJudge analysis attempt completed.[/green]")
+            except Exception as e_judge:
+                self.console.print(f"[yellow]⚠️ Judge-enabled analysis failed: {e_judge}. Falling back to standard analysis.[/yellow]")
+                # Fallback to the original (basic) analysis method
+                try:
+                    analysis = analyzer.generate_comprehensive_analysis(
+                        agent_outputs=agent_outputs,
+                        framework=framework
+                    )
+                    self.console.print("[blue]Standard analysis completed as fallback.[/blue]")
+                except Exception as e_basic:
+                    # If basic analysis also fails, print error and re-raise to be caught by the outer handler.
+                    self.console.print(f"[red]❌ Standard analysis also failed after judge failure: {e_basic}[/red]")
+                    raise  # Re-raise the exception
 
             # Display the comprehensive analysis
             self.console.print(analysis.reliability_dashboard)
