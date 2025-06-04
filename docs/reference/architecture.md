@@ -530,7 +530,7 @@ arc-eval/
 # setup.py configuration
 setup(
     name="arc-eval",
-    version="0.2.8",
+    version="0.2.9",
     packages=find_packages(),
     entry_points={
         "console_scripts": [

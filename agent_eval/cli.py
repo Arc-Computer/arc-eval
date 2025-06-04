@@ -54,7 +54,7 @@ workflow_manager = WorkflowStateManager()
 
 @click.group(invoke_without_command=True)
 @click.pass_context
-@click.version_option(version="0.2.8", prog_name="arc-eval")
+@click.version_option(version="0.2.9", prog_name="arc-eval")
 def cli(ctx):
     """
     🚀 ARC-Eval: Debug, Comply, Improve - Zero-config agent evaluation

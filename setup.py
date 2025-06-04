@@ -10,7 +10,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name="arc-eval",
-    version="0.2.8",
+    version="0.2.9",
     author="ARC-Eval Team",
     description="Agentic Workflow Reliability Platform - Debug, Comply, Improve",
     long_description=long_description,

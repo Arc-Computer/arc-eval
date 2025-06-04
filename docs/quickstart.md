@@ -18,7 +18,7 @@ pip install arc-eval
 
 ```bash
 arc-eval --version
-# Should output: arc-eval, version 0.2.8
+# Should output: arc-eval, version 0.2.9
 ```
 
 ## Your First Evaluation
