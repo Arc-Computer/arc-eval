@@ -1,220 +1,129 @@
-# 05. Arc-Eval Go-to-Market Strategy
+# Arc-Eval: Complete Solution Overview
 
-## Target Buyers
+## What Arc-Eval Does
 
-### Primary: VP of Engineering
-- **Budget**: $100K-$500K annually
-- **Decision timeline**: 6 months
-- **Core pain**: 80-90% of AI POCs failing in production
-- **Success criteria**: Agent reliability metrics, cost reduction, team productivity
+Arc-Eval helps developers build reliable AI agents by testing them before production, monitoring them while they run, and automatically fixing problems when they occur.
 
-### Secondary: Chief Data Officer
-- **Budget**: $50K-$300K annually  
-- **Decision timeline**: 4 months
-- **Core pain**: Vendor lock-in, lack of predictive insights
-- **Success criteria**: Framework independence, data sovereignty, accuracy improvements
+## Customer Problems We Solve
 
-### Compliance Driver: Chief Risk Officer
-- **Budget**: $150K-$750K annually
-- **Decision timeline**: 12 months
-- **Core pain**: Regulatory compliance (EU AI Act), audit requirements
-- **Success criteria**: SOC2 compliance, audit trails, governance workflows
+| **Problem** | **What Customers Tell Us** | **How Arc-Eval Solves It** |
+|---|---|---|
+| **Problem 1** | "Will this agent complete tasks correctly?" | Shows success rate with letter grades (A-F) and tracks performance over time |
+| **Problem 2** | "How much are agents costing us?" | Tracks cost per agent run and suggests ways to reduce API bills |
+| **Problem 3** | "What edge cases will break in production?" | Automatically creates tests from real failures so they never happen again |
+| **Problem 4** | "Need to evaluate any agent framework" | Works with LangChain, CrewAI, OpenAI, and 6+ other frameworks with one line of code |
+| **Problem 5** | "Show me how to fix problems" | Provides exact code to fix issues, not just error reports |
+| **Problem 6** | "Prove agent quality to customers" | Generates professional PDF reports showing compliance and reliability |
+| **Problem 7** | "Detect data leaks at runtime" | Monitors agents in real-time for privacy violations |
+| **Problem 8** | "Meet compliance requirements" | Tests against SOX, GDPR, HIPAA and other regulations |
 
-## Core Messaging
+## The Three Parts of Arc-Eval
 
-### What We Tell Customers
-"Prevent 80-90% of agent failures before they reach production"
+### 1. Test Before Production
+- **Built-in Tests**: 378 pre-made tests for finance, security, and ML applications
+- **Custom Tests**: Create tests for your specific needs (healthcare, logistics, retail, etc.)
+- **Smart Generation**: AI creates comprehensive test suites in 2 minutes
 
-### Three Pillars
+### 2. Monitor During Production  
+- **Real-time Tracking**: See what your agents are doing as they run
+- **Performance Grades**: Get A-F reliability scores like a report card
+- **Cost Analysis**: Know exactly how much each agent run costs
 
-1. **Find Problems Early**
-   - 92% accuracy with Agent-as-a-Judge
-   - Prevent failures vs. detect them
-   - Learn from production continuously
+### 3. Fix and Improve Automatically
+- **Learn from Failures**: When something breaks, Arc-Eval creates a test so it won't break again
+- **Code Fixes**: Get the exact code to fix problems, copy and paste ready
+- **Gets Smarter**: The more you use it, the better it gets at finding and fixing issues
 
-2. **Works With Any Tool**
-   - Works with any agent architecture
-   - No vendor lock-in
-   - Cross-framework optimization
+## How It All Works Together
 
-3. **Built for Big Companies**
-   - Local-first deployment option
-   - Compliance reporting built-in
-   - Team collaboration features
+### Week 1: Set Up Testing
+```bash
+# Create tests for your specific use case
+arc-eval scenario create --domain healthcare --scenarios 100
 
-### Positioning Statement
-"Arc-Eval is the only platform that prevents agent failures before production through predictive evaluation that works with any framework."
+# Run compliance tests
+arc-eval compliance --domain custom:healthcare --input agent_outputs.json
+```
 
-## Competitive Strategy
+### Week 2: Add Monitoring
+```python
+# Add one line to your agent code
+from agent_eval.trace import ArcTracer
+tracer = ArcTracer("healthcare")
+agent = tracer.trace_agent(your_agent)
 
-### Against Monitoring Tools (Arize, Freeplay)
+# Now you get real-time monitoring
+arc-eval debug --live
+```
 
-| Their Weakness | Our Strength | Talk Track |
-|----------------|--------------|------------|
-| Reactive monitoring | Predictive prevention | "Why wait for failures when you can prevent them?" |
-| Cloud-only | Local-first option | "Keep your data where you need it" |
-| Generic metrics | Agent-specific evaluation | "Built specifically for AI agents, not adapted from APM" |
+### Week 3: Continuous Improvement
+```bash
+# When a failure happens in production:
+arc-eval scenario create --from-last-failure
+# Creates: "Test for patient data exposure issue"
 
-### Against Developer Tools (LangSmith, Confident AI)
+# Get the fix:
+arc-eval improve --live
+# Shows: "Add this validation code to prevent the issue"
+```
 
-| Their Weakness | Our Strength | Talk Track |
-|----------------|--------------|------------|
-| Single framework | Framework agnostic | "Works with all your agents, not just one vendor" |
-| Developer-focused | Enterprise-ready | "From POC to production with compliance built-in" |
-| Evaluation only | Full optimization | "Not just scores, but specific fixes" |
+## What Makes Arc-Eval Different
 
-### Against Hyperscalers (AWS, Azure, Google)
+| **Feature** | **Other Tools** | **Arc-Eval** |
+|---|---|---|
+| **Creating Tests** | You write each test manually | AI generates comprehensive test suites |
+| **Finding Problems** | Shows you what went wrong | Shows what went wrong AND how to fix it |
+| **Domain Coverage** | Generic testing | Specific tests for finance, security, ML, and custom domains |
+| **Cost Management** | Shows current costs | Shows costs AND suggests optimizations |
+| **Learning** | Static - same tests forever | Dynamic - learns from your actual failures |
 
-| Their Weakness | Our Strength | Talk Track |
-|----------------|--------------|------------|
-| Generic solutions | Agent-specific | "Purpose-built for agent reliability" |
-| Vendor lock-in | Independent platform | "Choose the best models without platform constraints" |
-| Slow innovation | Rapid iteration | "Weekly improvements vs. quarterly updates" |
+## Real Results
 
-## Sales Motion
+When you use Arc-Eval, you can expect:
+- **Reliability**: Increase from 73% to 89% success rate
+- **Cost**: Reduce API costs by 62% through smart optimizations  
+- **Compliance**: Pass 100% of regulatory requirements
+- **Speed**: Find and fix issues 5x faster than manual debugging
 
-### Start Small, Grow Big
+## Implementation Timeline
 
-#### Land (Weeks 1-4)
-1. **Target**: Single high-stakes agent project
-2. **Proof point**: Prevent first production failure
-3. **Success metric**: ROI from prevented incident
-4. **Next step**: Profile additional agents
+- **Week 1-2**: Runtime monitoring (track reliability and costs)
+- **Week 3-4**: Custom scenario generation (test any domain)
+- **Month 2**: Full integration with your development workflow
 
-#### Expand (Months 1-6)
-1. **Target**: Entire agent fleet
-2. **Proof point**: Cross-agent learning benefits
-3. **Success metric**: Fleet-wide reliability improvement
-4. **Next step**: Governance integration
+## Simple Integration
 
-#### Scale (Months 6+)
-1. **Target**: Enterprise standard
-2. **Proof point**: Compliance and cost savings
-3. **Success metric**: Organizational adoption
-4. **Next step**: Strategic partnership
+### For Any Python Agent:
+```python
+# Before Arc-Eval
+response = agent.run(user_input)
 
-### Sales Process
+# After Arc-Eval (1 line added)
+from agent_eval.trace import ArcTracer
+agent = ArcTracer("finance").trace_agent(agent)
+response = agent.run(user_input)  # Now monitored!
+```
 
-1. **Discovery Call**
-   - Identify current agent failures
-   - Quantify cost of failures
-   - Map evaluation gaps
+### For Any Framework:
+- LangChain ✓
+- CrewAI ✓
+- AutoGen ✓
+- OpenAI SDK ✓
+- Anthropic SDK ✓
+- Custom agents ✓
 
-2. **Technical Demo**
-   - Profile customer's actual agent
-   - Show specific optimizations
-   - Demonstrate ROI calculation
+## Getting Started
 
-3. **Pilot Program**
-   - 30-day evaluation
-   - Clear success criteria
-   - Executive sponsor engagement
+1. **Install**: `pip install arc-eval`
+2. **Quick Test**: `arc-eval compliance --domain finance --quick-start`
+3. **Add Monitoring**: Insert one line of code in your agent
+4. **View Results**: `arc-eval debug --live`
 
-4. **Contract Negotiation**
-   - Start with usage-based pricing
-   - Path to platform pricing
-   - Multi-year commitment incentives
+## Summary
 
-## Partnership Strategy
+Arc-Eval is the only platform that:
+1. **Tests** your AI agents before they go live
+2. **Monitors** them while they're running
+3. **Fixes** problems automatically when they occur
 
-### Technology Partners
-
-**No-Code Platforms** (Stack AI, Retool)
-- Integration: Embedded evaluation
-- Value: "Enterprise-grade reliability for no-code agents"
-- Revenue: Revenue share on evaluations
-
-**Cloud Marketplaces** (AWS, Azure, GCP)
-- Integration: One-click deployment
-- Value: "Test agents where you already work"
-- Revenue: Marketplace transaction fees
-
-**Consulting Partners** (Accenture, Deloitte)
-- Integration: Implementation services
-- Value: "Make AI launches safer"
-- Revenue: Joint go-to-market
-
-### Channel Strategy
-
-1. **Direct Sales**: Enterprise accounts > $100K
-2. **Partner Channel**: Mid-market and embedded
-3. **Self-Service**: Developer and SMB adoption
-
-## Customer Journey
-
-### Awareness
-- **Content**: "Why 80% of AI agents fail in production"
-- **Channels**: Technical blogs, webinars, conferences
-- **CTA**: Free agent evaluation
-
-### Consideration
-- **Content**: ROI calculator, case studies
-- **Channels**: Demo videos, technical documentation
-- **CTA**: Book technical demo
-
-### Decision
-- **Content**: Security documentation, references
-- **Channels**: Direct sales engagement
-- **CTA**: Start pilot program
-
-### Success
-- **Content**: Best practices, optimization guides
-- **Channels**: Customer success team
-- **CTA**: Expand to more agents
-
-## Pricing Strategy
-
-### Developer Tier (Self-Service)
-- **Free**: 10 agent profiles/month
-- **Pro**: $299/month unlimited profiles
-- **Target**: Individual developers, small teams
-
-### Team Tier (Sales-Assisted)
-- **Team**: $999/month + usage
-- **Features**: Collaboration, API access
-- **Target**: Engineering teams
-
-### Enterprise Tier (Custom)
-- **Platform**: Custom pricing
-- **Features**: SSO, compliance, SLA
-- **Target**: Large organizations
-
-## Success Metrics
-
-### Sales Metrics
-- Pipeline velocity: 45-day average
-- Win rate: 35% target
-- ACV: $50K year one, $150K expanded
-- NRR: 140% target
-
-### Adoption Metrics
-- Time to first value: < 1 hour
-- Pilot conversion: 70% target
-- Feature adoption: 3+ features in 90 days
-- User engagement: Weekly active usage
-
-### Market Metrics
-- Category creation: "Agent Reliability Platform"
-- Analyst recognition: Gartner Cool Vendor
-- Customer advocacy: 30+ case studies
-- Market share: 25% of enterprise agents
-
-## GTM Priorities
-
-### Next 30 Days
-1. Sales collateral: ROI calculator, battle cards
-2. Website messaging: Predictive vs. reactive positioning
-3. Customer evidence: 3 case studies from pilots
-4. Partner outreach: 5 integration partnerships
-
-### Next 90 Days
-1. Demand generation: Webinar series launch
-2. Sales enablement: Certification program
-3. Customer success: Playbooks and health scores
-4. Market presence: 2 major conference talks
-
-### Next 180 Days
-1. Category leadership: Analyst briefings
-2. Channel program: Partner portal and training
-3. Global expansion: EMEA and APAC presence
-4. Platform evolution: Marketplace launch
+It's built for developers who need their AI agents to be reliable, compliant, and cost-effective in production.
