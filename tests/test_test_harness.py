@@ -124,6 +124,24 @@ class TestSmartInputDetector:
         }
         assert detector.get_detected_domain(ml_data) == "ml"
 
+    def test_prepare_trace_with_string_error(self):
+        """Handle trace preparation when error is a simple string."""
+        detector = SmartInputDetector()
+
+        trace = {"error": "Tool call failed"}
+
+        input_type = detector.detect_input_type(trace)
+        assert input_type == "trace"
+
+        prepared = detector.prepare_for_test_harness(trace, input_type)
+
+        assert "failure_info" in prepared
+        failure_info = prepared["failure_info"]
+        assert (
+            failure_info.get("error_message") == "Tool call failed"
+            or failure_info.get("error_type") == "Tool call failed"
+        )
+
 
 class TestDomainAwareTestHarness:
     """Test domain-aware test harness functionality."""
