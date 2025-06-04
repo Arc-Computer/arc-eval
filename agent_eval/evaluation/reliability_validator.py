@@ -226,7 +226,7 @@ class ReliabilityAnalyzer:
                 r'"action":\s*"tool_call".*?"tool":\s*"([^"]+)"',
                 r'tool_call.*?"tool":\s*"([^"]+)"',
                 # Common tool naming patterns found in customer data
-                r'([a-zA-Z_][a-zA-Z0-9_]*(?:_api|_tool|_engine|_analyzer|_validator|_detector|_monitor|_checker))',
+                r'([a-zA-Z_][a-zA-Z0-9_]*(?:_api|_tool|_engine|_analyzer|_validator|_monitor|_checker))',
             ],
             "generic": [
                 # Generic patterns for any framework
@@ -1577,9 +1577,23 @@ Required parameters:
             from agent_eval.evaluation.judges.workflow.judge_output_adapter import JudgeOutputAdapter
             from agent_eval.evaluation.judges.api_manager import APIManager
             
-            # Initialize judge with existing API manager if available, default to Cerebras for fast inference
-            api_manager = getattr(self, 'api_manager', None) or APIManager(provider="cerebras")
-            debug_judge = DebugJudge(api_manager)
+            # Initialize APIManager:
+            # Try to get an existing api_manager from self.
+            # If not available, try to create a new one.
+            # Add specific error handling for APIManager instantiation.
+            
+            api_manager_instance = getattr(self, 'api_manager', None)
+            if not api_manager_instance:
+                # Assuming logger is available from the class or module level,
+                # as it's used in the except blocks of this method.
+                logger.info("No existing api_manager found on self. Attempting to create default APIManager(provider='cerebras') for DebugJudge.")
+                try:
+                    api_manager_instance = APIManager(provider="cerebras")
+                except Exception as apim_init_error:
+                    logger.warning(f"Failed to initialize APIManager(provider='cerebras'): {apim_init_error}. DebugJudge enhancement will be skipped.")
+                    return standard_analysis # Fallback if APIManager creation fails
+            
+            debug_judge = DebugJudge(api_manager_instance)
             
             # Analyze failure patterns with judge
             judge_analysis = debug_judge.evaluate_failure_patterns(agent_outputs, framework or "unknown")
