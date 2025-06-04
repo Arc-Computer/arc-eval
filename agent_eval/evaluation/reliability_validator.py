@@ -140,7 +140,8 @@ class ReliabilityAnalyzer:
             self.prediction_tracker = PredictionTracker()
             self.outcome_detector = OutcomeDetector()
             self.prediction_enabled = True
-        except ImportError as e:
+        except (ImportError, ValueError) as e:
+            # Handle both missing modules and missing API keys gracefully
             logger.warning(f"Prediction module not available: {e}")
             self.hybrid_predictor = None
             self.prediction_tracker = None
@@ -1581,7 +1582,14 @@ Required parameters:
             from agent_eval.evaluation.judges.api_manager import APIManager
             
             # Initialize judge with existing API manager if available, default to Cerebras for fast inference
-            api_manager = getattr(self, 'api_manager', None) or APIManager(provider="cerebras")
+            api_manager = getattr(self, 'api_manager', None)
+            if not api_manager:
+                try:
+                    api_manager = APIManager(provider="cerebras")
+                except ValueError as e:
+                    # API keys not available - graceful fallback
+                    logger.warning(f"API keys not available for judge analysis: {e}")
+                    return standard_analysis
             debug_judge = DebugJudge(api_manager)
             
             # Analyze failure patterns with judge
@@ -1617,7 +1625,13 @@ Required parameters:
             from agent_eval.evaluation.judges.api_manager import APIManager
             
             # Initialize judge with Cerebras for fast inference
-            api_manager = getattr(self, 'api_manager', None) or APIManager(provider="cerebras")
+            api_manager = getattr(self, 'api_manager', None)
+            if not api_manager:
+                try:
+                    api_manager = APIManager(provider="cerebras")
+                except ValueError:
+                    # API keys not available - use fallback analysis
+                    raise ImportError("API keys not available for judge analysis")
             debug_judge = DebugJudge(api_manager)
             
             # Perform judge-based analysis
