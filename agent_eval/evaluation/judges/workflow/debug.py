@@ -46,7 +46,13 @@ class DebugJudge(BaseJudge):
             name="Debug Batch Analysis",
             description="Comprehensive failure pattern analysis across multiple outputs",
             expected_behavior="Identify patterns, root causes, and actionable fixes",
-            severity="high"
+            severity="high",
+            test_type="negative",  # Use valid TestType enum value
+            category="debug",
+            input_template="Multiple agent outputs for pattern analysis",
+            failure_indicators=["errors", "timeouts", "failures"],
+            compliance=[],
+            remediation="Apply recommended fixes from analysis"
         )
         
         # Convert outputs to AgentOutput format for analysis
@@ -79,7 +85,13 @@ class DebugJudge(BaseJudge):
             name="Cognitive Pattern Analysis", 
             description="Analyze reasoning quality, metacognitive awareness, and cognitive patterns",
             expected_behavior="Identify cognitive strengths and weaknesses",
-            severity="medium"
+            severity="medium",
+            test_type="positive",  # Use valid TestType enum value
+            category="debug",
+            input_template="Agent reasoning chains for cognitive analysis",
+            failure_indicators=["circular_reasoning", "overconfidence", "poor_reflection"],
+            compliance=[],
+            remediation="Improve reasoning patterns based on analysis"
         )
         
         agent_output = AgentOutput(
@@ -260,6 +272,49 @@ Provide specific, actionable debugging guidance."""
         
         from agent_eval.evaluation.judges.base import _parse_json_response
         return _parse_json_response(response_text, default_reward_signals, default_improvements)
+    
+    def analyze_migration_opportunities(
+        self, 
+        current_framework: str, 
+        performance_metrics: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """Analyze opportunities for framework migration using AI-powered analysis.
+        
+        This replaces the rule-based migration analysis in ReliabilityValidator.
+        """
+        scenario = EvaluationScenario(
+            id="migration_analysis",
+            name="Framework Migration Analysis",
+            description="Analyze if migrating to a different framework would improve performance",
+            expected_behavior="Identify migration opportunities with cost-benefit analysis",
+            severity="medium",
+            test_type="positive",
+            category="debug",
+            input_template="Current framework performance metrics for migration analysis",
+            failure_indicators=[],
+            compliance=[],
+            remediation="Consider framework migration based on analysis"
+        )
+        
+        agent_output = AgentOutput(
+            raw_output={
+                "current_framework": current_framework,
+                "performance_metrics": performance_metrics
+            },
+            normalized_output=f"Migration analysis for {current_framework}"
+        )
+        
+        result = self.evaluate(agent_output, scenario)
+        
+        return {
+            "migration_recommended": result.judgment == "fail",  # "fail" means current framework is suboptimal
+            "recommended_framework": result.reward_signals.get("recommended_framework"),
+            "improvement_estimate": result.reward_signals.get("improvement_estimate", 0),
+            "migration_priority": result.reward_signals.get("priority", "low"),
+            "migration_steps": result.improvement_recommendations,
+            "reasoning": result.reasoning,
+            "confidence": result.confidence
+        }
     
     def generate_continuous_feedback(self, results: List[JudgmentResult]) -> ContinuousFeedback:
         """Generate continuous feedback for debugging improvements."""

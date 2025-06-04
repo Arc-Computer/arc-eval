@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from typing import List, Dict, Any, Optional
 from collections import Counter
 
-from agent_eval.core.types import ReliabilityMetrics
+from agent_eval.core.types import ReliabilityMetrics, AgentOutput
 
 logger = logging.getLogger(__name__)
 
@@ -122,6 +122,9 @@ class ReliabilityAnalyzer:
 
     def __init__(self, api_manager=None):
         """Initialize reliability validator with framework-specific patterns."""
+
+        # Store api_manager for judge integration
+        self.api_manager = api_manager
 
         # Use centralized framework patterns
         from agent_eval.core.framework_patterns import framework_patterns
@@ -1534,33 +1537,109 @@ Required parameters:
         pipeline_data: Optional[Dict[str, Any]] = None,
         enable_judge_analysis: bool = True
     ) -> ComprehensiveReliabilityAnalysis:
-        """Generate comprehensive reliability analysis with optional judge enhancement.
-        
-        Integrates DebugJudge while maintaining backward compatibility.
+        """Generate comprehensive reliability analysis with DebugJudge as primary analysis engine.
+
+        Uses AI-powered DebugJudge as the primary analysis path, with rule-based analysis as fallback.
         """
-        
-        # First, run the standard comprehensive analysis
-        standard_analysis = self.generate_comprehensive_analysis(
-            agent_outputs, framework, expected_tools, pipeline_data
-        )
-        
-        # If judge analysis is disabled, return standard analysis
+
+        # If judge analysis is disabled, use standard analysis
         if not enable_judge_analysis:
-            return standard_analysis
-        
-        # Enhance with DebugJudge analysis if available
-        try:
-            enhanced_analysis = self._enhance_with_debug_judge(
-                standard_analysis, agent_outputs, framework
+            return self.generate_comprehensive_analysis(
+                agent_outputs, framework, expected_tools, pipeline_data
             )
-            return enhanced_analysis
+
+        # Try DebugJudge analysis first (primary path)
+        try:
+            judge_analysis = self._run_primary_judge_analysis(
+                agent_outputs, framework, expected_tools, pipeline_data
+            )
+            return judge_analysis
         except Exception as e:
-            # Fallback to standard analysis if judge enhancement fails
+            # Fallback to standard analysis if judge fails
             import logging
             logger = logging.getLogger(__name__)
-            logger.warning(f"Judge enhancement failed, using standard analysis: {e}")
-            return standard_analysis
-    
+            logger.warning(f"DebugJudge analysis failed, falling back to rule-based analysis: {e}")
+            return self.generate_comprehensive_analysis(
+                agent_outputs, framework, expected_tools, pipeline_data
+            )
+
+    def _run_primary_judge_analysis(
+        self,
+        agent_outputs: List[Any],
+        framework: Optional[str] = None,
+        expected_tools: Optional[List[str]] = None,
+        pipeline_data: Optional[Dict[str, Any]] = None
+    ) -> ComprehensiveReliabilityAnalysis:
+        """Run DebugJudge as the primary analysis engine.
+
+        Creates a comprehensive analysis primarily based on AI judge insights.
+        """
+        from agent_eval.evaluation.judges.workflow.debug import DebugJudge
+        from agent_eval.evaluation.judges.workflow.judge_output_adapter import JudgeOutputAdapter
+        from agent_eval.evaluation.judges.api_manager import APIManager
+
+        # Initialize judge with Cerebras for fast inference
+        api_manager = getattr(self, 'api_manager', None) or APIManager(provider="cerebras")
+        debug_judge = DebugJudge(api_manager)
+
+        # Run judge analysis
+        judge_output = debug_judge.evaluate_failure_patterns(agent_outputs, framework or "unknown")
+
+        # Convert judge output to comprehensive analysis format
+        judge_analysis = JudgeOutputAdapter.debug_judge_to_reliability_analysis(
+            judge_output, framework, len(agent_outputs)
+        )
+
+        # Enhance with minimal rule-based data where needed
+        self._supplement_judge_analysis_with_basic_metrics(judge_analysis, agent_outputs, framework)
+
+        return judge_analysis
+
+    def _supplement_judge_analysis_with_basic_metrics(
+        self,
+        judge_analysis: ComprehensiveReliabilityAnalysis,
+        agent_outputs: List[Any],
+        framework: Optional[str]
+    ) -> None:
+        """Supplement judge analysis with basic metrics that judges might not provide."""
+
+        # Add basic tool call summary if missing
+        if not judge_analysis.tool_call_summary or not judge_analysis.tool_call_summary.get('total_outputs_analyzed'):
+            basic_tool_summary = self._analyze_tool_calls_basic(agent_outputs)
+            judge_analysis.tool_call_summary.update(basic_tool_summary)
+
+        # Ensure sample size is correct
+        judge_analysis.sample_size = len(agent_outputs)
+
+        # Add framework detection if not provided by judge
+        if not judge_analysis.detected_framework and framework:
+            judge_analysis.detected_framework = framework
+            judge_analysis.framework_confidence = 1.0
+            judge_analysis.auto_detection_successful = True
+
+    def _analyze_tool_calls_basic(self, agent_outputs: List[Any]) -> Dict[str, Any]:
+        """Basic tool call analysis for supplementing judge analysis."""
+        tool_names = []
+        for output in agent_outputs:
+            if hasattr(output, 'raw_output') and isinstance(output.raw_output, dict):
+                tools = output.raw_output.get('tools', [])
+                if isinstance(tools, list):
+                    tool_names.extend([str(tool) for tool in tools])
+            elif isinstance(output, dict):
+                tools = output.get('tools', [])
+                if isinstance(tools, list):
+                    tool_names.extend([str(tool) for tool in tools])
+
+        from collections import Counter
+        tool_counter = Counter(tool_names)
+
+        return {
+            'total_outputs_analyzed': len(agent_outputs),
+            'unique_tools_detected': len(set(tool_names)),
+            'most_common_tools': tool_counter.most_common(5),
+            'total_tool_calls': len(tool_names)
+        }
+
     def _enhance_with_debug_judge(
         self,
         standard_analysis: ComprehensiveReliabilityAnalysis,
@@ -2004,3 +2083,152 @@ Required parameters:
     #
     
     # ==================== Migration Analysis Methods (Task 7) ====================
+    
+    def _analyze_migration_opportunities(
+        self,
+        detected_framework: Optional[str],
+        framework_performance: Optional[FrameworkPerformanceAnalysis],
+        workflow_metrics: WorkflowReliabilityMetrics
+    ) -> Dict[str, Any]:
+        """
+        Analyze opportunities for migrating to a better framework using DebugJudge.
+        
+        This method now delegates to the AI-powered DebugJudge for intelligent
+        migration analysis instead of using rule-based heuristics.
+        """
+        if not detected_framework or not framework_performance:
+            return {
+                "recommended_framework": None,
+                "migration_priority": "low",
+                "improvement_estimate": 0,
+                "migration_steps": [],
+                "reasoning": ["No framework detected for migration analysis"]
+            }
+        
+        try:
+            # Use DebugJudge for AI-powered migration analysis
+            from agent_eval.evaluation.judges.workflow.debug import DebugJudge
+            from agent_eval.evaluation.judges.api_manager import APIManager
+            
+            api_manager = getattr(self, 'api_manager', None) or APIManager(provider="cerebras")
+            debug_judge = DebugJudge(api_manager)
+            
+            # Prepare performance metrics for judge analysis
+            performance_metrics = {
+                "workflow_success_rate": workflow_metrics.workflow_success_rate,
+                "tool_chain_reliability": workflow_metrics.tool_chain_reliability,
+                "error_recovery_rate": workflow_metrics.error_recovery_rate,
+                "timeout_rate": workflow_metrics.timeout_rate,
+                "average_workflow_time": workflow_metrics.average_workflow_time,
+                "critical_failure_points": workflow_metrics.critical_failure_points,
+                "framework_performance": {
+                    "success_rate": framework_performance.success_rate,
+                    "avg_response_time": framework_performance.avg_response_time,
+                    "tool_call_failure_rate": framework_performance.tool_call_failure_rate,
+                    "bottlenecks": framework_performance.performance_bottlenecks
+                }
+            }
+            
+            return debug_judge.analyze_migration_opportunities(
+                detected_framework, 
+                performance_metrics
+            )
+            
+        except Exception as e:
+            logger.warning(f"DebugJudge migration analysis failed, using fallback: {e}")
+            # Minimal fallback response
+            return {
+                "recommended_framework": None,
+                "migration_priority": "low",
+                "improvement_estimate": 0,
+                "migration_steps": ["Enable DebugJudge for AI-powered migration analysis"],
+                "reasoning": [f"Judge-based analysis unavailable: {str(e)}"]
+            }
+    
+    def _perform_cognitive_analysis(self, agent_outputs: List[AgentOutput]) -> Optional[Dict[str, Any]]:
+        """
+        Perform cognitive analysis on agent outputs using DebugJudge.
+        
+        This method now delegates to the AI-powered DebugJudge for intelligent
+        cognitive pattern analysis instead of relying on a separate analyzer.
+        """
+        try:
+            # Extract reasoning chains from agent outputs
+            reasoning_chains = []
+            for output in agent_outputs:
+                if isinstance(output, AgentOutput):
+                    # Look for reasoning in the output
+                    if output.raw_output and isinstance(output.raw_output, dict):
+                        reasoning = output.raw_output.get('reasoning', '')
+                        if reasoning:
+                            reasoning_chains.append(str(reasoning))
+                    elif output.normalized_output:
+                        reasoning_chains.append(output.normalized_output)
+                else:
+                    reasoning_chains.append(str(output))
+            
+            if not reasoning_chains:
+                return {
+                    "reasoning_quality": "no_reasoning_found",
+                    "decision_patterns": [],
+                    "cognitive_biases": [],
+                    "improvement_suggestions": ["No reasoning chains found in outputs"]
+                }
+            
+            # Use DebugJudge for AI-powered cognitive analysis
+            from agent_eval.evaluation.judges.workflow.debug import DebugJudge
+            from agent_eval.evaluation.judges.api_manager import APIManager
+            
+            api_manager = getattr(self, 'api_manager', None) or APIManager(provider="cerebras")
+            debug_judge = DebugJudge(api_manager)
+            
+            # Analyze cognitive patterns
+            cognitive_results = debug_judge.analyze_cognitive_patterns(reasoning_chains)
+            
+            # Convert judge results to expected format
+            return {
+                "reasoning_quality": self._score_to_quality(cognitive_results.get("cognitive_quality_score", 0.5)),
+                "decision_patterns": self._extract_patterns_from_insights(cognitive_results.get("insights", [])),
+                "cognitive_biases": self._detect_biases_from_results(cognitive_results),
+                "improvement_suggestions": cognitive_results.get("insights", [])
+            }
+            
+        except Exception as e:
+            logger.warning(f"DebugJudge cognitive analysis failed: {e}")
+            # Minimal fallback response
+            return {
+                "reasoning_quality": "not_analyzed",
+                "decision_patterns": [],
+                "cognitive_biases": [],
+                "improvement_suggestions": [f"Enable DebugJudge for AI-powered cognitive analysis: {str(e)}"]
+            }
+    
+    def _score_to_quality(self, score: float) -> str:
+        """Convert numeric score to quality descriptor."""
+        if score >= 0.8:
+            return "excellent"
+        elif score >= 0.6:
+            return "good"
+        elif score >= 0.4:
+            return "fair"
+        else:
+            return "poor"
+    
+    def _extract_patterns_from_insights(self, insights: List[str]) -> List[str]:
+        """Extract decision patterns from judge insights."""
+        patterns = []
+        for insight in insights:
+            if "pattern" in insight.lower() or "consistently" in insight.lower():
+                patterns.append(insight)
+        return patterns[:5]  # Top 5 patterns
+    
+    def _detect_biases_from_results(self, results: Dict[str, Any]) -> List[str]:
+        """Detect cognitive biases from judge results."""
+        biases = []
+        if results.get("circular_reasoning_detected"):
+            biases.append("circular_reasoning")
+        if results.get("overconfidence_indicators"):
+            biases.append("overconfidence_bias")
+        if results.get("reflection_depth", 1.0) < 0.3:
+            biases.append("shallow_analysis_bias")
+        return biases

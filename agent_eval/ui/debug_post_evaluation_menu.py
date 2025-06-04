@@ -198,7 +198,7 @@ class DebugPostEvaluationMenu:
                 issues.append(f"Schema mismatches: {metrics.schema_mismatch_rate:.1%}")
         
         # Cognitive issues
-        if self.cognitive_analysis:
+        if self.cognitive_analysis and hasattr(self.cognitive_analysis, 'cognitive_health_score'):
             if self.cognitive_analysis.cognitive_health_score < 0.4:
                 issues.append(f"Poor cognitive health: {self.cognitive_analysis.cognitive_health_score:.1%}")
         
