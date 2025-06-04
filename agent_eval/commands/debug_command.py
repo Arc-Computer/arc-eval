@@ -190,9 +190,11 @@ class DebugCommand:
             from agent_eval.evaluation.reliability_validator import ReliabilityAnalyzer
 
             analyzer = ReliabilityAnalyzer()
-            analysis = analyzer.generate_comprehensive_analysis(
+            # Use the judge-enhanced analysis method
+            analysis = analyzer.generate_comprehensive_analysis_with_judge(
                 agent_outputs=agent_outputs,
-                framework=framework
+                framework=framework,
+                enable_judge_analysis=True  # Enable the DebugJudge
             )
 
             # Display the comprehensive analysis
