@@ -40,6 +40,7 @@ from agent_eval.commands import (
     BenchmarkCommand,
     ReliabilityCommand
 )
+from agent_eval.commands.trace_command import TraceCommand
 from agent_eval.core.constants import DOMAIN_SCENARIO_COUNTS
 from agent_eval.core.workflow_state import WorkflowStateManager
 from agent_eval.ui.result_renderer import ResultRenderer
@@ -108,6 +109,7 @@ def show_workflow_selector():
     table.add_row("2", "🔍 debug", "I have agent outputs and want to find issues")
     table.add_row("3", "✅ compliance", "I want to test against regulatory scenarios")
     table.add_row("4", "📈 improve", "I have evaluation results and want fixes")
+    table.add_row("5", "📊 trace", "Monitor my agent in real-time")
 
     console.print(table)
     console.print()
@@ -125,7 +127,7 @@ def show_workflow_selector():
 
     choice = Prompt.ask(
         "What would you like to do?",
-        choices=["1", "2", "3", "4", "quick-start", "debug", "compliance", "improve", "q"],
+        choices=["1", "2", "3", "4", "5", "quick-start", "debug", "compliance", "improve", "trace", "q"],
         default="1"
     )
 
@@ -145,6 +147,10 @@ def show_workflow_selector():
         console.print("\n[bold green]📈 Get improvement plan:[/bold green]")
         console.print("[green]arc-eval improve --from-evaluation latest[/green]")
         console.print("\n[dim]💡 Run compliance first to generate evaluation results[/dim]")
+    elif choice in ["5", "trace"]:
+        console.print("\n[bold green]📊 Monitor your agent:[/bold green]")
+        console.print("[green]arc-eval trace --agent-id my_agent --dashboard[/green]")
+        console.print("\n[dim]💡 First wrap your agent: tracer = ArcTracer(); agent = tracer.trace_agent(your_agent)[/dim]")
     else:
         console.print("\n[dim]Exiting... Run 'arc-eval --help' anytime for guidance![/dim]")
 
@@ -346,6 +352,89 @@ def improve(evaluation_file: Optional[Path], baseline: Optional[Path], current: 
             # For interactive contexts, raise exception for better UX
             raise click.ClickException("Improvement workflow failed")
     return exit_code
+
+
+@cli.command()
+@click.option('--agent-id', type=str, help='🤖 Agent identifier to monitor')
+@click.option('--domain', type=str, default='general', help='🎯 Domain for specialized monitoring')
+@click.option('--dashboard', is_flag=True, help='📊 Show interactive dashboard')
+@click.option('--live', is_flag=True, help='🔴 Enable live monitoring mode')
+@click.option('--server', is_flag=True, help='🚀 Start API server')
+@click.option('--port', type=int, default=8000, help='🌐 API server port')
+@click.option('--export', 'export_format', type=click.Choice(['console', 'json', 'csv']), default='console',
+              help='📄 Export format')
+@click.option('--no-costs', is_flag=True, help='💰 Hide cost information')
+@click.option('--no-traces', is_flag=True, help='📋 Hide trace details')
+@click.option('--limit', type=int, default=10, help='📊 Limit number of traces to show')
+@click.option('--test', is_flag=True, help='🧪 Run tracer test with sample agent')
+def trace(agent_id: Optional[str], domain: str, dashboard: bool, live: bool, server: bool, port: int,
+          export_format: str, no_costs: bool, no_traces: bool, limit: int, test: bool):
+    """
+    📊 Trace: Monitor your agent in real-time
+
+    \b
+    One-line agent monitoring and reliability tracking.
+    Wrap any agent framework for instant monitoring.
+
+    \b
+    💡 QUICK START:
+      1. Wrap your agent: tracer = ArcTracer("finance"); agent = tracer.trace_agent(your_agent)
+      2. View dashboard: arc-eval trace --agent-id your_agent_id --dashboard
+      3. Start API server: arc-eval trace --server
+
+    \b
+    🔍 MONITORING MODES:
+      • Dashboard view: arc-eval trace --agent-id my_agent --dashboard
+      • Live monitoring: arc-eval trace --agent-id my_agent --live
+      • API server: arc-eval trace --server --port 8000
+      • Export data: arc-eval trace --agent-id my_agent --export json
+
+    \b
+    🧪 TESTING:
+      arc-eval trace --test    # Test with sample agent
+
+    \b
+    📊 FEATURES:
+      • Real-time reliability scoring (A+ to F grades)
+      • Cost tracking and optimization suggestions
+      • Framework-agnostic monitoring (LangChain, CrewAI, AutoGen, etc.)
+      • Performance metrics and failure detection
+      • Interactive dashboard with live updates
+
+    \b
+    🔧 INTEGRATION EXAMPLE:
+      ```python
+      from agent_eval.trace import ArcTracer
+      
+      # One line to add monitoring
+      tracer = ArcTracer("finance")
+      agent = tracer.trace_agent(your_langchain_agent)
+      
+      # Your agent is now monitored!
+      response = agent.run("Process this transaction")
+      ```
+
+    \b
+    🌐 DASHBOARD URL:
+      http://localhost:8000/agents/your_agent_id/dashboard
+    """
+    if test:
+        from agent_eval.commands.trace_command import test_tracer
+        return test_tracer()
+    
+    command = TraceCommand()
+    return command.execute(
+        agent_id=agent_id,
+        domain=domain,
+        live=live,
+        dashboard=dashboard,
+        server=server,
+        port=port,
+        export_format=export_format,
+        show_costs=not no_costs,
+        show_traces=not no_traces,
+        limit=limit
+    )
 
 
 # ==================== Legacy CLI Support ====================
