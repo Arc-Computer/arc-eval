@@ -58,6 +58,7 @@ class TracedAgent:
                 agent_id=self._agent_id,
                 session_id=self._session_id,
                 start_time=start_time,
+                end_time=None,
                 framework=self.tracer.capture.detect_framework(self.original_agent)
             )
             
