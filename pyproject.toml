@@ -42,6 +42,14 @@ dev = [
     "flake8>=6.0.0",
     "mypy>=1.0.0",
 ]
+otel = [
+    "opentelemetry-api>=1.21.0",
+    "opentelemetry-sdk>=1.21.0", 
+    "opentelemetry-semantic-conventions>=0.42b0",
+    "opentelemetry-exporter-otlp>=1.21.0",
+    "opentelemetry-exporter-jaeger>=1.21.0",
+    "opentelemetry-instrumentation>=0.42b0",
+]
 
 
 
