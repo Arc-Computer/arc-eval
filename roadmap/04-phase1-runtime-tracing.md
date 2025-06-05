@@ -2,8 +2,6 @@
 
 ## The Problem We're Solving
 
-**Customer Quote**: "If you can tell us an agent's success rate, we'll use it."
-
 Currently, developers only know their agent failed when:
 - A customer complains
 - They manually review logs
@@ -144,5 +142,3 @@ Developer adds one line. Opens dashboard. Sees:
 │ [View Details] [Get Fixes] [Export]  │
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
-
-This is when they realize they need Arc-Eval forever.
