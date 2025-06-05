@@ -10,13 +10,14 @@ import logging
 import time
 import threading
 from datetime import datetime
-from typing import Any, Optional, Dict, Callable
+from typing import Any, Optional, Dict, Callable, List
 from functools import wraps
 
 from .types import TraceData, ExecutionStep, TraceEventType, ReliabilityScore, AgentMetrics
 from .capture import TraceCapture
 from .storage import TraceStorage
 from .cost_tracker import CostTracker
+from .sanitizer import RedactionRule
 
 logger = logging.getLogger(__name__)
 
@@ -61,7 +62,12 @@ class TracedAgent:
             )
             
             try:
-                # Start execution step
+                # Start execution step - sanitize input data
+                sanitized_args = self.tracer.capture.sanitizer.sanitize_string(str(args)[:200])
+                sanitized_kwargs = self.tracer.capture.sanitizer.sanitize_dict(
+                    {k: str(v)[:100] for k, v in kwargs.items()}
+                )
+                
                 start_step = ExecutionStep(
                     step_id=str(uuid.uuid4()),
                     event_type=TraceEventType.AGENT_START,
@@ -69,8 +75,8 @@ class TracedAgent:
                     duration_ms=0.0,
                     data={
                         'method': method_name,
-                        'args': str(args)[:200],  # Truncate for storage
-                        'kwargs': {k: str(v)[:100] for k, v in kwargs.items()}
+                        'args': sanitized_args,
+                        'kwargs': sanitized_kwargs
                     }
                 )
                 trace_data.execution_timeline.append(start_step)
@@ -84,13 +90,14 @@ class TracedAgent:
                 trace_data.success = True
                 trace_data.end_time = datetime.now()
                 
-                # End execution step
+                # End execution step - sanitize result
+                sanitized_result = self.tracer.capture.sanitizer.sanitize_string(str(result)[:200])
                 end_step = ExecutionStep(
                     step_id=str(uuid.uuid4()),
                     event_type=TraceEventType.AGENT_END,
                     timestamp=trace_data.end_time,
                     duration_ms=trace_data.duration_ms,
-                    data={'result': str(result)[:200]}
+                    data={'result': sanitized_result}
                 )
                 trace_data.execution_timeline.append(end_step)
                 
@@ -106,13 +113,15 @@ class TracedAgent:
                 trace_data.error = str(e)
                 trace_data.end_time = datetime.now()
                 
+                # Sanitize error information
+                sanitized_error = self.tracer.capture.sanitizer.sanitize_string(str(e))
                 error_step = ExecutionStep(
                     step_id=str(uuid.uuid4()),
                     event_type=TraceEventType.ERROR,
                     timestamp=trace_data.end_time,
                     duration_ms=trace_data.duration_ms,
-                    data={'error': str(e)},
-                    error=str(e)
+                    data={'error': sanitized_error},
+                    error=sanitized_error
                 )
                 trace_data.execution_timeline.append(error_step)
                 
@@ -132,21 +141,26 @@ class TracedAgent:
 class ArcTracer:
     """Main tracer class for one-line agent monitoring."""
     
-    def __init__(self, domain: str = "general", agent_id: Optional[str] = None, api_key: Optional[str] = None):
+    def __init__(self, domain: str = "general", agent_id: Optional[str] = None, api_key: Optional[str] = None, custom_rules: Optional[List[RedactionRule]] = None):
         """Initialize tracer with domain context.
         
         Args:
             domain: Domain for specialized monitoring (finance, security, ml)
             agent_id: Unique identifier for the agent (auto-generated if None)
             api_key: API key for trace submission (reads from env if not provided)
+            custom_rules: Additional custom redaction rules for sanitization
         """
         self.domain = domain
         self.agent_id = agent_id or f"agent_{uuid.uuid4().hex[:8]}"
         self.api_key = api_key or os.getenv("ARC_API_KEY", "development-key-change-in-production")
         self.is_monitoring = False
+        self.custom_rules = custom_rules or []
+        
+        # Check if sanitization should be disabled (default: enabled)
+        enable_sanitization = os.getenv("ARC_ENABLE_SANITIZATION", "true").lower() != "false"
         
         # Initialize components
-        self.capture = TraceCapture(domain=domain)
+        self.capture = TraceCapture(domain=domain, enable_sanitization=enable_sanitization, custom_rules=self.custom_rules)
         self.storage = TraceStorage()
         self.cost_tracker = CostTracker()
         

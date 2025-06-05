@@ -219,6 +219,41 @@ for suggestion in suggestions:
     print(f"💡 {suggestion['description']}")
 ```
 
+## Data Sanitization
+
+ARC-Eval automatically sanitizes sensitive information from traces:
+
+### What's Sanitized
+- **PII**: SSN, credit cards, emails, phone numbers, IP addresses
+- **Credentials**: API keys, passwords, bearer tokens, secrets
+- **Domain-specific**:
+  - Finance: Account numbers, routing numbers, IBANs
+  - Security: JWTs, private keys
+  - ML: Model API tokens (Wandb, HuggingFace)
+
+### Controlling Sanitization
+```bash
+# Disable for debugging (not recommended for production)
+export ARC_ENABLE_SANITIZATION="false"
+```
+
+### Custom Redaction Rules
+```python
+from agent_eval.trace.sanitizer import RedactionRule
+import re
+
+# Add custom patterns
+custom_rules = [
+    RedactionRule(
+        name="internal_id",
+        pattern=re.compile(r'INTERNAL-\d{8}'),
+        replacement="[REDACTED_INTERNAL_ID]"
+    )
+]
+
+tracer = ArcTracer(domain="finance", custom_rules=custom_rules)
+```
+
 ## Storage
 
 Traces are stored locally in SQLite by default:
@@ -291,6 +326,9 @@ export ARC_API_KEYS="your-secret-key-1,your-secret-key-2"
 # Rate limiting (optional)
 export ARC_RATE_LIMIT="100"  # requests per window
 export ARC_RATE_WINDOW="60"  # seconds
+
+# Data sanitization (enabled by default)
+export ARC_ENABLE_SANITIZATION="true"  # Set to "false" to disable for debugging
 ```
 
 ### Docker Deployment

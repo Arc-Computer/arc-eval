@@ -13,6 +13,7 @@ import inspect
 
 from .types import TraceData, ExecutionStep, ToolCall, TraceEventType, CostData
 from .cost_tracker import CostTracker
+from .sanitizer import create_sanitizer
 
 logger = logging.getLogger(__name__)
 
@@ -20,14 +21,17 @@ logger = logging.getLogger(__name__)
 class TraceCapture:
     """Captures execution timeline, tool calls, and costs."""
     
-    def __init__(self, domain: str = "general"):
+    def __init__(self, domain: str = "general", enable_sanitization: bool = True, custom_rules = None):
         """Initialize trace capture for specific domain.
         
         Args:
             domain: Domain context for specialized monitoring
+            enable_sanitization: Whether to sanitize sensitive data
+            custom_rules: Additional custom redaction rules
         """
         self.domain = domain
         self.cost_tracker = CostTracker()
+        self.sanitizer = create_sanitizer(domain, enable_sanitization, custom_rules)
         
         # Framework detection patterns
         self.framework_patterns = {
@@ -202,8 +206,8 @@ class TraceCapture:
                 if isinstance(step, (list, tuple)) and len(step) >= 2:
                     tool_call = ToolCall(
                         tool_name=str(step[0]) if step[0] else f"step_{i}",
-                        tool_input={'action': str(step[0])[:200]},
-                        tool_output=str(step[1])[:500] if len(step) > 1 else '',
+                        tool_input=self.sanitizer.sanitize_dict({'action': str(step[0])[:200]}),
+                        tool_output=self.sanitizer.sanitize_string(str(step[1])[:500] if len(step) > 1 else ''),
                         timestamp=datetime.now(),
                         duration_ms=0.0,  # LangChain doesn't provide timing
                         success=True
@@ -225,8 +229,8 @@ class TraceCapture:
             for i, task_output in enumerate(task_outputs):
                 tool_call = ToolCall(
                     tool_name=f"task_{i}",
-                    tool_input={'task_description': str(task_output)[:200]},
-                    tool_output=str(task_output)[:500],
+                    tool_input=self.sanitizer.sanitize_dict({'task_description': str(task_output)[:200]}),
+                    tool_output=self.sanitizer.sanitize_string(str(task_output)[:500]),
                     timestamp=datetime.now(),
                     duration_ms=0.0,
                     success=True
@@ -248,8 +252,8 @@ class TraceCapture:
             for i, message in enumerate(messages[-5:]):  # Last 5 messages
                 tool_call = ToolCall(
                     tool_name=f"message_{i}",
-                    tool_input={'role': message.get('role', 'unknown')},
-                    tool_output=str(message.get('content', ''))[:500],
+                    tool_input=self.sanitizer.sanitize_dict({'role': message.get('role', 'unknown')}),
+                    tool_output=self.sanitizer.sanitize_string(str(message.get('content', ''))[:500]),
                     timestamp=datetime.now(),
                     duration_ms=0.0,
                     success=True
@@ -283,8 +287,8 @@ class TraceCapture:
                         for i, tool in enumerate(tools):
                             tool_call = ToolCall(
                                 tool_name=str(tool.get('name', f'tool_{i}')),
-                                tool_input=tool.get('input', {}),
-                                tool_output=tool.get('output', ''),
+                                tool_input=self.sanitizer.sanitize(tool.get('input', {})),
+                                tool_output=self.sanitizer.sanitize_string(str(tool.get('output', ''))),
                                 timestamp=datetime.now(),
                                 duration_ms=0.0,
                                 success=tool.get('success', True)
@@ -299,7 +303,7 @@ class TraceCapture:
                     tool_call = ToolCall(
                         tool_name=attr_name,
                         tool_input={},
-                        tool_output=str(attr_value)[:500],
+                        tool_output=self.sanitizer.sanitize_string(str(attr_value)[:500]),
                         timestamp=datetime.now(),
                         duration_ms=0.0,
                         success=True
