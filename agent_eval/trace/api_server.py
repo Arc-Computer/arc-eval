@@ -7,14 +7,18 @@ Provides REST endpoints for trace data and real-time dashboard updates.
 import asyncio
 import logging
 import json
+import os
+import time
 from datetime import datetime
 from typing import Dict, List, Optional, Any
+from collections import defaultdict
 import uvicorn
 
 try:
-    from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+    from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Depends
     from fastapi.middleware.cors import CORSMiddleware
     from fastapi.responses import JSONResponse
+    from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
     FASTAPI_AVAILABLE = True
 except ImportError:
     FASTAPI_AVAILABLE = False
@@ -24,6 +28,37 @@ from .storage import TraceStorage
 from .types import TraceData, AgentMetrics, DashboardData
 
 logger = logging.getLogger(__name__)
+
+# Security setup
+security = HTTPBearer()
+
+# Rate limiting
+rate_limit_store = defaultdict(list)
+RATE_LIMIT_REQUESTS = int(os.getenv("ARC_RATE_LIMIT", "100"))
+RATE_LIMIT_WINDOW = int(os.getenv("ARC_RATE_WINDOW", "60"))  # seconds
+
+def validate_api_key(credentials: HTTPAuthorizationCredentials = Depends(security)) -> str:
+    """Validate API key from environment or config."""
+    api_key = credentials.credentials
+    valid_keys = os.getenv("ARC_API_KEYS", "").split(",")
+    
+    # In development, allow a default key if none configured
+    if not valid_keys or valid_keys == [""]:
+        valid_keys = ["development-key-change-in-production"]
+    
+    if api_key not in valid_keys:
+        raise HTTPException(status_code=401, detail="Invalid API key")
+    
+    # Check rate limit
+    current_time = time.time()
+    # Clean old entries
+    rate_limit_store[api_key] = [t for t in rate_limit_store[api_key] if current_time - t < RATE_LIMIT_WINDOW]
+    
+    if len(rate_limit_store[api_key]) >= RATE_LIMIT_REQUESTS:
+        raise HTTPException(status_code=429, detail="Rate limit exceeded")
+    
+    rate_limit_store[api_key].append(current_time)
+    return api_key
 
 
 class TraceAPIServer:
@@ -48,11 +83,12 @@ class TraceAPIServer:
         )
         
         # CORS for dashboard access
+        allowed_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000").split(",")
         self.app.add_middleware(
             CORSMiddleware,
-            allow_origins=["*"],  # Configure appropriately for production
+            allow_origins=allowed_origins,
             allow_credentials=True,
-            allow_methods=["*"],
+            allow_methods=["GET", "POST"],
             allow_headers=["*"],
         )
         
@@ -71,7 +107,7 @@ class TraceAPIServer:
             return {"message": "ARC-Eval Trace API", "version": "1.0.0"}
         
         @self.app.post("/traces/ingest")
-        async def ingest_trace(trace_data: Dict[str, Any]):
+        async def ingest_trace(trace_data: Dict[str, Any], api_key: str = Depends(validate_api_key)):
             """Ingest a new trace."""
             try:
                 # Convert dict to TraceData (simplified)

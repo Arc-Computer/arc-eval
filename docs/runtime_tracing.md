@@ -44,6 +44,7 @@ pip install fastapi uvicorn
 from agent_eval.trace import ArcTracer
 
 # Initialize tracer with domain context
+# API key can be provided or read from ARC_API_KEY env var
 tracer = ArcTracer(domain="finance", agent_id="my_financial_agent")
 
 # Wrap your agent (works with any framework)
@@ -278,8 +279,18 @@ tracer.capture = CustomCapture()
 export ARC_EVAL_DB_PATH="/path/to/production.db"
 
 # API server configuration
-export ARC_EVAL_API_HOST="0.0.0.0"
-export ARC_EVAL_API_PORT="8000"
+export ARC_API_HOST="0.0.0.0"
+export ARC_API_PORT="8000"
+
+# CORS configuration (comma-separated origins)
+export ALLOWED_ORIGINS="http://localhost:3000,https://your-domain.com"
+
+# API authentication (comma-separated API keys)
+export ARC_API_KEYS="your-secret-key-1,your-secret-key-2"
+
+# Rate limiting (optional)
+export ARC_RATE_LIMIT="100"  # requests per window
+export ARC_RATE_WINDOW="60"  # seconds
 ```
 
 ### Docker Deployment

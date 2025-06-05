@@ -4,6 +4,7 @@ ArcTracer: One-line agent monitoring wrapper.
 Main entry point for runtime tracing functionality.
 """
 
+import os
 import uuid
 import logging
 import time
@@ -131,15 +132,17 @@ class TracedAgent:
 class ArcTracer:
     """Main tracer class for one-line agent monitoring."""
     
-    def __init__(self, domain: str = "general", agent_id: Optional[str] = None):
+    def __init__(self, domain: str = "general", agent_id: Optional[str] = None, api_key: Optional[str] = None):
         """Initialize tracer with domain context.
         
         Args:
             domain: Domain for specialized monitoring (finance, security, ml)
             agent_id: Unique identifier for the agent (auto-generated if None)
+            api_key: API key for trace submission (reads from env if not provided)
         """
         self.domain = domain
         self.agent_id = agent_id or f"agent_{uuid.uuid4().hex[:8]}"
+        self.api_key = api_key or os.getenv("ARC_API_KEY", "development-key-change-in-production")
         self.is_monitoring = False
         
         # Initialize components
